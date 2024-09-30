@@ -7,26 +7,26 @@ import {
   ActivityIndicator,
   StyleSheet,
   Alert,
+  Image,
 } from "react-native";
 import axios from "axios";
 import { useRouter } from "expo-router";
 import { UserContext } from "../contexts/UserContext";
-import { Picker } from "@react-native-picker/picker";
 import { Ionicons } from "@expo/vector-icons";
 
 const Index = () => {
   const [inputValue, setInputValue] = useState(""); // Armazena CPF ou CNPJ
-  const [searchType, setSearchType] = useState("cpf"); // Define o tipo de busca (CPF ou CNPJ)
+  const [password, setPassword] = useState(""); // Armazena a senha
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
 
   // Access setUserData from the context
-  const { setUserData, userData } = useContext(UserContext);
+  const { setUserData } = useContext(UserContext); 
 
   const fetchUserData = async () => {
-    if (!inputValue) {
-      setError(`Por favor, insira um ${searchType.toUpperCase()}.`);
+    if (!inputValue || !password) {
+      setError(`Por favor, insira um CPF e a senha.`);
       return;
     }
 
@@ -35,12 +35,11 @@ const Index = () => {
 
     try {
       const username = "engenharq-mozart";
-      const password = "i94B1q2HUXf7PP7oscuIBygquSRZ9lhb";
-      const credentials = btoa(`${username}:${password}`); // Codificação base64 com btoa
+      const passwordApi = "i94B1q2HUXf7PP7oscuIBygquSRZ9lhb";
+      const credentials = btoa(`${username}:${passwordApi}`); // Codificação base64 com btoa
 
-      // Muda o parâmetro de busca com base no tipo selecionado (CPF ou CNPJ)
-      const searchParam =
-        searchType === "cpf" ? `cpf=${inputValue}` : `cnpj=${inputValue}`;
+      // Muda o parâmetro de busca com base no CPF
+      const searchParam = `cpf=${inputValue}`;
 
       const response = await axios.get(
         `https://api.sienge.com.br/engenharq/public/api/v1/customers?${searchParam}&limit=100&offset=0`,
@@ -52,7 +51,8 @@ const Index = () => {
       );
 
       if (response.data.results && response.data.results.length > 0) {
-        setUserData(response.data.results[0]); // Store user data in context
+        setUserData(response.data.results[0]); // Armazena os dados do cliente no contexto
+        router.push("/initial-page"); // Redireciona diretamente para a tela de débitos
       } else {
         setError("Cliente não encontrado.");
       }
@@ -66,68 +66,50 @@ const Index = () => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Pesquisar Cliente</Text>
+      <Text style={styles.title}>ENGEPAG</Text>
 
-      {/* Picker para selecionar entre CPF e CNPJ */}
-      <View style={styles.pickerContainer}>
-        <Picker
-          selectedValue={searchType}
-          style={styles.picker}
-          onValueChange={(itemValue) => setSearchType(itemValue)}
-        >
-          <Picker.Item label="CPF" value="cpf" />
-          <Picker.Item label="CNPJ" value="cnpj" />
-        </Picker>
-        <Ionicons
-          name={searchType === "cpf" ? "person-outline" : "business-outline"}
-          size={24}
-          color="#555"
+      {/* Campo de entrada para CPF */}
+      <View style={styles.inputContainer}>
+        <Ionicons name="person" size={24} color="#E1272C" style={styles.icon} />
+        <TextInput
+          style={styles.input}
+          placeholder="CPF"
+          value={inputValue}
+          onChangeText={setInputValue}
+          keyboardType="numeric"
+          placeholderTextColor="#aaa"
         />
       </View>
 
-      {/* Campo de entrada que muda o placeholder com base no tipo de busca */}
-      <TextInput
-        style={styles.input}
-        placeholder={`Digite o ${searchType.toUpperCase()} para fazer a pesquisa`}
-        value={inputValue}
-        onChangeText={setInputValue}
-        keyboardType="numeric"
-        placeholderTextColor="#aaa"
-      />
+      {/* Campo de entrada para Senha */}
+      <View style={styles.inputContainer}>
+        <Ionicons name="lock-closed" size={24} color="#E1272C" style={styles.icon} />
+        <TextInput
+          style={styles.input}
+          placeholder="SENHA"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+          placeholderTextColor="#aaa"
+        />
+      </View>
 
-      {/* Botão de Pesquisa */}
-      <TouchableOpacity style={styles.searchButton} onPress={fetchUserData}>
-        <Ionicons name="search-outline" size={20} color="#fff" />
-        <Text style={styles.searchButtonText}>Pesquisar Cliente</Text>
+      {/* Botão de Acesso */}
+      <TouchableOpacity style={styles.accessButton} onPress={fetchUserData}>
+        <Text style={styles.accessButtonText}>ACESSAR</Text>
       </TouchableOpacity>
 
       {loading && (
-        <ActivityIndicator
-          size="large"
-          color="#007bff"
-          style={styles.loading}
-        />
+        <ActivityIndicator size="large" color="#007bff" style={styles.loading} />
       )}
 
       {error && <Text style={styles.errorText}>{error}</Text>}
 
-      {/* Exibição dos resultados */}
-      {userData && (
-        <>
-          <View style={styles.resultContainer}>
-            <Ionicons name="checkmark-circle-outline" size={40} color="green" />
-            <Text style={styles.clientFoundText}>Cliente encontrado!</Text>
-            <Text style={styles.clientName}>Nome: {userData.name}</Text>
-          </View>
-          <TouchableOpacity
-            style={styles.debitButton}
-            onPress={() => router.push("/debit-balance")}
-          >
-            <Ionicons name="wallet-outline" size={20} color="#fff" />
-            <Text style={styles.debitButtonText}>Ver Débitos do Cliente</Text>
-          </TouchableOpacity>
-        </>
-      )}
+      {/* Logo */}
+      <Image
+        source={require('./homelogo.png')} 
+        style={styles.logo} 
+      />
     </View>
   );
 };
@@ -138,93 +120,60 @@ const styles = StyleSheet.create({
     padding: 20,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#f3f4f6",
+    backgroundColor: "#FFF8F8",
   },
   title: {
-    fontSize: 24,
+    fontSize: 60,
     fontWeight: "bold",
-    marginBottom: 20,
+    marginBottom: 90,
     color: "#333",
   },
-  pickerContainer: {
+  inputContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#fff",
-    borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 8,
+    borderBottomWidth: 1,
+    borderColor: "#E1272C",
     marginBottom: 20,
+    width: "100%",
+  },
+  icon: {
     paddingHorizontal: 10,
   },
-  picker: {
+  input: {
     flex: 1,
     height: 50,
-  },
-  input: {
-    height: 50,
-    borderColor: "#ddd",
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    backgroundColor: "#fff",
-    width: "100%",
-    marginBottom: 20,
     fontSize: 16,
+    color: "#333",
   },
-  searchButton: {
-    backgroundColor: "#007bff",
+  accessButton: {
+    backgroundColor: "#5B5B5B",
+    width: "60%",
     paddingVertical: 15,
-    borderRadius: 8,
-    flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
-    width: "100%",
-    marginBottom: 20,
+    borderRadius: 5,
+    marginTop: 70,
+    marginBottom: 90,
   },
-  searchButtonText: {
+  accessButtonText: {
     color: "#fff",
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: "bold",
-    marginLeft: 10,
   },
   loading: {
     marginTop: 20,
   },
   errorText: {
-    color: "red",
+    color: "#E1272C",
     fontWeight: "bold",
     marginTop: 20,
   },
-  resultContainer: {
-    marginTop: 20,
-    alignItems: "center",
-  },
-  clientFoundText: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "green",
-    marginVertical: 10,
-  },
-  clientName: {
-    fontSize: 16,
-    color: "#555",
-    marginBottom: 20,
-  },
-  debitButton: {
-    backgroundColor: "#28a745",
-    paddingVertical: 12,
-    borderRadius: 8,
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    width: "100%",
-    marginTop: 10,
-  },
-  debitButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "bold",
-    marginLeft: 10,
+  logo: {
+    width: 100,
+    height: 100,
+    position: 'absolute',
+    bottom: 20, 
+    alignSelf: 'center', 
   },
 });
 

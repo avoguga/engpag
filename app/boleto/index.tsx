@@ -90,6 +90,8 @@ const BoletoScreen = () => {
       const password = 'i94B1q2HUXf7PP7oscuIBygquSRZ9lhb';
       const credentials = btoa(`${username}:${password}`); // Usando btoa para codificação Base64
 
+      console.log(billReceivableId, installmentId)
+
       const response = await axios.get(
         'https://api.sienge.com.br/engenharq/public/api/v1/payment-slip-notification',
         {
