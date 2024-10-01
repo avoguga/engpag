@@ -8,6 +8,9 @@ import {
   StyleSheet,
   Alert,
   Image,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
 } from "react-native";
 import axios from "axios";
 import { useRouter } from "expo-router";
@@ -21,8 +24,8 @@ const Index = () => {
   const [error, setError] = useState("");
   const router = useRouter();
 
-  // Access setUserData from the context
-  const { setUserData } = useContext(UserContext); 
+  // Acessa setUserData do contexto
+  const { setUserData } = useContext(UserContext);
 
   const fetchUserData = async () => {
     if (!inputValue || !password) {
@@ -35,8 +38,8 @@ const Index = () => {
 
     try {
       const username = "engenharq-mozart";
-      const passwordApi = "i94B1q2HUXf7PP7oscuIBygquSRZ9lhb";
-      const credentials = btoa(`${username}:${passwordApi}`); // Codificação base64 com btoa
+      const password = "i94B1q2HUXf7PP7oscuIBygquSRZ9lhb";
+      const credentials = btoa(`${username}:${password}`); // Codificação base64 com btoa
 
       // Muda o parâmetro de busca com base no CPF
       const searchParam = `cpf=${inputValue}`;
@@ -52,7 +55,7 @@ const Index = () => {
 
       if (response.data.results && response.data.results.length > 0) {
         setUserData(response.data.results[0]); // Armazena os dados do cliente no contexto
-        router.push("/initial-page"); // Redireciona diretamente para a tela de débitos
+        router.push("/initial-page"); // Redireciona diretamente para a tela inicial
       } else {
         setError("Cliente não encontrado.");
       }
@@ -65,62 +68,81 @@ const Index = () => {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>ENGEPAG</Text>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+    >
+      <ScrollView contentContainerStyle={styles.contentContainer}>
+        <Text style={styles.title}>ENGEPAG</Text>
 
-      {/* Campo de entrada para CPF */}
-      <View style={styles.inputContainer}>
-        <Ionicons name="person" size={24} color="#E1272C" style={styles.icon} />
-        <TextInput
-          style={styles.input}
-          placeholder="CPF"
-          value={inputValue}
-          onChangeText={setInputValue}
-          keyboardType="numeric"
-          placeholderTextColor="#aaa"
-        />
-      </View>
+        {/* Campo de entrada para CPF */}
+        <View style={styles.inputContainer}>
+          <Ionicons
+            name="person"
+            size={24}
+            color="#E1272C"
+            style={styles.icon}
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="CPF"
+            value={inputValue}
+            onChangeText={setInputValue}
+            keyboardType="numeric"
+            placeholderTextColor="#aaa"
+          />
+        </View>
 
-      {/* Campo de entrada para Senha */}
-      <View style={styles.inputContainer}>
-        <Ionicons name="lock-closed" size={24} color="#E1272C" style={styles.icon} />
-        <TextInput
-          style={styles.input}
-          placeholder="SENHA"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-          placeholderTextColor="#aaa"
-        />
-      </View>
+        {/* Campo de entrada para Senha */}
+        <View style={styles.inputContainer}>
+          <Ionicons
+            name="lock-closed"
+            size={24}
+            color="#E1272C"
+            style={styles.icon}
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="SENHA"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+            placeholderTextColor="#aaa"
+          />
+        </View>
 
-      {/* Botão de Acesso */}
-      <TouchableOpacity style={styles.accessButton} onPress={fetchUserData}>
-        <Text style={styles.accessButtonText}>ACESSAR</Text>
-      </TouchableOpacity>
+        {/* Botão de Acesso */}
+        <TouchableOpacity style={styles.accessButton} onPress={fetchUserData}>
+          {loading ? (
+            <ActivityIndicator
+              size="large"
+              color="#007bff"
+              style={styles.loading}
+            />
+          ) : (
+            <Text style={styles.accessButtonText}>ACESSAR</Text>
+          )}
+        </TouchableOpacity>
 
-      {loading && (
-        <ActivityIndicator size="large" color="#007bff" style={styles.loading} />
-      )}
+        {error && <Text style={styles.errorText}>{error}</Text>}
 
-      {error && <Text style={styles.errorText}>{error}</Text>}
-
-      {/* Logo */}
-      <Image
-        source={require('./homelogo.png')} 
-        style={styles.logo} 
-      />
-    </View>
+        {/* Logo */}
+        <Image source={require("./homelogo.png")} style={styles.logo} />
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: "#FFF8F8",
+  },
+  contentContainer: {
+    flexGrow: 1,
     padding: 20,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#FFF8F8",
   },
   title: {
     fontSize: 60,
@@ -153,16 +175,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderRadius: 5,
     marginTop: 70,
-    marginBottom: 90,
+    marginBottom: 30,
   },
   accessButtonText: {
     color: "#fff",
     fontSize: 18,
     fontWeight: "bold",
   },
-  loading: {
-    marginTop: 20,
-  },
+  loading: {},
   errorText: {
     color: "#E1272C",
     fontWeight: "bold",
@@ -171,9 +191,8 @@ const styles = StyleSheet.create({
   logo: {
     width: 100,
     height: 100,
-    position: 'absolute',
-    bottom: 20, 
-    alignSelf: 'center', 
+    marginBottom: 20,
+    alignSelf: "center",
   },
 });
 

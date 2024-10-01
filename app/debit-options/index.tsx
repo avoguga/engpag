@@ -5,27 +5,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { UserContext } from "../contexts/UserContext";
 
 const DebitOptionsPage = () => {
-
   const router = useRouter();
-
-  const { userData } = useContext(UserContext);
-  const [filteredInstallments, setFilteredInstallments] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [searchText, setSearchText] = useState("");
-  const [selectedBillReceivableId, setSelectedBillReceivableId] =
-    useState<any>(null); // Estado para selecionar o billReceivableId
-  const [selectedOption, setSelectedOption] = useState("pendentes"); // Estado para o select
-  const [sortAsc, setSortAsc] = useState(true);
-  const [totals, setTotals] = useState({
-    originalTotal: 0,
-    correctedTotal: 0,
-    additionalTotal: 0,
-    updatedTotal: 0,
-  });
-
-
-  const { billReceivableId, title } = useLocalSearchParams();
   const { installmentsData } = useContext(UserContext);
 
   const handleBoletoNavigation = () => {
@@ -34,28 +14,27 @@ const DebitOptionsPage = () => {
       return;
     }
 
-    // Inicializa variáveis para acompanhar a última parcela vencida ou pendente
     let lastInstallment = null;
     let selectedResult = null;
 
-    // Itera sobre cada resultado em installmentsData
     installmentsData.forEach((result) => {
-      // Combina dueInstallments e payableInstallments
       const unpaidInstallments = [
         ...(result.dueInstallments || []),
         ...(result.payableInstallments || []),
       ];
 
-      // Filtra parcelas vencidas ou pendentes
-      const overdueOrPendingInstallments = unpaidInstallments.filter((installment) => {
-        const dueDate = new Date(installment.dueDate);
-        const today = new Date();
-        return dueDate <= today; // Vencidas ou com vencimento hoje
-      });
+      const overdueOrPendingInstallments = unpaidInstallments.filter(
+        (installment) => {
+          const dueDate = new Date(installment.dueDate);
+          const today = new Date();
+          return dueDate <= today;
+        }
+      );
 
       if (overdueOrPendingInstallments.length > 0) {
-        // Ordena as parcelas por data de vencimento em ordem decrescente
-        overdueOrPendingInstallments.sort((a, b) => new Date(b.dueDate) - new Date(a.dueDate));
+        overdueOrPendingInstallments.sort(
+          (a, b) => new Date(b.dueDate) - new Date(a.dueDate)
+        );
 
         const latestInstallment = overdueOrPendingInstallments[0];
 
@@ -82,6 +61,68 @@ const DebitOptionsPage = () => {
     }
   };
 
+  const handleParcelAntecipationNavigation = () => {
+    if (!installmentsData || installmentsData.length === 0) {
+      Alert.alert("Erro", "Dados de parcelas não disponíveis.");
+      return;
+    }
+
+    const selectedResult = installmentsData[0];
+
+    if (selectedResult) {
+      router.push({
+        pathname: "/parcel-antecipation",
+        params: {
+          billReceivableId: selectedResult.billReceivableId,
+        },
+      });
+    } else {
+      Alert.alert("Erro", "Título não encontrado.");
+    }
+  };
+
+  // Função de navegação para "Pagamentos Realizados"
+  const handlePaymentsRealizedNavigation = () => {
+    if (!installmentsData || installmentsData.length === 0) {
+      Alert.alert("Erro", "Dados de pagamentos não disponíveis.");
+      return;
+    }
+
+    const selectedResult = installmentsData[0];
+
+    if (selectedResult) {
+      router.push({
+        pathname: "/payments-realized",
+        params: {
+          billReceivableId: selectedResult.billReceivableId,
+        },
+      });
+    } else {
+      Alert.alert("Erro", "Título não encontrado.");
+    }
+  };
+
+  const handleDebtBalance = () => {
+    if (!installmentsData || installmentsData.length === 0) {
+      Alert.alert("Erro", "Dados de saldo devedor não disponíveis.");
+      return;
+    }
+
+    const selectedResult = installmentsData[0];
+
+    console.log('oiii')
+
+    if (selectedResult) {
+      router.push({
+        pathname: "/debt-balance",
+        params: {
+          billReceivableId: selectedResult.billReceivableId,
+        },
+      });
+    } else {
+      Alert.alert("Erro", "Título não encontrado.");
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -101,24 +142,25 @@ const DebitOptionsPage = () => {
 
       {/* Botões de opções */}
       <View style={styles.buttonContainer}>
-        <TouchableOpacity
-        onPress={handleBoletoNavigation}
-        style={styles.buttonLarge}>
+        <TouchableOpacity onPress={handleBoletoNavigation} style={styles.buttonLarge}>
           <Text style={styles.buttonText}>2ª VIA BOLETO</Text>
         </TouchableOpacity>
 
-        <View style={styles.row}>
-          <TouchableOpacity style={styles.buttonSmall}>
+        <View style={styles.row}> 
+          <TouchableOpacity style={styles.buttonSmall} onPress={handleParcelAntecipationNavigation}>
             <Text style={styles.buttonText}>ANTECIPAR PARCELAS</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.buttonSmall}>
+          <TouchableOpacity style={styles.buttonSmall} onPress={handleDebtBalance}>
             <Text style={styles.buttonText}>SALDO DEVEDOR</Text>
           </TouchableOpacity>
         </View>
 
         <View style={styles.row}>
-          <TouchableOpacity style={styles.buttonSmall}>
+          <TouchableOpacity
+            style={styles.buttonSmall}
+            onPress={handlePaymentsRealizedNavigation} // Navegar para a tela de pagamentos realizados
+          >
             <Text style={styles.buttonText}>PAGAMENTOS REALIZADOS</Text>
           </TouchableOpacity>
 
