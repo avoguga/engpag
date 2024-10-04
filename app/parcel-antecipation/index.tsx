@@ -183,13 +183,15 @@
 
       try {
         const username = "engenharq-mozart";
-        const password = "i94B1q2HUXf7PP7oscuIBygquSRZ9lhb"; // Substitua pela sua senha
+        const password = "i94B1q2HUXf7PP7oscuIBygquSRZ9lhb";
         const credentials = btoa(`${username}:${password}`);
+
+        console.log(selectedInstallment.billReceivableId, selectedInstallment.installmentId)
 
         const response = await axios.post(
           "https://api.sienge.com.br/engenharq/public/api/v1/payment-slip-notification",
           {
-            billReceivableId: selectedInstallment.billReceivableId,
+            receivableBillId: selectedInstallment.billReceivableId,
             installmentId: selectedInstallment.installmentId,
             emailCustomer: userData.email,
             emailTitle: "Antecipação de parcela",
@@ -233,6 +235,8 @@
         const username = "engenharq-mozart";
         const password = "i94B1q2HUXf7PP7oscuIBygquSRZ9lhb";
         const credentials = btoa(`${username}:${password}`);
+
+        console.log(selectedInstallment.billReceivableId, selectedInstallment.installmentId)
 
         const response = await axios.get(
           "https://api.sienge.com.br/engenharq/public/api/v1/payment-slip-notification",
