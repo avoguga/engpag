@@ -67,6 +67,11 @@ const Index = () => {
     }
   };
 
+  const handleForgotPassword = () => {
+    // Aqui você pode redirecionar para a página de recuperação de senha
+    // router.push("/forgot-password");
+  };
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -110,6 +115,11 @@ const Index = () => {
             placeholderTextColor="#aaa"
           />
         </View>
+
+        {/* Esqueceu a senha */}
+        <TouchableOpacity onPress={handleForgotPassword}>
+          <Text style={styles.forgotPasswordText}>Esqueceu a senha?</Text>
+        </TouchableOpacity>
 
         {/* Botão de Acesso */}
         <TouchableOpacity style={styles.accessButton} onPress={fetchUserData}>
@@ -167,6 +177,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#333",
   },
+  forgotPasswordText: {
+    color: "#E1272C",
+    fontSize: 14,
+    alignSelf: "flex-end",
+    marginTop: -15,
+    marginBottom: 20,
+  },
   accessButton: {
     backgroundColor: "#5B5B5B",
     width: "60%",
@@ -189,8 +206,8 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   logo: {
-    width: 100,
-    height: 100,
+    width: 155,
+    height: 89,
     marginBottom: 20,
     alignSelf: "center",
   },

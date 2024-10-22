@@ -18,14 +18,14 @@ import * as Linking from "expo-linking";
 
 export default function DebitBalanceScreen() {
   const { userData } = useContext(UserContext);
-  const [installmentsData, setInstallmentsData] = useState<any[]>([]); // Armazena todos os resultados
+  const [installmentsData, setInstallmentsData] = useState<any[]>([]);
   const [filteredInstallments, setFilteredInstallments] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [searchText, setSearchText] = useState("");
   const [selectedBillReceivableId, setSelectedBillReceivableId] =
-    useState<any>(null); // Estado para selecionar o billReceivableId
-  const [selectedOption, setSelectedOption] = useState("pendentes"); // Estado para o select
+    useState<any>(null);
+  const [selectedOption, setSelectedOption] = useState("pendentes");
   const [sortAsc, setSortAsc] = useState(true);
   const [totals, setTotals] = useState({
     originalTotal: 0,
@@ -34,6 +34,18 @@ export default function DebitBalanceScreen() {
     updatedTotal: 0,
   });
   const router = useRouter();
+
+const formatCurrency = (value) => {
+  if (isNaN(value)) {
+    return "R$ 0,00"; // Retorna "R$ 0,00" se o valor for inválido
+  }
+
+  return `R$ ${parseFloat(value)
+    .toFixed(3) // Garante que haverá sempre duas casas decimais
+    .replace('.', ',') // Substitui o ponto por vírgula para as casas decimais
+    .replace(/\B(?=(\d{3})+(?!\d))/g, '.')}`; // Adiciona pontos para separar milhares
+};
+
 
   useEffect(() => {
     if (userData && userData.cpf) {
@@ -58,7 +70,7 @@ export default function DebitBalanceScreen() {
     try {
       const username = "engenharq-mozart";
       const password = "i94B1q2HUXf7PP7oscuIBygquSRZ9lhb";
-      const credentials = btoa(`${username}:${password}`); // Codificação base64 com btoa
+      const credentials = btoa(`${username}:${password}`);
 
       const response = await axios.get(
         `https://api.sienge.com.br/engenharq/public/api/v1/current-debit-balance`,
@@ -73,10 +85,8 @@ export default function DebitBalanceScreen() {
         }
       );
 
-      // Armazena todos os dados de "results" em installmentsData
       setInstallmentsData(response.data.results || []);
 
-      // Se houver dados, seleciona o primeiro billReceivableId como padrão
       if (response.data.results.length > 0) {
         setSelectedBillReceivableId(response.data.results[0].billReceivableId);
       }
@@ -95,14 +105,12 @@ export default function DebitBalanceScreen() {
     let additionalTotal = 0;
     let updatedTotal = 0;
 
-    // Filtra apenas as parcelas do billReceivableId selecionado
     const selectedResult = installmentsData.find(
       (result) => result.billReceivableId === selectedBillReceivableId
     );
 
     if (selectedResult) {
       let installments = [];
-      // Coleta todas as parcelas de acordo com a opção selecionada
       if (selectedOption === "pagos") {
         installments = selectedResult.paidInstallments || [];
       } else if (selectedOption === "pendentes") {
@@ -119,7 +127,6 @@ export default function DebitBalanceScreen() {
           ) || [];
       }
 
-      // Adiciona as parcelas ao array filtrado e soma os valores
       if (installments.length > 0) {
         filtered = installments;
         installments.forEach((installment: any) => {
@@ -131,7 +138,6 @@ export default function DebitBalanceScreen() {
       }
     }
 
-    // Ordena as parcelas por data de vencimento
     filtered = filtered.sort((a, b) => {
       const dateA = new Date(a.dueDate);
       const dateB = new Date(b.dueDate);
@@ -140,7 +146,6 @@ export default function DebitBalanceScreen() {
         : dateB.getTime() - dateA.getTime();
     });
 
-    // Filtrar pelo texto de busca
     if (searchText) {
       filtered = filtered.filter((installment) =>
         installment.installmentNumber.includes(searchText)
@@ -149,7 +154,6 @@ export default function DebitBalanceScreen() {
 
     setFilteredInstallments(filtered);
 
-    // Atualiza os totais
     setTotals({
       originalTotal,
       correctedTotal,
@@ -178,8 +182,6 @@ export default function DebitBalanceScreen() {
           (item) => item.installmentId === installmentId
         );
 
-        console.log(selectedResult.billReceivableId,installment.installmentId)
-
       if (installment) {
         router.push({
           pathname: "/boleto",
@@ -207,7 +209,7 @@ export default function DebitBalanceScreen() {
         `https://api.sienge.com.br/engenharq/public/api/v1/current-debit-balance/pdf`,
         {
           params: {
-            customerId: userData.id, // Passe o customerId correto aqui
+            customerId: userData.id,
           },
           headers: {
             Authorization: `Basic ${credentials}`,
@@ -215,11 +217,10 @@ export default function DebitBalanceScreen() {
         }
       );
 
-      // O URL do PDF está dentro de `results`
       const pdfUrl = response.data.results?.[0]?.urlReport;
 
       if (pdfUrl) {
-        Linking.openURL(pdfUrl); // Abre o link do PDF no navegador
+        Linking.openURL(pdfUrl);
       } else {
         Alert.alert("Erro", "Não foi possível gerar o PDF.");
       }
@@ -238,7 +239,6 @@ export default function DebitBalanceScreen() {
       <View
         style={[styles.installment, isOverdue && styles.overdueInstallment]}
       >
-        {/* Ícone e texto de parcela */}
         <View style={styles.row}>
           <Ionicons name="receipt-outline" size={16} color="black" />
           <Text style={styles.installmentNumber}>
@@ -247,37 +247,32 @@ export default function DebitBalanceScreen() {
           </Text>
         </View>
 
-        {/* Ícone e texto de vencimento */}
         <View style={styles.row}>
           <Ionicons name="calendar-outline" size={16} color="black" />
           <Text style={styles.installmentText}>Vencimento: {item.dueDate}</Text>
         </View>
 
-        {/* Ícone e texto de saldo atual */}
         <View style={styles.row}>
           <Ionicons name="wallet-outline" size={16} color="black" />
           <Text style={styles.installmentText}>
-            Saldo Atual: R$ {item.currentBalance}
+            Saldo Atual: {formatCurrency(item.currentBalance)}
           </Text>
         </View>
 
-        {/* Ícone e texto de valor original */}
         <View style={styles.row}>
           <Ionicons name="cash-outline" size={16} color="black" />
           <Text style={styles.installmentText}>
-            Valor Original: R$ {item.originalValue}
+            Valor Original: {formatCurrency(item.originalValue)}
           </Text>
         </View>
 
-        {/* Ícone e texto de correção monetária */}
         <View style={styles.row}>
           <Ionicons name="trending-up-outline" size={16} color="black" />
           <Text style={styles.installmentText}>
-            Correção Monetária: R$ {item.monetaryCorrectionValue}
+            Correção Monetária: {formatCurrency(item.monetaryCorrectionValue)}
           </Text>
         </View>
 
-        {/* Ícone e texto de boleto gerado */}
         <View style={styles.row}>
           <Ionicons name="document-outline" size={16} color="black" />
           <Text style={styles.installmentText}>
@@ -285,7 +280,6 @@ export default function DebitBalanceScreen() {
           </Text>
         </View>
 
-        {/* Botão de ver boleto */}
         <TouchableOpacity
           style={styles.generateBoletoButton}
           onPress={() => handleBoletoNavigation(item.installmentId)}
@@ -305,19 +299,19 @@ export default function DebitBalanceScreen() {
       <View style={styles.summarySection}>
         <Text style={styles.summaryText}>
           <Ionicons name="cash-outline" size={16} color="black" /> Valor Total
-          Original: R$ {totals.originalTotal.toFixed(2)}
+          Original: {formatCurrency(totals.originalTotal)}
         </Text>
         <Text style={styles.summaryText}>
           <Ionicons name="trending-up-outline" size={16} color="black" />{" "}
-          Correção Monetária: R$ {totals.correctedTotal.toFixed(2)}
+          Correção Monetária: {formatCurrency(totals.correctedTotal)}
         </Text>
         <Text style={styles.summaryText}>
           <Ionicons name="add-circle-outline" size={16} color="black" />{" "}
-          Acréscimos: R$ {totals.additionalTotal.toFixed(2)}
+          Acréscimos: {formatCurrency(totals.additionalTotal)}
         </Text>
         <Text style={styles.summaryText}>
           <Ionicons name="calculator-outline" size={16} color="black" /> Valor
-          Atualizado: R$ {totals.updatedTotal.toFixed(2)}
+          Atualizado: {formatCurrency(totals.updatedTotal)}
         </Text>
       </View>
 
@@ -329,7 +323,6 @@ export default function DebitBalanceScreen() {
           onChangeText={setSearchText}
         />
 
-        {/* Picker para selecionar o BillReceivableId */}
         <Picker
           selectedValue={selectedBillReceivableId}
           style={styles.picker}
@@ -358,7 +351,7 @@ export default function DebitBalanceScreen() {
       {filteredInstallments.length > 0 ? (
         <FlatList
           data={filteredInstallments}
-          keyExtractor={(item) => `${item.installmentId}-${item.dueDate}`} // Evita chaves duplicadas
+          keyExtractor={(item) => `${item.installmentId}-${item.dueDate}`}
           renderItem={renderInstallment}
         />
       ) : (

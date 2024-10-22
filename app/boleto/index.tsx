@@ -3,6 +3,7 @@ import { View, Text, ActivityIndicator, Alert, StyleSheet, Linking, TouchableOpa
 import axios from 'axios';
 import { UserContext } from '../contexts/UserContext';
 import { useLocalSearchParams } from 'expo-router';
+import * as Clipboard from 'expo-clipboard'; // Certifique-se de importar o Clipboard da biblioteca correta
 
 const BoletoScreen = () => {
   const { userData } = useContext(UserContext);
@@ -10,12 +11,8 @@ const BoletoScreen = () => {
   const [boletoLink, setBoletoLink] = useState('');
   const [digitableNumber, setDigitableNumber] = useState('');
 
-  // Capturando os parâmetros da navegação
   const { billReceivableId, installmentId } = useLocalSearchParams();
 
-  console.log(billReceivableId, installmentId);
-
-  // Verifica se os parâmetros foram fornecidos
   useEffect(() => {
     if (!billReceivableId || !installmentId) {
       Alert.alert('Erro', 'ID da parcela ou do boleto não fornecido.');
@@ -28,7 +25,6 @@ const BoletoScreen = () => {
       return;
     }
 
-    // Verifica se os parâmetros estão disponíveis
     if (!billReceivableId || !installmentId) {
       Alert.alert('Erro', 'ID da parcela ou do boleto não fornecido.');
       return;
@@ -39,7 +35,7 @@ const BoletoScreen = () => {
     try {
       const username = 'engenharq-mozart';
       const password = 'i94B1q2HUXf7PP7oscuIBygquSRZ9lhb';
-      const credentials = btoa(`${username}:${password}`); // Usando btoa para codificação Base64
+      const credentials = btoa(`${username}:${password}`);
 
       const response = await axios.post(
         'https://api.sienge.com.br/engenharq/public/api/v1/payment-slip-notification',
@@ -77,7 +73,6 @@ const BoletoScreen = () => {
       return;
     }
 
-    // Verifica se os parâmetros estão disponíveis
     if (!billReceivableId || !installmentId) {
       Alert.alert('Erro', 'ID da parcela ou do boleto não fornecido.');
       return;
@@ -88,9 +83,9 @@ const BoletoScreen = () => {
     try {
       const username = 'engenharq-mozart';
       const password = 'i94B1q2HUXf7PP7oscuIBygquSRZ9lhb';
-      const credentials = btoa(`${username}:${password}`); // Usando btoa para codificação Base64
+      const credentials = btoa(`${username}:${password}`);
 
-      console.log(billReceivableId, installmentId)
+      console.log(billReceivableId, installmentId);
 
       const response = await axios.get(
         'https://api.sienge.com.br/engenharq/public/api/v1/payment-slip-notification',
@@ -119,6 +114,11 @@ const BoletoScreen = () => {
     }
   };
 
+  const copyToClipboard = async () => {
+    await Clipboard.setStringAsync(digitableNumber); // Usando setStringAsync do expo-clipboard
+    Alert.alert('Copiado!', 'Número digitável copiado para a área de transferência.');
+  };
+
   return (
     <View style={styles.container}>
       <Text style={styles.header}>Segunda via de boleto</Text>
@@ -138,7 +138,12 @@ const BoletoScreen = () => {
 
           {boletoLink ? (
             <View style={styles.boletoContainer}>
-              <Text style={styles.digitableNumberText}>Número Digitável: {digitableNumber}</Text>
+              <View style={styles.digitableNumberContainer}>
+                <Text style={styles.digitableNumberText}>Número Digitável: {digitableNumber}</Text>
+                <TouchableOpacity style={styles.copyButton} onPress={copyToClipboard}>
+                  <Text style={styles.copyButtonText}>Copiar</Text>
+                </TouchableOpacity>
+              </View>
               <TouchableOpacity style={styles.boletoButton} onPress={() => Linking.openURL(boletoLink)}>
                 <Text style={styles.boletoButtonText}>Abrir Boleto</Text>
               </TouchableOpacity>
@@ -191,11 +196,27 @@ const styles = StyleSheet.create({
     marginTop: 20,
     alignItems: 'center',
   },
+  digitableNumberContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
   digitableNumberText: {
     fontSize: 16,
-    marginBottom: 10,
     fontWeight: 'bold',
     color: '#444',
+    marginRight: 10,
+  },
+  copyButton: {
+    backgroundColor: '#007bff',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+  },
+  copyButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 'bold',
   },
   boletoButton: {
     backgroundColor: '#28a745',

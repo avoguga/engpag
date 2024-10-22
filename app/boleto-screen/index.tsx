@@ -8,12 +8,15 @@ import {
   Linking,
   TouchableOpacity,
   ScrollView,
-  Image,
+  Clipboard,
+  ToastAndroid,
+  Platform,
+  Modal,
 } from 'react-native';
 import axios from 'axios';
 import { UserContext } from '../contexts/UserContext';
-import { useLocalSearchParams } from 'expo-router';
 import { Ionicons, FontAwesome } from '@expo/vector-icons';
+import PixIcon from './logo-pix.svg';
 
 const BoletoScreen = () => {
   const { userData } = useContext(UserContext);
@@ -21,23 +24,32 @@ const BoletoScreen = () => {
   const [boletoLink, setBoletoLink] = useState('');
   const [digitableNumber, setDigitableNumber] = useState('');
   const [installmentDetails, setInstallmentDetails] = useState(null);
-
-  // Capturando os parâmetros da navegação
-  const { billReceivableId, installmentId } = useLocalSearchParams();
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [enterpriseName, setEnterpriseName] = useState('');
 
   useEffect(() => {
-    if (!billReceivableId || !installmentId) {
-      Alert.alert('Erro', 'ID da parcela ou do boleto não fornecido.');
-    } else {
-      fetchInstallmentDetails();
-    }
-  }, [billReceivableId, installmentId]);
+    fetchAvailableInstallment();
+  }, [userData]);
 
-  const fetchInstallmentDetails = async () => {
+  // Função para formatar a data no formato dd/mm/aaaa
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    const day = date.getDate().toString().padStart(2,'0');
+    const month = (date.getMonth()+1).toString().padStart(2,'0');
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
+
+  const fetchAvailableInstallment = async () => {
+    if (!userData || !userData.cpf) {
+      Alert.alert('Erro', 'Dados do cliente não encontrados.');
+      return;
+    }
+
     setLoading(true);
     try {
       const username = 'engenharq-mozart';
-      const password = 'i94B1q2HUXf7PP7oscuIBygquSRZ9lhb'; // Substitua pela sua senha
+      const password = 'i94B1q2HUXf7PP7oscuIBygquSRZ9lhb';
       const credentials = btoa(`${username}:${password}`);
 
       const response = await axios.get(
@@ -54,41 +66,64 @@ const BoletoScreen = () => {
       );
 
       const results = response.data.results || [];
-      const selectedResult = results.find(
-        (result) => result.billReceivableId == billReceivableId
-      );
+      let availableInstallments = [];
 
-      if (selectedResult) {
-        const allInstallments = [
-          ...(selectedResult.dueInstallments || []),
-          ...(selectedResult.payableInstallments || []),
-          ...(selectedResult.paidInstallments || []),
-        ];
+      // Coleta todas as parcelas com boleto disponível
+      results.forEach((bill) => {
+        const { dueInstallments, payableInstallments } = bill;
+        const installments = [
+          ...(dueInstallments || []),
+          ...(payableInstallments || []),
+        ]
+          .filter((installment) => installment.generatedBoleto)
+          .map((installment) => ({
+            ...installment,
+            billReceivableId: bill.billReceivableId,
+          }));
+        availableInstallments.push(...installments);
+      });
 
-        const installment = allInstallments.find(
-          (item) => item.installmentId == installmentId
+      if (availableInstallments.length > 0) {
+        // Ordena por data de vencimento e seleciona a mais próxima
+        availableInstallments.sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
+        const installment = availableInstallments[0];
+
+        // Determina o status da parcela
+        let status = 'Pendente';
+        const today = new Date();
+        const dueDate = new Date(installment.dueDate);
+
+        if (installment.paidDate) {
+          status = 'Pago';
+        } else if (dueDate < today) {
+          status = 'Vencido';
+        } else {
+          status = 'Pendente';
+        }
+
+        setInstallmentDetails({ ...installment, status });
+
+        // Agora, buscar o enterpriseName
+        const customerId = userData.id;
+        const billReceivableId = installment.billReceivableId;
+
+        const billResponse = await axios.get(
+          `https://api.sienge.com.br/engenharq/public/api/v1/accounts-receivable/receivable-bills/${billReceivableId}`,
+          {
+            params: {
+              customerId: customerId,
+            },
+            headers: {
+              Authorization: `Basic ${credentials}`,
+            },
+          }
         );
 
-        if (installment) {
-          // Calcula o status da parcela
-          let status = 'Pendente';
-          const today = new Date();
-          const dueDate = new Date(installment.dueDate);
+        const enterpriseName = billResponse.data.enterpriseName || 'Nome do Empreendimento';
+        setEnterpriseName(enterpriseName);
 
-          if (installment.paidDate) {
-            status = 'Pago';
-          } else if (dueDate < today) {
-            status = 'Vencido';
-          } else {
-            status = 'Pendente';
-          }
-
-          setInstallmentDetails({ ...installment, status });
-        } else {
-          Alert.alert('Erro', 'Parcela não encontrada.');
-        }
       } else {
-        Alert.alert('Erro', 'Título não encontrado.');
+        Alert.alert('Aviso', 'Nenhum boleto disponível no momento.');
       }
     } catch (error) {
       console.error('Erro ao buscar detalhes da parcela:', error);
@@ -104,9 +139,12 @@ const BoletoScreen = () => {
       return;
     }
 
-    // Verifica se os parâmetros estão disponíveis
-    if (!billReceivableId || !installmentId) {
-      Alert.alert('Erro', 'ID da parcela ou do boleto não fornecido.');
+    if (
+      !installmentDetails ||
+      !installmentDetails.billReceivableId ||
+      !installmentDetails.installmentId
+    ) {
+      Alert.alert('Erro', 'Informações da parcela não disponíveis.');
       return;
     }
 
@@ -114,17 +152,18 @@ const BoletoScreen = () => {
 
     try {
       const username = 'engenharq-mozart';
-      const password = 'i94B1q2HUXf7PP7oscuIBygquSRZ9lhb'; // Substitua pela sua senha
+      const password = 'i94B1q2HUXf7PP7oscuIBygquSRZ9lhb';
       const credentials = btoa(`${username}:${password}`);
 
       const response = await axios.post(
         'https://api.sienge.com.br/engenharq/public/api/v1/payment-slip-notification',
         {
-          receivableBillId: billReceivableId,
-          installmentId: installmentId,
+          receivableBillId: installmentDetails.billReceivableId,
+          installmentId: installmentDetails.installmentId,
           emailCustomer: userData.email,
           emailTitle: 'Segunda via de boleto',
-          emailBody: 'Prezado cliente, segue a segunda via do boleto conforme solicitado.',
+          emailBody:
+            'Prezado cliente, segue a segunda via do boleto conforme solicitado.',
         },
         {
           headers: {
@@ -135,12 +174,18 @@ const BoletoScreen = () => {
       );
 
       if (response.status === 201) {
-        Alert.alert('Sucesso', 'Boleto enviado com sucesso para o email: ' + userData.email);
+        Alert.alert(
+          'Sucesso',
+          'Boleto enviado com sucesso para o email: ' + userData.email
+        );
       } else {
         Alert.alert('Erro', 'Falha ao enviar o boleto.');
       }
     } catch (error) {
-      console.error('Error fetching boleto:', error.response ? error.response.data : error.message);
+      console.error(
+        'Error fetching boleto:',
+        error.response ? error.response.data : error.message
+      );
       Alert.alert('Erro', 'Erro ao enviar o boleto por e-mail.');
     } finally {
       setLoading(false);
@@ -153,9 +198,12 @@ const BoletoScreen = () => {
       return;
     }
 
-    // Verifica se os parâmetros estão disponíveis
-    if (!billReceivableId || !installmentId) {
-      Alert.alert('Erro', 'ID da parcela ou do boleto não fornecido.');
+    if (
+      !installmentDetails ||
+      !installmentDetails.billReceivableId ||
+      !installmentDetails.installmentId
+    ) {
+      Alert.alert('Erro', 'Informações da parcela não disponíveis.');
       return;
     }
 
@@ -163,17 +211,15 @@ const BoletoScreen = () => {
 
     try {
       const username = 'engenharq-mozart';
-      const password = 'i94B1q2HUXf7PP7oscuIBygquSRZ9lhb'; // Substitua pela sua senha
-      const credentials = btoa(`${username}:${password}`); // Usando btoa para codificação Base64
-
-      console.log(billReceivableId, installmentId);
+      const password = 'i94B1q2HUXf7PP7oscuIBygquSRZ9lhb';
+      const credentials = btoa(`${username}:${password}`);
 
       const response = await axios.get(
         'https://api.sienge.com.br/engenharq/public/api/v1/payment-slip-notification',
         {
           params: {
-            billReceivableId: billReceivableId,
-            installmentId: installmentId,
+            billReceivableId: installmentDetails.billReceivableId,
+            installmentId: installmentDetails.installmentId,
           },
           headers: {
             Authorization: `Basic ${credentials}`,
@@ -184,109 +230,251 @@ const BoletoScreen = () => {
       if (response.data.results && response.data.results[0]) {
         setBoletoLink(response.data.results[0].urlReport);
         setDigitableNumber(response.data.results[0].digitableNumber);
+        setIsModalVisible(true); // Exibe o modal
       } else {
         Alert.alert('Erro', 'Falha ao gerar o link do boleto.');
       }
     } catch (error) {
-      console.error('Erro ao gerar link do boleto:', error);
+      console.error(
+        'Erro ao gerar link do boleto:',
+        error.response ? error.response.data : error.message
+      );
       Alert.alert('Erro', 'Erro ao gerar o link do boleto.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handlePayWithPix = () => {
-    // Mock da funcionalidade PIX
-    Alert.alert('PIX', 'Pagamento via PIX não implementado.');
+  const handleCopyDigitableLine = () => {
+    if (digitableNumber) {
+      Clipboard.setString(digitableNumber);
+      if (Platform.OS === 'android') {
+        ToastAndroid.show('Linha digitável copiada!', ToastAndroid.SHORT);
+      } else {
+        Alert.alert('Copiado', 'Linha digitável copiada para a área de transferência.');
+      }
+    }
+  };
+
+  const handlePayWithPix = async () => {
+    if (!installmentDetails || !installmentDetails.billReceivableId) {
+      Alert.alert('Erro', 'Informações da parcela não disponíveis.');
+      return;
+    }
+
+    if (!userData || !userData.id) {
+      Alert.alert('Erro', 'Dados do cliente não encontrados.');
+      return;
+    }
+
+    const customerId = userData.id;
+
+    const totalAmount = parseFloat(installmentDetails.currentBalance);
+
+    setLoading(true);
+
+    try {
+      const username = 'engenharq-mozart';
+      const password = 'i94B1q2HUXf7PP7oscuIBygquSRZ9lhb';
+      const credentials = btoa(`${username}:${password}`);
+
+      const billReceivableId = installmentDetails.billReceivableId;
+
+      const response = await axios.get(
+        `https://api.sienge.com.br/engenharq/public/api/v1/accounts-receivable/receivable-bills/${billReceivableId}`,
+        {
+          params: {
+            customerId: customerId,
+          },
+          headers: {
+            Authorization: `Basic ${credentials}`,
+          },
+        }
+      );
+
+      const companyId = response.data.companyId;
+
+      let companyName = '';
+      let whatsappNumber = '';
+
+      switch (companyId) {
+        case 1:
+          companyName = 'Engenharq';
+          whatsappNumber = '558296890033';
+          break;
+        case 2:
+          companyName = 'EngeLot';
+          whatsappNumber = '558296890066';
+          break;
+        case 3:
+          companyName = 'EngeLoc';
+          whatsappNumber = '558296890202';
+          break;
+        default:
+          companyName = 'Desconhecida';
+          whatsappNumber = '5585986080000'; // Número padrão
+      }
+
+      const installmentNumber = installmentDetails.installmentNumber;
+
+      const message = `Olá, meu nome é ${userData?.name}, meu CPF é ${userData?.cpf} gostaria de pagar a parcela ${installmentNumber} do título ${billReceivableId}. Valor: R$ ${totalAmount.toFixed(
+        2
+      )}`;
+
+      const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
+        message
+      )}`;
+
+      const supported = await Linking.canOpenURL(whatsappUrl);
+
+      if (supported) {
+        await Linking.openURL(whatsappUrl);
+      } else {
+        Alert.alert('Erro', 'Não foi possível abrir o WhatsApp.');
+      }
+    } catch (error) {
+      console.error('Erro ao obter companyId:', error);
+      Alert.alert('Erro', 'Não foi possível iniciar o contato via WhatsApp.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <View style={styles.container}>
       {/* Barra superior */}
       <View style={styles.topBar}>
-        <Ionicons name="menu" size={30} color="white" />
-        <Ionicons name="notifications-outline" size={30} color="white" />
+        <Ionicons name="arrow-back-outline" size={28} color="white" />
+        <Text style={styles.headerTitle}>2ª Via do Boleto</Text>
+        <Ionicons name="notifications-outline" size={28} color="white" />
       </View>
 
       <ScrollView contentContainerStyle={styles.contentContainer}>
-        {/* Ícone e nome do empreendimento */}
+        {/* Ícone e título */}
         <View style={styles.iconContainer}>
           <View style={styles.circleIcon}>
             <Ionicons name="home-outline" size={40} color="white" />
           </View>
-          <Text style={styles.title}>RESIDENCIAL GRAND RESERVA</Text>
+          <Text style={styles.title}>{enterpriseName || 'Nome do Empreendimento'}</Text>
         </View>
 
-        {/* Botão de 2ª via de boleto */}
-        <TouchableOpacity style={styles.boletoButton}>
-          <Text style={styles.boletoButtonText}>2ª VIA BOLETO</Text>
-        </TouchableOpacity>
-
         {loading ? (
-          <ActivityIndicator size="large" color="#007bff" />
+          <ActivityIndicator size="large" color="#E1272C" style={{ marginTop: 20 }} />
         ) : (
           <>
-            {/* Exibir detalhes da parcela */}
-            {installmentDetails && (
+            {/* Detalhes da Parcela */}
+            {installmentDetails ? (
               <View style={styles.infoContainer}>
-                <Text style={styles.infoLabel}>NÚMERO DA PARCELA</Text>
-                <Text style={styles.infoValue}>{installmentDetails.installmentNumber}</Text>
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>Número da Parcela:</Text>
+                  <Text style={styles.infoValue}>
+                    {installmentDetails.installmentNumber}
+                  </Text>
+                </View>
 
-                <Text style={styles.infoLabel}>VENCIMENTO</Text>
-                <Text style={styles.infoValue}>{installmentDetails.dueDate}</Text>
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>Vencimento:</Text>
+                  <Text style={styles.infoValue}>
+                    {formatDate(installmentDetails.dueDate)}
+                  </Text>
+                </View>
 
-                <Text style={styles.infoLabel}>NÚMERO DO TÍTULO</Text>
-                <Text style={styles.infoValue}>{billReceivableId}</Text>
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>Número do Título:</Text>
+                  <Text style={styles.infoValue}>
+                    {installmentDetails.billReceivableId}
+                  </Text>
+                </View>
 
-                <Text style={styles.infoLabel}>SITUAÇÃO</Text>
-                <Text style={styles.infoValue}>{installmentDetails.status}</Text>
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>Situação:</Text>
+                  <Text style={styles.infoValue}>{installmentDetails.status}</Text>
+                </View>
 
-                <Text style={styles.infoLabel}>VALOR</Text>
-                <Text style={styles.infoValue}>R$ {installmentDetails.currentBalance}</Text>
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>Valor:</Text>
+                  <Text style={styles.infoValue}>
+                    R$ {parseFloat(installmentDetails.currentBalance).toFixed(2)}
+                  </Text>
+                </View>
               </View>
+            ) : (
+              <Text style={styles.noBoletoText}>
+                Nenhum boleto disponível no momento.
+              </Text>
             )}
 
-            {/* Botões de ação */}
-            <View style={styles.buttonContainer}>
-              {/* Botão de Enviar Boleto por Email */}
-              <TouchableOpacity style={styles.actionButton} onPress={requestBoletoEmail}>
-                <FontAwesome name="envelope-o" size={20} color="white" />
-                <Text style={styles.actionButtonText}> ENVIAR PELO E-MAIL</Text>
-              </TouchableOpacity>
+            {/* Botões de Ação */}
+            {installmentDetails && (
+              <View style={styles.buttonContainer}>
+                {/* Botão de Enviar Boleto por Email */}
+                <TouchableOpacity
+                  style={styles.actionButton}
+                  onPress={requestBoletoEmail}
+                >
+                  <FontAwesome name="envelope-o" size={20} color="white" />
+                  <Text style={styles.actionButtonText}> Enviar por E-mail</Text>
+                </TouchableOpacity>
 
-              {/* Botão de Gerar Link da Segunda Via */}
-              <TouchableOpacity style={styles.actionButton} onPress={requestBoletoLink}>
-                <Ionicons name="download-outline" size={20} color="white" />
-                <Text style={styles.actionButtonText}> GERAR LINK DA SEGUNDA VIA</Text>
-              </TouchableOpacity>
+                {/* Botão de Gerar Link da Segunda Via */}
+                <TouchableOpacity
+                  style={styles.actionButton}
+                  onPress={requestBoletoLink}
+                >
+                  <Ionicons name="download-outline" size={20} color="white" />
+                  <Text style={styles.actionButtonText}>
+                    {' '}
+                    Gerar Link da Segunda Via
+                  </Text>
+                </TouchableOpacity>
 
-              {/* Botão de Pagamento via PIX */}
-              <TouchableOpacity style={styles.pixButton} onPress={handlePayWithPix}>
-                {/* Inclua o ícone do Pix */}
-                <Image
-                  source={require('./logo-pix.svg')} // Substitua pelo logo SVG do Pix
-                  style={styles.pixIcon}
-                />
-                <Text style={styles.actionButtonText}> PAGAR VIA PIX</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Exibir detalhes do boleto se o link tiver sido gerado */}
-            {boletoLink ? (
-              <View style={styles.boletoContainer}>
-                <Text style={styles.digitableNumberText}>Número Digitável:</Text>
-                <Text style={styles.digitableNumberValue}>{digitableNumber}</Text>
-                <TouchableOpacity style={styles.boletoButton} onPress={() => Linking.openURL(boletoLink)}>
-                  <Text style={styles.boletoButtonText}>Abrir Boleto</Text>
+                {/* Botão de Pagar via PIX */}
+                <TouchableOpacity style={styles.pixButton} onPress={handlePayWithPix}>
+                  <PixIcon width={20} height={20} />
+                  <Text style={styles.actionButtonText}> Pagar via PIX</Text>
                 </TouchableOpacity>
               </View>
-            ) : null}
+            )}
           </>
         )}
+
+        {/* Modal para exibir a linha digitável e botão de download */}
+        <Modal
+          visible={isModalVisible}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setIsModalVisible(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContainer}>
+              <Text style={styles.modalTitle}>Linha Digitável:</Text>
+              <View style={styles.digitableLineContainer}>
+                <Text style={styles.digitableNumberValue}>{digitableNumber}</Text>
+                <TouchableOpacity onPress={handleCopyDigitableLine}>
+                  <Ionicons name="copy-outline" size={24} color="#E1272C" />
+                </TouchableOpacity>
+              </View>
+              <TouchableOpacity
+                style={styles.boletoDownloadButton}
+                onPress={() => Linking.openURL(boletoLink)}
+              >
+                <Ionicons name="arrow-down-circle-outline" size={24} color="white" />
+                <Text style={styles.boletoDownloadButtonText}>Baixar Boleto</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.closeModalButton}
+                onPress={() => setIsModalVisible(false)}
+              >
+                <Text style={styles.closeModalButtonText}>Fechar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
       </ScrollView>
     </View>
   );
 };
+
 const styles = StyleSheet.create({
   pixIcon: {
     width: 20,
@@ -295,7 +483,7 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    backgroundColor: '#FFF8F8',
+    backgroundColor: '#FAF6F6',
   },
   contentContainer: {
     paddingHorizontal: 20,
@@ -304,111 +492,162 @@ const styles = StyleSheet.create({
   },
   topBar: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: 'red',
-    paddingVertical: 15,
-    paddingHorizontal: 15,
+    backgroundColor: '#E1272C',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+  },
+  headerTitle: {
+    flex: 1,
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+    textAlign: 'center',
   },
   iconContainer: {
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 30,
+    marginBottom: 20,
   },
   circleIcon: {
-    backgroundColor: 'red',
+    backgroundColor: '#E1272C',
     borderRadius: 50,
     padding: 20,
     justifyContent: 'center',
     alignItems: 'center',
   },
   title: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
     marginTop: 10,
     color: '#333',
     textAlign: 'center',
   },
-  boletoButton: {
-    backgroundColor: 'red',
-    paddingVertical: 10,
-    paddingHorizontal: 25,
-    borderRadius: 20,
-    marginTop: 20,
-    marginBottom: 25,
-    alignSelf: 'center',
-  },
-  boletoButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-    textAlign: 'center',
-  },
   infoContainer: {
-    alignItems: 'center',
-    marginBottom: 30,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    padding: 20,
     width: '100%',
+    marginBottom: 20,
+    elevation: 2,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 10,
   },
   infoLabel: {
-    fontSize: 14,
-    color: '#888',
-    marginTop: 10,
-    textAlign: 'center',
+    fontSize: 16,
+    color: '#555',
   },
   infoValue: {
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: 'bold',
-    color: 'red',
-    marginBottom: 10,
+    color: '#333',
+  },
+  noBoletoText: {
+    fontSize: 16,
+    color: '#888',
     textAlign: 'center',
+    marginTop: 20,
   },
   buttonContainer: {
-    marginTop: 20,
+    marginTop: 10,
     alignItems: 'center',
     width: '100%',
   },
   actionButton: {
     backgroundColor: '#5B5B5B',
     paddingVertical: 15,
-    paddingHorizontal: 10,
-    borderRadius: 5,
+    paddingHorizontal: 20,
+    borderRadius: 8,
     marginBottom: 15,
     flexDirection: 'row',
-    justifyContent: 'center',
     alignItems: 'center',
-    width: '90%',
+    width: '100%',
+    elevation: 2,
   },
   actionButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
     marginLeft: 10,
-    flexShrink: 1,
     textAlign: 'center',
   },
   pixButton: {
-    backgroundColor: 'red',
+    backgroundColor: '#E1272C',
     paddingVertical: 15,
-    paddingHorizontal: 10,
-    borderRadius: 5,
+    paddingHorizontal: 20,
+    borderRadius: 8,
     flexDirection: 'row',
+    alignItems: 'center',
+    width: '100%',
+    elevation: 2,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'center',
     alignItems: 'center',
-    width: '90%',
   },
-  boletoContainer: {
-    marginTop: 20,
+  modalContainer: {
+    backgroundColor: '#fff',
+    width: '90%',
+    borderRadius: 10,
+    padding: 20,
     alignItems: 'center',
   },
-  digitableNumberText: {
-    fontSize: 16,
-    color: '#888',
+  modalTitle: {
+    fontSize: 18,
+    color: '#333',
+    marginBottom: 15,
+    fontWeight: 'bold',
+  },
+  digitableLineContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    padding: 15,
+    elevation: 2,
+    marginBottom: 15,
+    width: '100%',
+    justifyContent: 'space-between',
   },
   digitableNumberValue: {
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontSize: 16,
     color: '#333',
+    flex: 1,
+  },
+  boletoDownloadButton: {
+    backgroundColor: '#E1272C',
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '100%',
+    marginBottom: 15,
+    elevation: 2,
+  },
+  boletoDownloadButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginLeft: 10,
     textAlign: 'center',
+  },
+  closeModalButton: {
+    backgroundColor: '#5B5B5B',
+    paddingVertical: 12,
+    paddingHorizontal: 25,
+    borderRadius: 8,
+  },
+  closeModalButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
 

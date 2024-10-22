@@ -33,8 +33,8 @@ const DebtBalanceScreen = () => {
     setLoading(true);
     setError("");
     try {
-        const username = "engenharq-mozart";
-        const password = "i94B1q2HUXf7PP7oscuIBygquSRZ9lhb";
+      const username = "engenharq-mozart";
+      const password = "i94B1q2HUXf7PP7oscuIBygquSRZ9lhb";
       const credentials = btoa(`${username}:${password}`);
 
       // Chamada à API para obter o saldo total
@@ -56,7 +56,6 @@ const DebtBalanceScreen = () => {
       if (totalResults.length > 0) {
         const totalData = totalResults[0];
         setBalance(totalData.totalCurrentDebitBalanceValue);
-        // Você pode usar outros valores como totalOriginalValue, totalAdjustedValue, etc., se necessário
       } else {
         setError("Não foi possível obter o saldo devedor total.");
       }
@@ -78,27 +77,21 @@ const DebtBalanceScreen = () => {
       const results = response.data.results || [];
 
       if (results.length > 0) {
-        // Seleciona o primeiro contrato ou ajuste conforme necessário
         const selectedResult = results[0];
 
-        // Coleta todas as parcelas
         const allInstallments = [
           ...(selectedResult.dueInstallments || []),
           ...(selectedResult.payableInstallments || []),
           ...(selectedResult.paidInstallments || []),
         ];
 
-        // Prazo Restante (número de parcelas pendentes)
         const outstandingInstallments = [
           ...(selectedResult.dueInstallments || []),
           ...(selectedResult.payableInstallments || []),
         ];
-        const remainingTermValue = outstandingInstallments.length;
-        setRemainingTerm(remainingTermValue);
+        setRemainingTerm(outstandingInstallments.length);
 
-        // Próximo Vencimento
         const today = new Date();
-
         const upcomingInstallments = outstandingInstallments.filter(
           (installment) => new Date(installment.dueDate) >= today
         );
@@ -111,16 +104,13 @@ const DebtBalanceScreen = () => {
           setNextPaymentAmount(nextInstallment.currentBalance);
         }
 
-        // Valor Financiado (soma dos valores originais das parcelas)
         const financedAmountValue = allInstallments.reduce(
           (sum, installment) => sum + (installment.originalValue || 0),
           0
         );
         setFinancedAmount(financedAmountValue);
 
-        // Prazo Contratado (total de parcelas no contrato)
-        const contractTermValue = allInstallments.length;
-        setContractTerm(contractTermValue);
+        setContractTerm(allInstallments.length);
       } else {
         setError("Nenhum contrato encontrado.");
       }
@@ -133,14 +123,16 @@ const DebtBalanceScreen = () => {
   };
 
   const handleBoletoPress = () => {
-    // Implementar a ação quando o botão Boleto for pressionado
     Alert.alert("Boleto", "Função de boleto não implementada.");
   };
 
-  // Função para formatar valores monetários
+  // Função para formatar valores monetários com pontuação de milhar
   const formatCurrency = (value) => {
-    if (value === null || value === undefined) return "";
-    return `R$ ${value.toFixed(2).replace(".", ",")}`;
+    if (isNaN(value)) return "R$ 0,00";
+    return `R$ ${parseFloat(value)
+      .toFixed(2)
+      .replace('.', ',')
+      .replace(/\B(?=(\d{3})+(?!\d))/g, '.')}`;
   };
 
   // Função para formatar datas
@@ -201,7 +193,8 @@ const DebtBalanceScreen = () => {
       </View>
 
       <Text style={styles.balanceInfo}>
-        O saldo devedor não inclui o valor das prestações em aberto. Valor sujeito a alteração.
+        O saldo devedor não inclui o valor das prestações em aberto. Valor
+        sujeito a alteração.
       </Text>
 
       {/* Próximo Vencimento */}
@@ -229,7 +222,9 @@ const DebtBalanceScreen = () => {
         <View style={styles.contractRow}>
           <Text style={styles.contractLabel}>Valor financiado</Text>
           <Text style={styles.contractValue}>
-            {financedAmount !== null ? formatCurrency(financedAmount) : "R$ 0,00"}
+            {financedAmount !== null
+              ? formatCurrency(financedAmount)
+              : "R$ 0,00"}
           </Text>
         </View>
         <View style={styles.contractRow}>

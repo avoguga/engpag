@@ -1,12 +1,27 @@
 import React, { useContext, useState } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, Alert } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, Alert, Linking } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
+import axios from "axios";
 import { UserContext } from "../contexts/UserContext";
 
 const DebitOptionsPage = () => {
   const router = useRouter();
-  const { installmentsData } = useContext(UserContext);
+  const { userData, installmentsData } = useContext(UserContext); // Adicionando o userData para obter o customerId
+  const [loadingHistory, setLoadingHistory] = useState(false);
+
+  // Função para verificar se o título já foi quitado
+  const isTitlePaid = (installments) => {
+    const unpaidInstallments = [
+      ...(installments.dueInstallments || []),
+      ...(installments.payableInstallments || []),
+    ];
+    return unpaidInstallments.length === 0;
+  };
+
+  const handleReferFriendNavigation = () => {
+    router.push("/refer-friend");
+  };
 
   const handleBoletoNavigation = () => {
     if (!installmentsData || installmentsData.length === 0) {
@@ -81,7 +96,6 @@ const DebitOptionsPage = () => {
     }
   };
 
-  // Função de navegação para "Pagamentos Realizados"
   const handlePaymentsRealizedNavigation = () => {
     if (!installmentsData || installmentsData.length === 0) {
       Alert.alert("Erro", "Dados de pagamentos não disponíveis.");
@@ -110,8 +124,6 @@ const DebitOptionsPage = () => {
 
     const selectedResult = installmentsData[0];
 
-    console.log('oiii')
-
     if (selectedResult) {
       router.push({
         pathname: "/debt-balance",
@@ -123,6 +135,50 @@ const DebitOptionsPage = () => {
       Alert.alert("Erro", "Título não encontrado.");
     }
   };
+
+  // Função para obter o histórico de pagamentos
+  const handlePaymentHistoryNavigation = async () => {
+    if (!userData || !userData.id) {
+      Alert.alert("Erro", "Dados do cliente não disponíveis.");
+      return;
+    }
+
+    setLoadingHistory(true);
+
+    try {
+      const username = "engenharq-mozart";
+      const password = "i94B1q2HUXf7PP7oscuIBygquSRZ9lhb"; // Use suas credenciais corretas
+      const credentials = btoa(`${username}:${password}`);
+
+      const response = await axios.get(
+        `https://api.sienge.com.br/engenharq/public/api/v1/current-debit-balance/pdf`,
+        {
+          params: {
+            customerId: userData.id, // Obtenção do customerId do contexto
+          },
+          headers: {
+            Authorization: `Basic ${credentials}`,
+          },
+        }
+      );
+
+      if (response.data && response.data.results && response.data.results[0]) {
+        const url = response.data.results[0].urlReport;
+        Linking.openURL(url); // Abre o PDF no navegador ou aplicativo padrão
+      } else {
+        Alert.alert("Erro", "Histórico de pagamentos não disponível.");
+      }
+    } catch (error) {
+      console.error("Erro ao buscar histórico de pagamentos:", error);
+      Alert.alert("Erro", "Não foi possível obter o histórico de pagamentos.");
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
+
+  // Verifica se o título já foi quitado
+  const isPaid = installmentsData?.length > 0 && isTitlePaid(installmentsData[0]);
 
   return (
     <View style={styles.container}>
@@ -142,35 +198,60 @@ const DebitOptionsPage = () => {
 
       {/* Botões de opções */}
       <View style={styles.buttonContainer}>
-        <TouchableOpacity onPress={handleBoletoNavigation} style={styles.buttonLarge}>
-          <Text style={styles.buttonText}>2ª VIA BOLETO</Text>
+        <TouchableOpacity
+          onPress={handleBoletoNavigation}
+          style={[styles.buttonLarge, isPaid && styles.disabledButton]}
+          disabled={isPaid}
+        >
+          <Text style={[styles.buttonText, isPaid && styles.disabledText]}>
+            2ª VIA BOLETO
+          </Text>
         </TouchableOpacity>
 
-        <View style={styles.row}> 
-          <TouchableOpacity style={styles.buttonSmall} onPress={handleParcelAntecipationNavigation}>
-            <Text style={styles.buttonText}>ANTECIPAR PARCELAS</Text>
+        <View style={styles.row}>
+          <TouchableOpacity
+            style={[styles.buttonSmall, isPaid && styles.disabledButton]}
+            onPress={handleParcelAntecipationNavigation}
+            disabled={isPaid}
+          >
+            <Text style={[styles.buttonText, isPaid && styles.disabledText]}>
+              ANTECIPAR PARCELAS
+            </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.buttonSmall} onPress={handleDebtBalance}>
-            <Text style={styles.buttonText}>SALDO DEVEDOR</Text>
+          <TouchableOpacity
+            style={[styles.buttonSmall, isPaid && styles.disabledButton]}
+            onPress={handleDebtBalance}
+            disabled={isPaid}
+          >
+            <Text style={[styles.buttonText, isPaid && styles.disabledText]}>
+              SALDO DEVEDOR
+            </Text>
           </TouchableOpacity>
         </View>
 
         <View style={styles.row}>
           <TouchableOpacity
             style={styles.buttonSmall}
-            onPress={handlePaymentsRealizedNavigation} // Navegar para a tela de pagamentos realizados
+            onPress={handlePaymentsRealizedNavigation}
           >
             <Text style={styles.buttonText}>PAGAMENTOS REALIZADOS</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.buttonSmall}>
+          <TouchableOpacity style={styles.buttonSmall} onPress={handleReferFriendNavigation}>
             <Text style={styles.buttonText}>INDIQUE UM AMIGO</Text>
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity style={styles.buttonLarge}>
-          <Text style={styles.buttonText}>HISTÓRICO DE PAGAMENTOS</Text>
+        {/* Histórico de Pagamentos */}
+        <TouchableOpacity
+          style={[styles.buttonLarge, loadingHistory && styles.disabledButton]}
+          onPress={handlePaymentHistoryNavigation}
+          disabled={loadingHistory}
+        >
+          <Text style={[styles.buttonText, loadingHistory && styles.disabledText]}>
+            HISTÓRICO DE PAGAMENTOS
+          </Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -186,7 +267,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: "red",
+    backgroundColor: "#E1272C",
     paddingVertical: 15,
     paddingHorizontal: 15,
   },
@@ -196,7 +277,7 @@ const styles = StyleSheet.create({
     marginTop: 40,
   },
   circleIcon: {
-    backgroundColor: "red",
+    backgroundColor: "#E1272C",
     borderRadius: 50,
     padding: 20,
     justifyContent: "center",
@@ -207,7 +288,7 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     marginTop: 10,
     color: "#333",
-    textAlign: "center", // Centraliza o título
+    textAlign: "center",
   },
   buttonContainer: {
     marginTop: 50,
@@ -234,7 +315,7 @@ const styles = StyleSheet.create({
     elevation: 3,
     justifyContent: "center",
     alignItems: "center",
-    textAlign: "center", // Centraliza o texto
+    textAlign: "center",
   },
   buttonSmall: {
     backgroundColor: "#fff",
@@ -249,13 +330,19 @@ const styles = StyleSheet.create({
     elevation: 3,
     justifyContent: "center",
     alignItems: "center",
-    textAlign: "center", // Centraliza o texto
+    textAlign: "center",
   },
   buttonText: {
     color: "#000",
     fontSize: 16,
     fontWeight: "bold",
-    textAlign: "center", // Garante que o texto do botão está centralizado
+    textAlign: "center",
+  },
+  disabledButton: {
+    backgroundColor: "#c6c6c6", // Cor cinza para botão desabilitado
+  },
+  disabledText: {
+    color: "#888", // Cor mais clara para texto desabilitado
   },
 });
 

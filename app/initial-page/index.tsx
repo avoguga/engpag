@@ -1,4 +1,3 @@
-// pages/initial-page.js
 import React, { useEffect, useContext, useState } from "react";
 import {
   View,
@@ -57,6 +56,13 @@ const InitialPage = () => {
     }
   };
 
+  const formatCurrency = (value) => {
+    return value
+      ? `R$ ${parseFloat(value)
+          .toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`
+      : "N/A";
+  };
+
   const handleCardPress = (item) => {
     setInstallmentsData([item]);
 
@@ -79,7 +85,7 @@ const InitialPage = () => {
 
       <ScrollView contentContainerStyle={styles.content}>
         {/* Saudação */}
-        <Text style={styles.greeting}>Olá, {userData.name || 'Cliente'}!</Text>
+        <Text style={styles.greeting}>Olá, {userData.name || "Cliente"}!</Text>
         <View style={styles.lineSeparatorLarge} />
         <View style={styles.lineSeparatorSmall} />
 
@@ -89,7 +95,9 @@ const InitialPage = () => {
         {loading && <ActivityIndicator size="large" color="#007bff" />}
         {error !== "" && <Text style={styles.errorText}>{error}</Text>}
 
-        {!loading && Array.isArray(installmentsData) && installmentsData.length > 0 ? (
+        {!loading &&
+        Array.isArray(installmentsData) &&
+        installmentsData.length > 0 ? (
           installmentsData.map((item) => {
             const title = `Título: ${item.billReceivableId}`;
             const allDueInstallments = [
@@ -125,18 +133,20 @@ const InitialPage = () => {
                 <View style={styles.cardContent}>
                   <Text style={styles.cardTitle}>{title}</Text>
                   <View style={styles.cardRow}>
-                    <Text style={styles.cardSubtitle}>Valor da próxima parcela</Text>
+                    <Text style={styles.cardSubtitle}>
+                      Valor da próxima parcela
+                    </Text>
                     <Text style={styles.cardValue}>
-                      {nextInstallmentAmount
-                        ? `R$ ${nextInstallmentAmount.toFixed(2)}`
-                        : "N/A"}
+                      {formatCurrency(nextInstallmentAmount)}
                     </Text>
                   </View>
                   <View style={styles.cardRow}>
                     <Text style={styles.cardSubtitle}>Status</Text>
                     <Text
                       style={
-                        hasUnpaidInstallments ? styles.statusOpen : styles.statusClosed
+                        hasUnpaidInstallments
+                          ? styles.statusOpen
+                          : styles.statusClosed
                       }
                     >
                       {status}
