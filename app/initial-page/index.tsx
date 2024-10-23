@@ -58,8 +58,9 @@ const InitialPage = () => {
 
   const formatCurrency = (value) => {
     return value
-      ? `R$ ${parseFloat(value)
-          .toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`
+      ? `R$ ${parseFloat(value).toLocaleString("pt-BR", {
+          minimumFractionDigits: 2,
+        })}`
       : "N/A";
   };
 
@@ -79,8 +80,12 @@ const InitialPage = () => {
     <View style={styles.container}>
       {/* Barra superior */}
       <View style={styles.topBar}>
-        <Ionicons name="menu" size={30} color="white" />
-        <Ionicons name="notifications-outline" size={30} color="white" />
+      <TouchableOpacity onPress={() => router.back()}>
+          <Ionicons name="arrow-back-outline" size={28} color="white" />
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => router.push("/notification-screen")}>
+          <Ionicons name="notifications-outline" size={28} color="white" />
+        </TouchableOpacity>
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
@@ -97,72 +102,71 @@ const InitialPage = () => {
 
         {!loading &&
         Array.isArray(installmentsData) &&
-        installmentsData.length > 0 ? (
-          installmentsData.map((item) => {
-            const title = `Título: ${item.billReceivableId}`;
-            const allDueInstallments = [
-              ...(item.dueInstallments || []),
-              ...(item.payableInstallments || []),
-            ];
+        installmentsData.length > 0
+          ? installmentsData.map((item) => {
+              const title = `Título: ${item.billReceivableId}`;
+              const allDueInstallments = [
+                ...(item.dueInstallments || []),
+                ...(item.payableInstallments || []),
+              ];
 
-            const futureInstallments = allDueInstallments.filter(
-              (installment) => new Date(installment.dueDate) >= new Date()
-            );
+              const futureInstallments = allDueInstallments.filter(
+                (installment) => new Date(installment.dueDate) >= new Date()
+              );
 
-            futureInstallments.sort(
-              (a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()
-            );
+              futureInstallments.sort(
+                (a, b) =>
+                  new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()
+              );
 
-            const nextInstallment = futureInstallments[0];
-            const nextInstallmentAmount = nextInstallment
-              ? nextInstallment.currentBalance
-              : null;
+              const nextInstallment = futureInstallments[0];
+              const nextInstallmentAmount = nextInstallment
+                ? nextInstallment.currentBalance
+                : null;
 
-            const hasUnpaidInstallments = allDueInstallments.length > 0;
-            const status = hasUnpaidInstallments ? "Em aberto" : "Quitado";
+              const hasUnpaidInstallments = allDueInstallments.length > 0;
+              const status = hasUnpaidInstallments ? "Em aberto" : "Quitado";
 
-            return (
-              <TouchableOpacity
-                key={item.billReceivableId}
-                style={styles.card}
-                onPress={() => handleCardPress(item)}
-              >
-                <View style={styles.cardIcon}>
-                  <Ionicons name="home-outline" size={30} color="#E1272C" />
-                </View>
-                <View style={styles.cardContent}>
-                  <Text style={styles.cardTitle}>{title}</Text>
-                  <View style={styles.cardRow}>
-                    <Text style={styles.cardSubtitle}>
-                      Valor da próxima parcela
-                    </Text>
-                    <Text style={styles.cardValue}>
-                      {formatCurrency(nextInstallmentAmount)}
-                    </Text>
+              return (
+                <TouchableOpacity
+                  key={item.billReceivableId}
+                  style={styles.card}
+                  onPress={() => handleCardPress(item)}
+                >
+                  <View style={styles.cardIcon}>
+                    <Ionicons name="home-outline" size={30} color="#E1272C" />
                   </View>
-                  <View style={styles.cardRow}>
-                    <Text style={styles.cardSubtitle}>Status</Text>
-                    <Text
-                      style={
-                        hasUnpaidInstallments
-                          ? styles.statusOpen
-                          : styles.statusClosed
-                      }
-                    >
-                      {status}
-                    </Text>
+                  <View style={styles.cardContent}>
+                    <Text style={styles.cardTitle}>{title}</Text>
+                    <View style={styles.cardRow}>
+                      <Text style={styles.cardSubtitle}>
+                        Valor da próxima parcela
+                      </Text>
+                      <Text style={styles.cardValue}>
+                        {formatCurrency(nextInstallmentAmount)}
+                      </Text>
+                    </View>
+                    <View style={styles.cardRow}>
+                      <Text style={styles.cardSubtitle}>Status</Text>
+                      <Text
+                        style={
+                          hasUnpaidInstallments
+                            ? styles.statusOpen
+                            : styles.statusClosed
+                        }
+                      >
+                        {status}
+                      </Text>
+                    </View>
                   </View>
-                </View>
-              </TouchableOpacity>
-            );
-          })
-        ) : (
-          !loading && (
-            <Text style={styles.noInstallmentsText}>
-              Nenhum empreendimento encontrado.
-            </Text>
-          )
-        )}
+                </TouchableOpacity>
+              );
+            })
+          : !loading && (
+              <Text style={styles.noInstallmentsText}>
+                Nenhum empreendimento encontrado.
+              </Text>
+            )}
       </ScrollView>
     </View>
   );

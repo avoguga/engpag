@@ -17,6 +17,7 @@ import axios from 'axios';
 import { UserContext } from '../contexts/UserContext';
 import { Ionicons, FontAwesome } from '@expo/vector-icons';
 import PixIcon from './logo-pix.svg';
+import { router } from 'expo-router';
 
 const BoletoScreen = () => {
   const { userData } = useContext(UserContext);
@@ -49,7 +50,7 @@ const BoletoScreen = () => {
     setLoading(true);
     try {
       const username = 'engenharq-mozart';
-      const password = 'i94B1q2HUXf7PP7oscuIBygquSRZ9lhb';
+      const password = 'i94B1q2HUXf7PP7oscuIBygquSRZ9lhb'; // Substitua pela sua senha
       const credentials = btoa(`${username}:${password}`);
 
       const response = await axios.get(
@@ -152,40 +153,47 @@ const BoletoScreen = () => {
 
     try {
       const username = 'engenharq-mozart';
-      const password = 'i94B1q2HUXf7PP7oscuIBygquSRZ9lhb';
+      const password = 'i94B1q2HUXf7PP7oscuIBygquSRZ9lhb'; // Substitua pela sua senha
       const credentials = btoa(`${username}:${password}`);
 
-      const response = await axios.post(
+      // Obter o link do boleto
+      const response = await axios.get(
         'https://api.sienge.com.br/engenharq/public/api/v1/payment-slip-notification',
         {
-          receivableBillId: installmentDetails.billReceivableId,
-          installmentId: installmentDetails.installmentId,
-          emailCustomer: userData.email,
-          emailTitle: 'Segunda via de boleto',
-          emailBody:
-            'Prezado cliente, segue a segunda via do boleto conforme solicitado.',
-        },
-        {
+          params: {
+            billReceivableId: installmentDetails.billReceivableId,
+            installmentId: installmentDetails.installmentId,
+          },
           headers: {
             Authorization: `Basic ${credentials}`,
-            'Content-Type': 'application/json',
           },
         }
       );
 
-      if (response.status === 201) {
-        Alert.alert(
-          'Sucesso',
-          'Boleto enviado com sucesso para o email: ' + userData.email
-        );
+      if (response.data.results && response.data.results[0]) {
+        const boletoLink = response.data.results[0].urlReport;
+
+        const backendUrl = 'https://47ed-177-127-61-77.ngrok-free.app/send-email'; // Substitua pela URL do seu backend
+
+        const emailResponse = await axios.post(backendUrl, {
+          email: userData.email,
+          boletoUrl: boletoLink,
+          userName: userData.name,
+        });
+
+        if (emailResponse.status === 200) {
+          Alert.alert(
+            'Sucesso',
+            'Boleto enviado com sucesso para o email: ' + userData.email
+          );
+        } else {
+          Alert.alert('Erro', 'Falha ao enviar o boleto.');
+        }
       } else {
-        Alert.alert('Erro', 'Falha ao enviar o boleto.');
+        Alert.alert('Erro', 'Falha ao gerar o link do boleto.');
       }
     } catch (error) {
-      console.error(
-        'Error fetching boleto:',
-        error.response ? error.response.data : error.message
-      );
+      console.error('Erro ao enviar o boleto:', error);
       Alert.alert('Erro', 'Erro ao enviar o boleto por e-mail.');
     } finally {
       setLoading(false);
@@ -211,7 +219,7 @@ const BoletoScreen = () => {
 
     try {
       const username = 'engenharq-mozart';
-      const password = 'i94B1q2HUXf7PP7oscuIBygquSRZ9lhb';
+      const password = 'i94B1q2HUXf7PP7oscuIBygquSRZ9lhb'; // Substitua pela sua senha
       const credentials = btoa(`${username}:${password}`);
 
       const response = await axios.get(
@@ -275,7 +283,7 @@ const BoletoScreen = () => {
 
     try {
       const username = 'engenharq-mozart';
-      const password = 'i94B1q2HUXf7PP7oscuIBygquSRZ9lhb';
+      const password = 'i94B1q2HUXf7PP7oscuIBygquSRZ9lhb'; // Substitua pela sua senha
       const credentials = btoa(`${username}:${password}`);
 
       const billReceivableId = installmentDetails.billReceivableId;
@@ -317,9 +325,7 @@ const BoletoScreen = () => {
 
       const installmentNumber = installmentDetails.installmentNumber;
 
-      const message = `Olá, meu nome é ${userData?.name}, meu CPF é ${userData?.cpf} gostaria de pagar a parcela ${installmentNumber} do título ${billReceivableId}. Valor: R$ ${totalAmount.toFixed(
-        2
-      )}`;
+      const message = `Olá, meu nome é ${userData?.name}, meu CPF é ${userData?.cpf} gostaria de pagar a parcela ${installmentNumber} do título ${billReceivableId}. Valor: ${totalAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`;
 
       const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
         message
@@ -344,9 +350,13 @@ const BoletoScreen = () => {
     <View style={styles.container}>
       {/* Barra superior */}
       <View style={styles.topBar}>
-        <Ionicons name="arrow-back-outline" size={28} color="white" />
+        <TouchableOpacity onPress={() => router.back()}>
+          <Ionicons name="arrow-back-outline" size={28} color="white" />
+        </TouchableOpacity>
         <Text style={styles.headerTitle}>2ª Via do Boleto</Text>
-        <Ionicons name="notifications-outline" size={28} color="white" />
+        <TouchableOpacity onPress={() => router.push('/notification-screen')}>
+          <Ionicons name="notifications-outline" size={28} color="white" />
+        </TouchableOpacity>
       </View>
 
       <ScrollView contentContainerStyle={styles.contentContainer}>
@@ -394,7 +404,7 @@ const BoletoScreen = () => {
                 <View style={styles.infoRow}>
                   <Text style={styles.infoLabel}>Valor:</Text>
                   <Text style={styles.infoValue}>
-                    R$ {parseFloat(installmentDetails.currentBalance).toFixed(2)}
+                    {parseFloat(installmentDetails.currentBalance).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                   </Text>
                 </View>
               </View>

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import {
   View,
   Text,
@@ -6,37 +6,105 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
+  ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Picker } from "@react-native-picker/picker";
 import { useRouter } from "expo-router";
+import axios from "axios";
+import { UserContext } from "../contexts/UserContext";
 
 const ReferFriend = () => {
   const router = useRouter();
+  const { userData } = useContext(UserContext);
   const [name, setName] = useState("");
   const [empreendimento, setEmpreendimento] = useState("");
   const [email, setEmail] = useState("");
   const [telefone, setTelefone] = useState("");
   const [observacoes, setObservacoes] = useState("");
+  const [empreendimentosList, setEmpreendimentosList] = useState([]);
+  const [loading, setLoading] = useState(false);
 
-  const handleReferFriend = () => {
-    console.log({
-      name,
-      empreendimento,
-      email,
-      telefone,
-      observacoes,
-    });
-    alert("Amigo indicado com sucesso!");
-    router.back();
+  useEffect(() => {
+    const fetchEmpreendimentos = async () => {
+      setLoading(true);
+      try {
+        const username = "engenharq-mozart";
+        const password = "i94B1q2HUXf7PP7oscuIBygquSRZ9lhb";
+        const credentials = btoa(`${username}:${password}`);
+
+        const response = await axios.get(
+          `https://api.sienge.com.br/engenharq/public/api/v1/current-debit-balance`,
+          {
+            params: {
+              cpf: userData.cpf,
+              correctAnnualInstallment: "N",
+            },
+            headers: {
+              Authorization: `Basic ${credentials}`,
+            },
+          }
+        );
+
+        const results = response.data.results || [];
+
+        // Extrair os empreendimentos dos resultados
+        const empreendimentos = results.map((item) => ({
+          billReceivableId: item.billReceivableId,
+          projectId: item.projectId,
+          projectName: item.projectName,
+        }));
+
+        setEmpreendimentosList(empreendimentos);
+      } catch (error) {
+        console.error("Erro ao buscar empreendimentos:", error);
+        alert("Erro ao buscar empreendimentos.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (userData && userData.cpf) {
+      fetchEmpreendimentos();
+    }
+  }, [userData]);
+
+  const handleReferFriend = async () => {
+    if (!name || !empreendimento || !email || !telefone) {
+      alert("Por favor, preencha todos os campos obrigatórios.");
+      return;
+    }
+
+    try {
+      // Enviar os dados da indicação para o backend
+      await axios.post("https://47ed-177-127-61-77.ngrok-free.app/referrals", {
+        referrerCpf: userData.cpf,
+        friendName: name,
+        empreendimento,
+        email,
+        telefone,
+        observacoes,
+      });
+
+      alert("Amigo indicado com sucesso!");
+      router.back();
+    } catch (error) {
+      console.error("Erro ao enviar indicação:", error);
+      alert("Erro ao enviar indicação.");
+    }
   };
 
   return (
     <View style={styles.container}>
       {/* Barra superior com ícone de notificação */}
       <View style={styles.topBar}>
-        <Ionicons name="menu" size={30} color="white" />
-        <Ionicons name="notifications-outline" size={30} color="white" />
+        <TouchableOpacity onPress={() => router.back()}>
+          <Ionicons name="arrow-back-outline" size={28} color="white" />
+        </TouchableOpacity>
+        <Text style={styles.topBarTitle}>Indicar Amigo</Text>
+        <TouchableOpacity onPress={() => router.push("/notification-screen")}>
+          <Ionicons name="notifications-outline" size={28} color="white" />
+        </TouchableOpacity>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContainer}>
@@ -56,17 +124,25 @@ const ReferFriend = () => {
 
         {/* Empreendimento */}
         <Text style={styles.label}>EMPREENDIMENTO</Text>
-        <View style={styles.pickerContainer}>
-          <Picker
-            selectedValue={empreendimento}
-            onValueChange={(itemValue) => setEmpreendimento(itemValue)}
-          >
-            <Picker.Item label="Selecione um Empreendimento" value="" />
-            <Picker.Item label="Empreendimento 1" value="Empreendimento 1" />
-            <Picker.Item label="Empreendimento 2" value="Empreendimento 2" />
-            <Picker.Item label="Empreendimento 3" value="Empreendimento 3" />
-          </Picker>
-        </View>
+        {loading ? (
+          <ActivityIndicator size="large" color="#E1272C" />
+        ) : (
+          <View style={styles.pickerContainer}>
+            <Picker
+              selectedValue={empreendimento}
+              onValueChange={(itemValue) => setEmpreendimento(itemValue)}
+            >
+              <Picker.Item label="Selecione um Empreendimento" value="" />
+              {empreendimentosList.map((emp) => (
+                <Picker.Item
+                  key={emp.billReceivableId}
+                  label={emp.billReceivableId}
+                  value={emp.billReceivableId}
+                />
+              ))}
+            </Picker>
+          </View>
+        )}
 
         {/* Email */}
         <Text style={styles.label}>E-MAIL</Text>

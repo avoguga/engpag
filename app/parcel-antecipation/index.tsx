@@ -10,39 +10,32 @@ import {
   Modal,
   Linking,
   ScrollView,
+  ToastAndroid,
+  Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Picker } from "@react-native-picker/picker";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import axios from "axios";
 import { UserContext } from "../contexts/UserContext";
-import { useLocalSearchParams } from "expo-router";
-import * as Clipboard from "expo-clipboard";
-import * as FileSystem from "expo-file-system";
-import * as Sharing from "expo-sharing";
-import { PDFDocument } from "pdf-lib";
-import { Buffer } from "buffer";
-global.Buffer = Buffer;
-
-import PixIcon from "./logo-pix.svg";
+import { router, useLocalSearchParams } from "expo-router";
 
 const ParcelAntecipation = () => {
   const { userData } = useContext(UserContext);
   const { billReceivableId } = useLocalSearchParams();
-  const [showActions, setShowActions] = useState(false);
   const [selectedInstallments, setSelectedInstallments] = useState([]);
-  const [selectedParcel, setSelectedParcel] = useState("Número da Parcela");
+  const [selectedParcel, setSelectedParcel] = useState("Selecione a parcela");
   const [startDate, setStartDate] = useState(null); // Data inicial
   const [endDate, setEndDate] = useState(null); // Data final
   const [showStartDatePicker, setShowStartDatePicker] = useState(false);
   const [showEndDatePicker, setShowEndDatePicker] = useState(false);
   const [data, setData] = useState([]); // Dados das parcelas
   const [loading, setLoading] = useState(false); // Loading for the main screen
-  const [modalVisible, setModalVisible] = useState(false);
-  const [boletoLinks, setBoletoLinks] = useState([]); // Array de links de boletos
-  const [digitableNumbers, setDigitableNumbers] = useState([]); // Array de linhas digitáveis
-  const [modalLoading, setModalLoading] = useState(false); // Loading for the modal
-  // Removido o estado customerId
+  const [enterpriseName, setEnterpriseName] = useState(""); // Nome do empreendimento
+
+  const [confirmModalVisible, setConfirmModalVisible] = useState(false);
+  const [newDueDate, setNewDueDate] = useState(null);
+  const [showNewDueDatePicker, setShowNewDueDatePicker] = useState(false);
 
   useEffect(() => {
     fetchInstallments();
@@ -61,8 +54,8 @@ const ParcelAntecipation = () => {
 
     setLoading(true);
     try {
-      const username = "engenharq-mozart";
-      const password = "i94B1q2HUXf7PP7oscuIBygquSRZ9lhb";
+      const username = 'engenharq-mozart';
+      const password = 'i94B1q2HUXf7PP7oscuIBygquSRZ9lhb';
       const credentials = btoa(`${username}:${password}`);
 
       const response = await axios.get(
@@ -90,7 +83,23 @@ const ParcelAntecipation = () => {
         return;
       }
 
-      // Não precisamos mais do selectedResult.customerId
+      // Obter o enterpriseName
+      const customerId = userData.id;
+      const billResponse = await axios.get(
+        `https://api.sienge.com.br/engenharq/public/api/v1/accounts-receivable/receivable-bills/${billReceivableId}`,
+        {
+          params: {
+            customerId: customerId,
+          },
+          headers: {
+            Authorization: `Basic ${credentials}`,
+          },
+        }
+      );
+
+      const enterpriseName =
+        billResponse.data.enterpriseName || "Nome do Empreendimento";
+      setEnterpriseName(enterpriseName);
 
       let allInstallments = [];
 
@@ -104,7 +113,7 @@ const ParcelAntecipation = () => {
         number: installment.installmentNumber,
         billReceivableId: selectedResult.billReceivableId,
         dueDate: installment.dueDate,
-        value: `R$ ${installment.currentBalance.toFixed(2)}`,
+        value: `R$ ${parseFloat(installment.currentBalance).toFixed(2)}`,
         status:
           new Date(installment.dueDate) < new Date() ? "vencido" : "pendente",
         installmentId: installment.installmentId,
@@ -133,10 +142,9 @@ const ParcelAntecipation = () => {
       // Adiciona à seleção
       setSelectedInstallments([...selectedInstallments, item]);
     }
-    setShowActions(false);
   };
 
-  const toggleActions = () => {
+  const handleConfirmSelection = () => {
     if (selectedInstallments.length === 0) {
       Alert.alert(
         "Atenção",
@@ -144,7 +152,7 @@ const ParcelAntecipation = () => {
       );
       return;
     }
-    setShowActions(!showActions);
+    setConfirmModalVisible(true);
   };
 
   const filterByDate = (installments) => {
@@ -168,14 +176,14 @@ const ParcelAntecipation = () => {
   };
 
   const filterByParcelNumber = (installments) => {
-    if (selectedParcel && selectedParcel !== "Número da Parcela") {
+    if (selectedParcel && selectedParcel !== "Selecione a parcela") {
       return installments.filter((item) => item.number === selectedParcel);
     }
     return installments;
   };
 
   const resetFilters = () => {
-    setSelectedParcel("Número da Parcela");
+    setSelectedParcel("Selecione a parcela");
     setStartDate(null);
     setEndDate(null);
   };
@@ -202,245 +210,18 @@ const ParcelAntecipation = () => {
     </TouchableOpacity>
   );
 
-  const handleRequestEmail = async () => {
-    if (selectedInstallments.length === 0) {
-      Alert.alert(
-        "Atenção",
-        "Selecione ao menos uma parcela antes de continuar."
-      );
-      return;
-    }
-  
-    // Verifica se todos os boletos estão disponíveis
-    const allBoletosAvailable = selectedInstallments.every(
-      (installment) => installment.generatedBoleto
-    );
-  
-    if (!allBoletosAvailable) {
-      Alert.alert(
-        "Atenção",
-        "Nem todos os boletos estão disponíveis para envio por e-mail."
-      );
-      return;
-    }
-  
-    setLoading(true);
-  
-    try {
-      const username = "engenharq-mozart";
-      const password = "i94B1q2HUXf7PP7oscuIBygquSRZ9lhb";
-      const credentials = btoa(`${username}:${password}`);
-  
-      // Enviar um e-mail para cada parcela selecionada
-
-      for (const installment of selectedInstallments) {
-      console.log(installment.billReceivableId, installment.installmentId)
-
-        const response = await axios.post(
-          "https://api.sienge.com.br/engenharq/public/api/v1/payment-slip-notification",
-          {
-            receivableBillId: installment.billReceivableId,
-            installmentId: installment.installmentId,
-            emailCustomer: userData.email,
-            emailTitle: "Antecipação de parcelas",
-            emailBody:
-              "Prezado cliente, segue o boleto da parcela antecipada conforme solicitado.",
-          },
-          {
-            headers: {
-              Authorization: `Basic ${credentials}`,
-              "Content-Type": "application/json",
-            },
-          }
-        );
-  
-        if (response.status !== 201) {
-          Alert.alert(
-            "Erro",
-            `Falha ao enviar o boleto da parcela ${installment.number}.`
-          );
-          break;
-        }
-      }
-  
-      Alert.alert(
-        "Sucesso",
-        `Boletos enviados com sucesso para o email: ${userData.email}`
-      );
-    } catch (error) {
-      console.error("Erro ao enviar boletos por e-mail:", error);
-      Alert.alert("Erro", "Não foi possível enviar os boletos por e-mail.");
-    } finally {
-      setLoading(false);
-    }
-  };
-  
-
-  const handleDownloadBoleto = async () => {
-    if (selectedInstallments.length === 0) {
-      Alert.alert(
-        "Atenção",
-        "Selecione ao menos uma parcela antes de continuar."
-      );
-      return;
-    }
-
-    // Verifica se todos os boletos estão disponíveis
-    const allBoletosAvailable = selectedInstallments.every(
-      (installment) => installment.generatedBoleto
-    );
-
-    if (!allBoletosAvailable) {
-      Alert.alert(
-        "Atenção",
-        "Nem todos os boletos estão disponíveis para download."
-      );
-      return;
-    }
-
-    setModalLoading(true);
-    setModalVisible(true);
-
-    try {
-      const username = "engenharq-mozart";
-      const password = "i94B1q2HUXf7PP7oscuIBygquSRZ9lhb";
-      const credentials = btoa(`${username}:${password}`);
-
-      const pdfUrls = [];
-      const digitableNumbers = [];
-
-      for (const installment of selectedInstallments) {
-        const response = await axios.get(
-          "https://api.sienge.com.br/engenharq/public/api/v1/payment-slip-notification",
-          {
-            params: {
-              billReceivableId: installment.billReceivableId,
-              installmentId: installment.installmentId,
-            },
-            headers: {
-              Authorization: `Basic ${credentials}`,
-            },
-          }
-        );
-
-        if (response.data.results && response.data.results[0]) {
-          const boletoData = response.data.results[0];
-          pdfUrls.push(boletoData.urlReport);
-          digitableNumbers.push(boletoData.digitableNumber);
-        } else {
-          Alert.alert(
-            "Erro",
-            "Falha ao gerar o link do boleto para a parcela " +
-              installment.number
-          );
-          setModalVisible(false);
-          return;
-        }
-      }
-
-      setBoletoLinks(pdfUrls);
-      setDigitableNumbers(digitableNumbers);
-    } catch (error) {
-      console.error("Erro ao gerar link do boleto:", error);
-      Alert.alert("Erro", "Erro ao gerar o link dos boletos.");
-      setModalVisible(false);
-    } finally {
-      setModalLoading(false);
-    }
-  };
-
-  const handleDownloadAllBoletos = async () => {
-    setModalLoading(true);
-
-    try {
-      const tempDir = `${FileSystem.documentDirectory}tempBoletos/`;
-
-      // Cria o diretório temporário principal se não existir
-      const dirInfo = await FileSystem.getInfoAsync(tempDir);
-      if (!dirInfo.exists) {
-        await FileSystem.makeDirectoryAsync(tempDir, { intermediates: true });
-      }
-
-      const mergedPdf = await PDFDocument.create();
-
-      // Baixa todos os PDFs e os combina
-      for (let i = 0; i < boletoLinks.length; i++) {
-        const boletoUrl = boletoLinks[i];
-        const installmentNumber = selectedInstallments[i].number;
-
-        // Define o caminho direto no diretório temporário, sem subdiretórios
-        const fileName = `boleto_parcela_${installmentNumber}.pdf`;
-        const filePath = `${tempDir}${fileName}`; // Diretório simples, sem subdiretórios adicionais
-
-        // Baixa o arquivo PDF
-        const downloadResumable = FileSystem.createDownloadResumable(
-          boletoUrl,
-          filePath
-        );
-
-        const { uri } = await downloadResumable.downloadAsync();
-
-        // Lê o conteúdo do PDF como bytes
-        const fileData = await FileSystem.readAsStringAsync(uri, {
-          encoding: FileSystem.EncodingType.Base64,
-        });
-
-        // Converte o base64 em array de bytes
-        const pdfBytes = Buffer.from(fileData, "base64");
-
-        // Carrega o PDF com o pdf-lib
-        const pdf = await PDFDocument.load(pdfBytes);
-
-        // Copia as páginas para o PDF mesclado
-        const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
-        copiedPages.forEach((page) => mergedPdf.addPage(page));
-      }
-
-      // Salva o PDF mesclado
-      const mergedPdfBytes = await mergedPdf.save();
-      const mergedPdfBase64 = Buffer.from(mergedPdfBytes).toString("base64");
-
-      const mergedPdfPath = `${FileSystem.documentDirectory}boletos_combinados.pdf`;
-
-      // Salva o arquivo PDF mesclado no sistema de arquivos
-      await FileSystem.writeAsStringAsync(mergedPdfPath, mergedPdfBase64, {
-        encoding: FileSystem.EncodingType.Base64,
-      });
-
-      Alert.alert("Sucesso", "Boletos combinados em um único PDF.");
-
-      // Compartilha o arquivo PDF mesclado
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(mergedPdfPath);
-      } else {
-        Alert.alert("Erro", "Compartilhamento não suportado no dispositivo.");
-      }
-
-      // Limpa o diretório temporário
-      await FileSystem.deleteAsync(tempDir);
-    } catch (error) {
-      console.error("Erro ao combinar os boletos:", error);
-      Alert.alert("Erro", "Erro ao combinar os boletos em um único PDF.");
-    } finally {
-      setModalLoading(false);
-    }
-  };
-
-  const handlePayWithPix = async () => {
-    if (selectedInstallments.length === 0) {
-      Alert.alert(
-        "Atenção",
-        "Selecione ao menos uma parcela antes de continuar."
-      );
-      return;
-    }
-
+  const handleSendWhatsAppMessage = async () => {
     if (!userData || !userData.id) {
       Alert.alert("Erro", "Dados do cliente não encontrados.");
       return;
     }
 
-    const customerId = userData.id; // Obtém o customerId de userData
+    if (!newDueDate) {
+      Alert.alert("Atenção", "Por favor, selecione a nova data de vencimento.");
+      return;
+    }
+
+    const customerId = userData.id;
 
     const totalAmount = selectedInstallments.reduce((sum, installment) => {
       return sum + parseFloat(installment.currentBalance);
@@ -449,8 +230,8 @@ const ParcelAntecipation = () => {
     setLoading(true);
 
     try {
-      const username = "engenharq-mozart";
-      const password = "i94B1q2HUXf7PP7oscuIBygquSRZ9lhb";
+      const username = 'engenharq-mozart';
+      const password = 'i94B1q2HUXf7PP7oscuIBygquSRZ9lhb';
       const credentials = btoa(`${username}:${password}`);
 
       const billReceivableId = selectedInstallments[0].billReceivableId;
@@ -495,9 +276,11 @@ const ParcelAntecipation = () => {
         .map((installment) => installment.number)
         .join(", ");
 
-      const message = `Olá, meu nome é ${userData?.name}, meu CPF é ${userData?.cpf} gostaria de antecipar as parcelas: ${installmentNumbers} do título ${billReceivableId}. Valor total: R$ ${totalAmount.toFixed(
+      const message = `Olá, meu nome é ${userData?.name}, meu CPF é ${
+        userData?.cpf
+      }, gostaria de negociar as parcelas: ${installmentNumbers} do título ${billReceivableId}. Valor total: R$ ${totalAmount.toFixed(
         2
-      )}`;
+      )}. Desejo uma nova data de vencimento para ${newDueDate.toLocaleDateString()}.`;
 
       const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
         message
@@ -508,6 +291,9 @@ const ParcelAntecipation = () => {
 
       if (supported) {
         await Linking.openURL(whatsappUrl);
+        setConfirmModalVisible(false);
+        setSelectedInstallments([]);
+        setNewDueDate(null);
       } else {
         Alert.alert("Erro", "Não foi possível abrir o WhatsApp.");
       }
@@ -520,7 +306,7 @@ const ParcelAntecipation = () => {
   };
 
   const parcelNumbers = [
-    "Número da Parcela",
+    "Selecione a parcela",
     ...new Set(data.map((item) => item.number)),
   ];
 
@@ -529,12 +315,18 @@ const ParcelAntecipation = () => {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Ionicons name="arrow-back-outline" size={28} color="white" />
+      <TouchableOpacity onPress={() => router.back()}>
+          <Ionicons name="arrow-back-outline" size={28} color="white" />
+        </TouchableOpacity>
         <Text style={styles.headerTitle}>Antecipação de Parcelas</Text>
-        <Ionicons name="notifications-outline" size={28} color="white" />
+        <TouchableOpacity onPress={() => router.push("/notification-screen")}>
+          <Ionicons name="notifications-outline" size={28} color="white" />
+        </TouchableOpacity>
       </View>
 
-      <Text style={styles.title}>Residencial Grand Reserva</Text>
+      <Text style={styles.title}>
+        {enterpriseName || "Nome do Empreendimento"}
+      </Text>
       <TouchableOpacity style={styles.actionButton}>
         <Text style={styles.actionButtonText}>Antecipar Parcelas</Text>
       </TouchableOpacity>
@@ -554,7 +346,11 @@ const ParcelAntecipation = () => {
           {parcelNumbers.map((parcelNumber) => (
             <Picker.Item
               key={parcelNumber}
-              label={`Parcela ${parcelNumber}`}
+              label={
+                parcelNumber === "Selecione a parcela"
+                  ? parcelNumber
+                  : `Parcela ${parcelNumber}`
+              }
               value={parcelNumber}
             />
           ))}
@@ -584,9 +380,9 @@ const ParcelAntecipation = () => {
         </TouchableOpacity>
       </View>
 
-      {/* Botão de Resetar Filtros */}
+      {/* Botão de Limpar Filtros */}
       <TouchableOpacity style={styles.resetButton} onPress={resetFilters}>
-        <Text style={styles.resetButtonText}>Resetar Filtros</Text>
+        <Text style={styles.resetButtonText}>Limpar Filtros</Text>
       </TouchableOpacity>
 
       {showStartDatePicker && (
@@ -625,111 +421,82 @@ const ParcelAntecipation = () => {
         />
       )}
 
-      <TouchableOpacity style={styles.floatingButton} onPress={toggleActions}>
+      <TouchableOpacity
+        style={styles.floatingButton}
+        onPress={handleConfirmSelection}
+      >
         <Ionicons name="cash-outline" size={24} color="white" />
       </TouchableOpacity>
 
-      {showActions && (
-        <View style={styles.actionsOverlay}>
-          {selectedInstallments.every(
-            (installment) => installment.generatedBoleto
-          ) ? (
-            <>
-              <TouchableOpacity
-                style={styles.actionItem}
-                onPress={handleRequestEmail}
-              >
-                <Ionicons name="mail-outline" size={20} color="white" />
-                <Text style={styles.actionText}>Enviar por E-mail</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.actionItem}
-                onPress={handleDownloadBoleto}
-              >
-                <Ionicons name="download-outline" size={20} color="white" />
-                <Text style={styles.actionText}>Baixar Boletos</Text>
-              </TouchableOpacity>
-            </>
-          ) : null}
-
-          <TouchableOpacity style={styles.actionItem} onPress={handlePayWithPix}>
-            <PixIcon width={20} height={20} />
-            <Text style={styles.actionText}>Falar no WhatsApp</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {modalVisible && (
+      {/* Modal de Confirmação */}
+      {confirmModalVisible && (
         <Modal
           animationType="slide"
           transparent={true}
-          visible={modalVisible}
+          visible={confirmModalVisible}
           onRequestClose={() => {
-            setModalVisible(false);
+            setConfirmModalVisible(false);
           }}
         >
           <View style={styles.modalOverlay}>
             <View style={styles.modalContainer}>
-              {modalLoading ? (
-                <ActivityIndicator size="large" color="#E1272C" />
-              ) : (
-                <>
-                  <Text style={styles.modalTitle}>
-                    Boletos Gerados com Sucesso
-                  </Text>
-                  <ScrollView style={{ maxHeight: 400 }}>
-                    {digitableNumbers.map((number, index) => (
-                      <View key={index} style={styles.modalItem}>
-                        <Text style={styles.modalLabel}>
-                          Linha Digitável da Parcela{" "}
-                          {selectedInstallments[index].number}:
-                        </Text>
-                        <TouchableOpacity
-                          onPress={() => {
-                            Clipboard.setStringAsync(number);
-                            Alert.alert(
-                              "Copiado",
-                              "Linha digitável copiada para a área de transferência."
-                            );
-                          }}
-                        >
-                          <Text style={styles.modalDigitableNumber}>
-                            {number}
-                          </Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          style={styles.modalButton}
-                          onPress={() => {
-                            Linking.openURL(boletoLinks[index]);
-                          }}
-                        >
-                          <Text style={styles.modalButtonText}>
-                            Baixar Boleto
-                          </Text>
-                        </TouchableOpacity>
-                      </View>
-                    ))}
-                  </ScrollView>
-                  {/* Botão para baixar todos os boletos */}
-                  <TouchableOpacity
-                    style={styles.modalButton}
-                    onPress={handleDownloadAllBoletos}
-                  >
-                    <Text style={styles.modalButtonText}>
-                      Baixar Todos os Boletos
+              <Text style={styles.modalTitle}>Confirmação de Parcelas</Text>
+              <ScrollView style={{ maxHeight: 400 }}>
+                {selectedInstallments.map((installment, index) => (
+                  <View key={index} style={styles.modalItem}>
+                    <Text style={styles.modalLabel}>
+                      Parcela {installment.number} - Vencimento{" "}
+                      {installment.dueDate} - Valor {installment.value}
                     </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.modalCloseButton}
-                    onPress={() => {
-                      setModalVisible(false);
-                    }}
-                  >
-                    <Text style={styles.modalCloseButtonText}>Fechar</Text>
-                  </TouchableOpacity>
-                </>
+                  </View>
+                ))}
+              </ScrollView>
+              <Text style={styles.modalTotal}>
+                Total: R${" "}
+                {selectedInstallments
+                  .reduce(
+                    (sum, installment) =>
+                      sum + parseFloat(installment.currentBalance),
+                    0
+                  )
+                  .toFixed(2)}
+              </Text>
+              <TouchableOpacity
+                style={styles.datePickerButton}
+                onPress={() => setShowNewDueDatePicker(true)}
+              >
+                <Ionicons name="calendar-outline" size={20} color="#E1272C" />
+                <Text style={styles.dateText}>
+                  {newDueDate
+                    ? newDueDate.toLocaleDateString()
+                    : "Selecione a nova data de vencimento"}
+                </Text>
+              </TouchableOpacity>
+              {showNewDueDatePicker && (
+                <DateTimePicker
+                  value={newDueDate || new Date()}
+                  mode="date"
+                  display="default"
+                  onChange={(event, selectedDate) => {
+                    setShowNewDueDatePicker(false);
+                    if (selectedDate) setNewDueDate(selectedDate);
+                  }}
+                />
               )}
+              <TouchableOpacity
+                style={styles.modalButton}
+                onPress={handleSendWhatsAppMessage}
+              >
+                <Text style={styles.modalButtonText}>Confirmar e Enviar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.modalCloseButton}
+                onPress={() => {
+                  setConfirmModalVisible(false);
+                }}
+              >
+                <Text style={styles.modalCloseButtonText}>Cancelar</Text>
+              </TouchableOpacity>
             </View>
           </View>
         </Modal>
@@ -739,14 +506,10 @@ const ParcelAntecipation = () => {
 };
 
 const styles = StyleSheet.create({
+  // ... (mantenha seus estilos existentes ou ajuste conforme necessário)
   container: {
     flex: 1,
     backgroundColor: "#FAF6F6",
-  },
-  pixIcon: {
-    width: 20,
-    height: 20,
-    marginRight: 10,
   },
   header: {
     flexDirection: "row",
@@ -816,6 +579,17 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 12,
     width: "48%",
+  },
+  datePickerButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: "#ddd",
+    borderRadius: 8,
+    padding: 12,
+    marginVertical: 16,
+    width: "100%",
   },
   dateText: {
     fontSize: 16,
@@ -888,29 +662,6 @@ const styles = StyleSheet.create({
     right: 20,
     elevation: 5,
   },
-  actionsOverlay: {
-    position: "absolute",
-    bottom: 100,
-    right: 20,
-    alignItems: "flex-end",
-  },
-  actionItem: {
-    backgroundColor: "#555",
-    borderRadius: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    marginBottom: 10,
-    flexDirection: "row",
-    alignItems: "center",
-    width: 220,
-    elevation: 3,
-  },
-  actionText: {
-    color: "#fff",
-    marginLeft: 8,
-    fontWeight: "bold",
-    fontSize: 16,
-  },
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",
@@ -937,11 +688,11 @@ const styles = StyleSheet.create({
     textAlign: "center",
     color: "#333",
   },
-  modalDigitableNumber: {
-    fontSize: 16,
-    color: "#555",
-    marginBottom: 15,
-    textAlign: "center",
+  modalTotal: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginVertical: 10,
+    color: "#E1272C",
   },
   modalButton: {
     backgroundColor: "#E1272C",
@@ -968,7 +719,7 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   modalItem: {
-    marginBottom: 20,
+    marginBottom: 10,
     alignItems: "center",
   },
 });
