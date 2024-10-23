@@ -166,7 +166,7 @@ const Index = () => {
         const reversedCpf = sanitizedCpf.split('').reverse().join('');
 
         // Envia o email com a senha
-        const backendUrl = 'https://47ed-177-127-61-77.ngrok-free.app/send-password'; // Substitua pela URL do seu backend
+        const backendUrl = 'http://hw0oc4gc8ccwswwg4gk0kss8.167.88.39.225.sslip.io/send-password'; // Substitua pela URL do seu backend
 
         await axios.post(backendUrl, {
           email: user.email,

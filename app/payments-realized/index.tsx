@@ -89,9 +89,11 @@ const PaymentsCompleted = () => {
         id: installment.installmentId.toString(),
         number: installment.installmentNumber,
         billReceivableId: selectedResult.billReceivableId,
-        dueDate: installment.dueDate,
-        paymentDate: installment.paidDate,
-        value: `R$ ${installment.originalValue.toFixed(2)}`,
+        dueDate: new Date(installment.dueDate),
+        formattedDueDate: new Date(installment.dueDate).toLocaleDateString('pt-BR'),
+        paymentDate: new Date(installment.paidDate),
+        formattedPaymentDate: new Date(installment.paidDate).toLocaleDateString('pt-BR'),
+        value: parseFloat(installment.originalValue).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
       }));
 
       setCompletedPayments(payments);
@@ -115,8 +117,8 @@ const PaymentsCompleted = () => {
       <Text style={styles.cardSubtitle}>
         Número do Título {item.billReceivableId}
       </Text>
-      <Text style={styles.cardSubtitle}>Vencimento: {item.dueDate}</Text>
-      <Text style={styles.cardSubtitle}>Data de Pagamento: {item.paymentDate}</Text>
+      <Text style={styles.cardSubtitle}>Vencimento: {item.formattedDueDate}</Text>
+      <Text style={styles.cardSubtitle}>Data de Pagamento: {item.formattedPaymentDate}</Text>
       <Text style={styles.cardValue}>Valor: {item.value}</Text>
     </View>
   );
@@ -133,7 +135,7 @@ const PaymentsCompleted = () => {
     }
 
     // Filtrar por data de pagamento
-    const paymentDate = new Date(item.paymentDate);
+    const paymentDate = item.paymentDate;
     if (startDate && paymentDate < startDate) {
       return false;
     }
@@ -166,7 +168,7 @@ const PaymentsCompleted = () => {
           {parcelNumbers.map((parcelNumber) => (
             <Picker.Item
               key={parcelNumber}
-              label={parcelNumber}
+              label={parcelNumber.toString()}
               value={parcelNumber}
             />
           ))}
@@ -181,7 +183,7 @@ const PaymentsCompleted = () => {
         >
           <Ionicons name="calendar-outline" size={20} color="#E1272C" />
           <Text style={styles.dateText}>
-            {startDate ? startDate.toLocaleDateString() : "Data inicial"}
+            {startDate ? startDate.toLocaleDateString('pt-BR') : "Data inicial"}
           </Text>
         </TouchableOpacity>
 
@@ -191,7 +193,7 @@ const PaymentsCompleted = () => {
         >
           <Ionicons name="calendar-outline" size={20} color="#E1272C" />
           <Text style={styles.dateText}>
-            {endDate ? endDate.toLocaleDateString() : "Data final"}
+            {endDate ? endDate.toLocaleDateString('pt-BR') : "Data final"}
           </Text>
         </TouchableOpacity>
       </View>

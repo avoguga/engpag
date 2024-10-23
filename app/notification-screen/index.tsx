@@ -28,7 +28,7 @@ const NotificationScreen = () => {
       }
 
       try {
-        const response = await axios.get('https://47ed-177-127-61-77.ngrok-free.app/notifications', {
+        const response = await axios.get('http://hw0oc4gc8ccwswwg4gk0kss8.167.88.39.225.sslip.io/notifications', {
           params: {
             cpf: userData.cpf,
           },

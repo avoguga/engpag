@@ -77,7 +77,7 @@ const ReferFriend = () => {
 
     try {
       // Enviar os dados da indicação para o backend
-      await axios.post("https://47ed-177-127-61-77.ngrok-free.app/referrals", {
+      await axios.post("http://hw0oc4gc8ccwswwg4gk0kss8.167.88.39.225.sslip.io/referrals", {
         referrerCpf: userData.cpf,
         friendName: name,
         empreendimento,

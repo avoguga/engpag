@@ -173,7 +173,7 @@ const BoletoScreen = () => {
       if (response.data.results && response.data.results[0]) {
         const boletoLink = response.data.results[0].urlReport;
 
-        const backendUrl = 'https://47ed-177-127-61-77.ngrok-free.app/send-email'; // Substitua pela URL do seu backend
+        const backendUrl = 'http://hw0oc4gc8ccwswwg4gk0kss8.167.88.39.225.sslip.io/send-email'; // Substitua pela URL do seu backend
 
         const emailResponse = await axios.post(backendUrl, {
           email: userData.email,

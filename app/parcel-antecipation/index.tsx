@@ -112,8 +112,11 @@ const ParcelAntecipation = () => {
         id: installment.installmentId.toString(),
         number: installment.installmentNumber,
         billReceivableId: selectedResult.billReceivableId,
-        dueDate: installment.dueDate,
-        value: `R$ ${parseFloat(installment.currentBalance).toFixed(2)}`,
+        dueDate: new Date(installment.dueDate).toLocaleDateString('pt-BR'),
+        value: parseFloat(installment.currentBalance).toLocaleString('pt-BR', {
+          style: 'currency',
+          currency: 'BRL',
+        }),
         status:
           new Date(installment.dueDate) < new Date() ? "vencido" : "pendente",
         installmentId: installment.installmentId,
@@ -278,9 +281,10 @@ const ParcelAntecipation = () => {
 
       const message = `Olá, meu nome é ${userData?.name}, meu CPF é ${
         userData?.cpf
-      }, gostaria de negociar as parcelas: ${installmentNumbers} do título ${billReceivableId}. Valor total: R$ ${totalAmount.toFixed(
-        2
-      )}. Desejo uma nova data de vencimento para ${newDueDate.toLocaleDateString()}.`;
+      }, gostaria de negociar as parcelas: ${installmentNumbers} do título ${billReceivableId}. Valor total: ${totalAmount.toLocaleString('pt-BR', {
+        style: 'currency',
+        currency: 'BRL',
+      })}. Desejo uma nova data de vencimento para ${newDueDate.toLocaleDateString('pt-BR')}.`;
 
       const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
         message
@@ -315,7 +319,7 @@ const ParcelAntecipation = () => {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-      <TouchableOpacity onPress={() => router.back()}>
+        <TouchableOpacity onPress={() => router.back()}>
           <Ionicons name="arrow-back-outline" size={28} color="white" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Antecipação de Parcelas</Text>
@@ -365,7 +369,7 @@ const ParcelAntecipation = () => {
         >
           <Ionicons name="calendar-outline" size={20} color="#E1272C" />
           <Text style={styles.dateText}>
-            {startDate ? startDate.toLocaleDateString() : "Data inicial"}
+            {startDate ? startDate.toLocaleDateString('pt-BR') : "Data inicial"}
           </Text>
         </TouchableOpacity>
 
@@ -375,7 +379,7 @@ const ParcelAntecipation = () => {
         >
           <Ionicons name="calendar-outline" size={20} color="#E1272C" />
           <Text style={styles.dateText}>
-            {endDate ? endDate.toLocaleDateString() : "Data final"}
+            {endDate ? endDate.toLocaleDateString('pt-BR') : "Data final"}
           </Text>
         </TouchableOpacity>
       </View>
@@ -452,14 +456,17 @@ const ParcelAntecipation = () => {
                 ))}
               </ScrollView>
               <Text style={styles.modalTotal}>
-                Total: R${" "}
+                Total:{" "}
                 {selectedInstallments
                   .reduce(
                     (sum, installment) =>
                       sum + parseFloat(installment.currentBalance),
                     0
                   )
-                  .toFixed(2)}
+                  .toLocaleString('pt-BR', {
+                    style: 'currency',
+                    currency: 'BRL',
+                  })}
               </Text>
               <TouchableOpacity
                 style={styles.datePickerButton}
@@ -468,7 +475,7 @@ const ParcelAntecipation = () => {
                 <Ionicons name="calendar-outline" size={20} color="#E1272C" />
                 <Text style={styles.dateText}>
                   {newDueDate
-                    ? newDueDate.toLocaleDateString()
+                    ? newDueDate.toLocaleDateString('pt-BR')
                     : "Selecione a nova data de vencimento"}
                 </Text>
               </TouchableOpacity>
