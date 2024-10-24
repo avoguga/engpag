@@ -10,8 +10,6 @@ import {
   Modal,
   Linking,
   ScrollView,
-  ToastAndroid,
-  Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Picker } from "@react-native-picker/picker";
@@ -112,7 +110,8 @@ const ParcelAntecipation = () => {
         id: installment.installmentId.toString(),
         number: installment.installmentNumber,
         billReceivableId: selectedResult.billReceivableId,
-        dueDate: new Date(installment.dueDate).toLocaleDateString('pt-BR'),
+        dueDate: new Date(installment.dueDate), // Armazenar como Date
+        formattedDueDate: new Date(installment.dueDate).toLocaleDateString('pt-BR'), // Formato para exibição
         value: parseFloat(installment.currentBalance).toLocaleString('pt-BR', {
           style: 'currency',
           currency: 'BRL',
@@ -163,15 +162,13 @@ const ParcelAntecipation = () => {
 
     if (startDate) {
       filteredData = filteredData.filter((item) => {
-        const itemDate = new Date(item.dueDate);
-        return itemDate >= startDate;
+        return item.dueDate >= startDate;
       });
     }
 
     if (endDate) {
       filteredData = filteredData.filter((item) => {
-        const itemDate = new Date(item.dueDate);
-        return itemDate <= endDate;
+        return item.dueDate <= endDate;
       });
     }
 
@@ -208,7 +205,7 @@ const ParcelAntecipation = () => {
       <Text style={styles.cardSubtitle}>
         Número do Título {item.billReceivableId}
       </Text>
-      <Text style={styles.cardSubtitle}>Vencimento {item.dueDate}</Text>
+      <Text style={styles.cardSubtitle}>Vencimento {item.formattedDueDate}</Text>
       <Text style={styles.cardValue}>Valor {item.value}</Text>
     </TouchableOpacity>
   );
@@ -234,7 +231,7 @@ const ParcelAntecipation = () => {
 
     try {
       const username = 'engenharq-mozart';
-      const password = 'i94B1q2HUXf7PP7oscuIBygquSRZ9lhb';
+      const password = 'i94B1q2HUXf7PP7oscuIBygquSRZ9lhb';// Substitua pela sua senha
       const credentials = btoa(`${username}:${password}`);
 
       const billReceivableId = selectedInstallments[0].billReceivableId;
@@ -450,7 +447,7 @@ const ParcelAntecipation = () => {
                   <View key={index} style={styles.modalItem}>
                     <Text style={styles.modalLabel}>
                       Parcela {installment.number} - Vencimento{" "}
-                      {installment.dueDate} - Valor {installment.value}
+                      {installment.formattedDueDate} - Valor {installment.value}
                     </Text>
                   </View>
                 ))}

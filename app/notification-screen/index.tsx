@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -17,6 +18,7 @@ const NotificationScreen = () => {
   const { userData } = useContext(UserContext);
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [deleting, setDeleting] = useState(false); // Estado para deletar
   const [error, setError] = useState(null);
 
   useEffect(() => {
@@ -46,6 +48,48 @@ const NotificationScreen = () => {
     fetchNotifications();
   }, [userData]);
 
+  // Função para deletar todas as notificações
+  const deleteAllNotifications = () => {
+    if (!userData || !userData.cpf) {
+      Alert.alert('Erro', 'Dados do usuário não disponíveis.');
+      return;
+    }
+
+    Alert.alert(
+      'Confirmar Deleção',
+      'Tem certeza de que deseja apagar todas as notificações?',
+      [
+        {
+          text: 'Cancelar',
+          style: 'cancel',
+        },
+        {
+          text: 'Apagar',
+          style: 'destructive',
+          onPress: async () => {
+            setDeleting(true);
+            try {
+              const response = await axios.delete('http://hw0oc4gc8ccwswwg4gk0kss8.167.88.39.225.sslip.io/notifications', {
+                params: {
+                  cpf: userData.cpf,
+                },
+              });
+
+              Alert.alert('Sucesso', response.data);
+              setNotifications([]); // Limpa a lista de notificações
+            } catch (err) {
+              console.error('Erro ao deletar notificações:', err);
+              Alert.alert('Erro', 'Falha ao deletar notificações.');
+            } finally {
+              setDeleting(false);
+            }
+          },
+        },
+      ],
+      { cancelable: true }
+    );
+  };
+
   return (
     <View style={styles.container}>
       {/* Top bar */}
@@ -54,7 +98,13 @@ const NotificationScreen = () => {
           <Ionicons name="arrow-back-outline" size={28} color="white" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Notificações</Text>
-        <Text style={{ width: 28 }}></Text> 
+        <TouchableOpacity onPress={deleteAllNotifications} disabled={deleting}>
+          {deleting ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <Ionicons name="trash-outline" size={28} color="white" />
+          )}
+        </TouchableOpacity>
       </View>
 
       <ScrollView contentContainerStyle={styles.contentContainer}>
@@ -93,6 +143,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#E1272C',
     paddingVertical: 16,
     paddingHorizontal: 16,
+    justifyContent: 'space-between', // Espaça os elementos entre as extremidades
   },
   headerTitle: {
     flex: 1,
@@ -100,6 +151,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     textAlign: 'center',
+    marginLeft: -28, // Compensar o tamanho do ícone de voltar
   },
   contentContainer: {
     paddingHorizontal: 20,

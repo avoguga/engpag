@@ -193,7 +193,7 @@ const DebitOptionsPage = () => {
         <View style={styles.circleIcon}>
           <Ionicons name="home-outline" size={40} color="white" />
         </View>
-        <Text style={styles.title}>RESIDENCIAL GRAND RESERVA</Text>
+        <Text style={styles.title}>ENGENHARQ LTDA</Text>
       </View>
 
       {/* Botões de opções */}

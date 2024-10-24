@@ -169,7 +169,7 @@ const DebtBalanceScreen = () => {
       </View>
 
       {/* Title */}
-      <Text style={styles.title}>RESIDENCIAL GRAND RESERVA</Text>
+      <Text style={styles.title}>ENGENHARQ LTDA</Text>
 
       {/* Saldo Devedor Button */}
       <TouchableOpacity style={styles.debtButton}>
@@ -233,9 +233,7 @@ const DebtBalanceScreen = () => {
             {contractTerm !== null ? `${contractTerm} Meses` : "0 Meses"}
           </Text>
         </View>
-        <Text style={styles.additionalInfo}>
-          Se tiver mais detalhes, adicionar (juros, etc...)
-        </Text>
+       
       </View>
     </ScrollView>
   );

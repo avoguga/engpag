@@ -85,16 +85,36 @@ const PaymentsCompleted = () => {
       }
 
       // Mapear as parcelas pagas para o formato desejado
-      const payments = paidInstallments.map((installment) => ({
-        id: installment.installmentId.toString(),
-        number: installment.installmentNumber,
-        billReceivableId: selectedResult.billReceivableId,
-        dueDate: new Date(installment.dueDate),
-        formattedDueDate: new Date(installment.dueDate).toLocaleDateString('pt-BR'),
-        paymentDate: new Date(installment.paidDate),
-        formattedPaymentDate: new Date(installment.paidDate).toLocaleDateString('pt-BR'),
-        value: parseFloat(installment.originalValue).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
-      }));
+      const payments = paidInstallments.map((installment) => {
+        // Extrair a data de pagamento do primeiro recibo
+        let paymentDate = null;
+        let formattedPaymentDate = "Data indisponível";
+
+        if (
+          installment.receipts &&
+          installment.receipts.length > 0 &&
+          installment.receipts[0].receiptDate
+        ) {
+          paymentDate = new Date(installment.receipts[0].receiptDate);
+          formattedPaymentDate = paymentDate.toLocaleDateString("pt-BR");
+        }
+
+        return {
+          id: installment.installmentId.toString(),
+          number: installment.installmentNumber,
+          billReceivableId: selectedResult.billReceivableId,
+          dueDate: new Date(installment.dueDate),
+          formattedDueDate: new Date(installment.dueDate).toLocaleDateString(
+            "pt-BR"
+          ),
+          paymentDate: paymentDate,
+          formattedPaymentDate: formattedPaymentDate,
+          value: parseFloat(installment.originalValue).toLocaleString("pt-BR", {
+            style: "currency",
+            currency: "BRL",
+          }),
+        };
+      });
 
       setCompletedPayments(payments);
     } catch (error) {
@@ -118,7 +138,9 @@ const PaymentsCompleted = () => {
         Número do Título {item.billReceivableId}
       </Text>
       <Text style={styles.cardSubtitle}>Vencimento: {item.formattedDueDate}</Text>
-      <Text style={styles.cardSubtitle}>Data de Pagamento: {item.formattedPaymentDate}</Text>
+      <Text style={styles.cardSubtitle}>
+        Data de Pagamento: {item.formattedPaymentDate}
+      </Text>
       <Text style={styles.cardValue}>Valor: {item.value}</Text>
     </View>
   );
@@ -136,10 +158,10 @@ const PaymentsCompleted = () => {
 
     // Filtrar por data de pagamento
     const paymentDate = item.paymentDate;
-    if (startDate && paymentDate < startDate) {
+    if (startDate && (!paymentDate || paymentDate < startDate)) {
       return false;
     }
-    if (endDate && paymentDate > endDate) {
+    if (endDate && (!paymentDate || paymentDate > endDate)) {
       return false;
     }
 
@@ -149,11 +171,12 @@ const PaymentsCompleted = () => {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Ionicons name="menu" size={28} color="white" />
+        <Ionicons name="arrow-back-outline" size={28} color="white" />
+        <Text style={styles.headerTitle}>Pagamentos Realizados</Text>
         <Ionicons name="notifications-outline" size={28} color="white" />
       </View>
 
-      <Text style={styles.title}>RESIDENCIAL GRAND RESERVA</Text>
+      <Text style={styles.title}>ENGENHARQ LTDA</Text>
       <TouchableOpacity style={styles.actionButton}>
         <Text style={styles.actionButtonText}>PAGAMENTOS REALIZADOS</Text>
       </TouchableOpacity>
@@ -183,7 +206,7 @@ const PaymentsCompleted = () => {
         >
           <Ionicons name="calendar-outline" size={20} color="#E1272C" />
           <Text style={styles.dateText}>
-            {startDate ? startDate.toLocaleDateString('pt-BR') : "Data inicial"}
+            {startDate ? startDate.toLocaleDateString("pt-BR") : "Data inicial"}
           </Text>
         </TouchableOpacity>
 
@@ -193,7 +216,7 @@ const PaymentsCompleted = () => {
         >
           <Ionicons name="calendar-outline" size={20} color="#E1272C" />
           <Text style={styles.dateText}>
-            {endDate ? endDate.toLocaleDateString('pt-BR') : "Data final"}
+            {endDate ? endDate.toLocaleDateString("pt-BR") : "Data final"}
           </Text>
         </TouchableOpacity>
       </View>
@@ -250,14 +273,20 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#FAF6F6",
-    padding: 16,
   },
   header: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    alignItems: "center",
     backgroundColor: "#E1272C",
     paddingVertical: 16,
     paddingHorizontal: 16,
+  },
+  headerTitle: {
+    flex: 1,
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "bold",
+    textAlign: "center",
   },
   title: {
     fontSize: 20,
@@ -272,6 +301,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     alignItems: "center",
     marginBottom: 16,
+    marginHorizontal: 16,
   },
   actionButtonText: {
     color: "#fff",
@@ -286,6 +316,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     marginBottom: 16,
     paddingHorizontal: 12,
+    marginHorizontal: 16,
   },
   picker: {
     height: 50,
@@ -295,6 +326,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     marginBottom: 16,
+    marginHorizontal: 16,
   },
   datePicker: {
     flexDirection: "row",
@@ -317,6 +349,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     alignItems: "center",
     marginBottom: 16,
+    marginHorizontal: 16,
   },
   resetButtonText: {
     color: "#fff",
@@ -325,6 +358,7 @@ const styles = StyleSheet.create({
   },
   list: {
     flex: 1,
+    marginHorizontal: 16,
   },
   card: {
     padding: 16,

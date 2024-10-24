@@ -77,14 +77,17 @@ const ReferFriend = () => {
 
     try {
       // Enviar os dados da indicação para o backend
-      await axios.post("http://hw0oc4gc8ccwswwg4gk0kss8.167.88.39.225.sslip.io/referrals", {
-        referrerCpf: userData.cpf,
-        friendName: name,
-        empreendimento,
-        email,
-        telefone,
-        observacoes,
-      });
+      await axios.post(
+        "http://hw0oc4gc8ccwswwg4gk0kss8.167.88.39.225.sslip.io/referrals",
+        {
+          referrerCpf: userData.cpf,
+          friendName: name,
+          empreendimento,
+          email,
+          telefone,
+          observacoes,
+        }
+      );
 
       alert("Amigo indicado com sucesso!");
       router.back();
@@ -92,6 +95,41 @@ const ReferFriend = () => {
       console.error("Erro ao enviar indicação:", error);
       alert("Erro ao enviar indicação.");
     }
+  };
+
+  // Função para aplicar a máscara ao telefone
+  const handleTelefoneChange = (text) => {
+    // Remover todos os caracteres que não são dígitos
+    let cleaned = text.replace(/\D/g, "");
+
+    // Aplicar a máscara
+    let formattedNumber = "";
+
+    if (cleaned.length <= 10) {
+      // Formato (99) 9999-9999
+      if (cleaned.length > 0) {
+        formattedNumber = "(" + cleaned.substring(0, 2);
+      }
+      if (cleaned.length >= 3) {
+        formattedNumber += ") " + cleaned.substring(2, 6);
+      }
+      if (cleaned.length >= 7) {
+        formattedNumber += "-" + cleaned.substring(6, 10);
+      }
+    } else {
+      // Formato (99) 99999-9999
+      if (cleaned.length > 0) {
+        formattedNumber = "(" + cleaned.substring(0, 2);
+      }
+      if (cleaned.length >= 3) {
+        formattedNumber += ") " + cleaned.substring(2, 7);
+      }
+      if (cleaned.length >= 8) {
+        formattedNumber += "-" + cleaned.substring(7, 11);
+      }
+    }
+
+    setTelefone(formattedNumber);
   };
 
   return (
@@ -136,7 +174,7 @@ const ReferFriend = () => {
               {empreendimentosList.map((emp) => (
                 <Picker.Item
                   key={emp.billReceivableId}
-                  label={emp.billReceivableId}
+                  label={emp.projectName}
                   value={emp.billReceivableId}
                 />
               ))}
@@ -158,9 +196,9 @@ const ReferFriend = () => {
         <Text style={styles.label}>TELEFONE</Text>
         <TextInput
           style={styles.input}
-          placeholder="(00) 0000-0000"
+          placeholder="(00) 00000-0000"
           value={telefone}
-          onChangeText={setTelefone}
+          onChangeText={handleTelefoneChange}
           keyboardType="phone-pad"
         />
 
