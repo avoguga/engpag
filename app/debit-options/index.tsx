@@ -1,5 +1,12 @@
 import React, { useContext, useState } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, Alert, Linking } from "react-native";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  Alert,
+  Linking,
+} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import axios from "axios";
@@ -55,7 +62,8 @@ const DebitOptionsPage = () => {
 
         if (
           !lastInstallment ||
-          new Date(latestInstallment.dueDate) > new Date(lastInstallment.dueDate)
+          new Date(latestInstallment.dueDate) >
+            new Date(lastInstallment.dueDate)
         ) {
           lastInstallment = latestInstallment;
           selectedResult = result;
@@ -176,18 +184,12 @@ const DebitOptionsPage = () => {
     }
   };
 
-
   // Verifica se o título já foi quitado
-  const isPaid = installmentsData?.length > 0 && isTitlePaid(installmentsData[0]);
+  const isPaid =
+    installmentsData?.length > 0 && isTitlePaid(installmentsData[0]);
 
   return (
     <View style={styles.container}>
-      {/* Barra superior */}
-      <View style={styles.topBar}>
-        <Ionicons name="menu" size={30} color="white" />
-        <Ionicons name="notifications-outline" size={30} color="white" />
-      </View>
-
       {/* Ícone e nome do empreendimento */}
       <View style={styles.iconContainer}>
         <View style={styles.circleIcon}>
@@ -238,7 +240,10 @@ const DebitOptionsPage = () => {
             <Text style={styles.buttonText}>PAGAMENTOS REALIZADOS</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.buttonSmall} onPress={handleReferFriendNavigation}>
+          <TouchableOpacity
+            style={styles.buttonSmall}
+            onPress={handleReferFriendNavigation}
+          >
             <Text style={styles.buttonText}>INDIQUE UM AMIGO</Text>
           </TouchableOpacity>
         </View>
@@ -249,7 +254,9 @@ const DebitOptionsPage = () => {
           onPress={handlePaymentHistoryNavigation}
           disabled={loadingHistory}
         >
-          <Text style={[styles.buttonText, loadingHistory && styles.disabledText]}>
+          <Text
+            style={[styles.buttonText, loadingHistory && styles.disabledText]}
+          >
             HISTÓRICO DE PAGAMENTOS
           </Text>
         </TouchableOpacity>

@@ -10,10 +10,11 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { UserContext } from "../contexts/UserContext";
-import { useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import axios from "axios";
 import { Picker } from "@react-native-picker/picker";
+import NotificationIcon from "@/components/NotificationIcon";
 
 const PaymentsCompleted = () => {
   const { userData } = useContext(UserContext);
@@ -137,7 +138,9 @@ const PaymentsCompleted = () => {
       <Text style={styles.cardSubtitle}>
         Número do Título {item.billReceivableId}
       </Text>
-      <Text style={styles.cardSubtitle}>Vencimento: {item.formattedDueDate}</Text>
+      <Text style={styles.cardSubtitle}>
+        Vencimento: {item.formattedDueDate}
+      </Text>
       <Text style={styles.cardSubtitle}>
         Data de Pagamento: {item.formattedPaymentDate}
       </Text>
@@ -152,7 +155,10 @@ const PaymentsCompleted = () => {
 
   const filteredData = completedPayments.filter((item) => {
     // Filtrar por número da parcela
-    if (selectedParcel !== "Número da Parcela" && item.number !== selectedParcel) {
+    if (
+      selectedParcel !== "Número da Parcela" &&
+      item.number !== selectedParcel
+    ) {
       return false;
     }
 
@@ -170,11 +176,15 @@ const PaymentsCompleted = () => {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Ionicons name="arrow-back-outline" size={28} color="white" />
+      {/* <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()}>
+          <Ionicons name="arrow-back-outline" size={28} color="white" />
+        </TouchableOpacity>
         <Text style={styles.headerTitle}>Pagamentos Realizados</Text>
-        <Ionicons name="notifications-outline" size={28} color="white" />
-      </View>
+        <TouchableOpacity onPress={() => router.push("/notification-screen")}>
+          <Ionicons name="notifications-outline" size={28} color="white" />
+        </TouchableOpacity>
+      </View> */}
 
       <Text style={styles.title}>ENGENHARQ LTDA</Text>
       <TouchableOpacity style={styles.actionButton}>
@@ -276,10 +286,11 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: "row",
+    justifyContent: "space-between",
     alignItems: "center",
     backgroundColor: "#E1272C",
-    paddingVertical: 16,
-    paddingHorizontal: 16,
+    paddingVertical: 15,
+    paddingHorizontal: 15,
   },
   headerTitle: {
     flex: 1,

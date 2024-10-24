@@ -13,6 +13,7 @@ import { Picker } from "@react-native-picker/picker";
 import { useRouter } from "expo-router";
 import axios from "axios";
 import { UserContext } from "../contexts/UserContext";
+import NotificationIcon from "@/components/NotificationIcon";
 
 const ReferFriend = () => {
   const router = useRouter();
@@ -135,7 +136,7 @@ const ReferFriend = () => {
   return (
     <View style={styles.container}>
       {/* Barra superior com ícone de notificação */}
-      <View style={styles.topBar}>
+      {/* <View style={styles.topBar}>
         <TouchableOpacity onPress={() => router.back()}>
           <Ionicons name="arrow-back-outline" size={28} color="white" />
         </TouchableOpacity>
@@ -143,7 +144,7 @@ const ReferFriend = () => {
         <TouchableOpacity onPress={() => router.push("/notification-screen")}>
           <Ionicons name="notifications-outline" size={28} color="white" />
         </TouchableOpacity>
-      </View>
+      </View> */}
 
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <Text style={styles.descriptionText}>

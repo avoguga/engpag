@@ -17,6 +17,7 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import axios from "axios";
 import { UserContext } from "../contexts/UserContext";
 import { router, useLocalSearchParams } from "expo-router";
+import NotificationIcon from "@/components/NotificationIcon";
 
 const ParcelAntecipation = () => {
   const { userData } = useContext(UserContext);
@@ -315,7 +316,7 @@ const ParcelAntecipation = () => {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
+      {/* <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()}>
           <Ionicons name="arrow-back-outline" size={28} color="white" />
         </TouchableOpacity>
@@ -323,7 +324,7 @@ const ParcelAntecipation = () => {
         <TouchableOpacity onPress={() => router.push("/notification-screen")}>
           <Ionicons name="notifications-outline" size={28} color="white" />
         </TouchableOpacity>
-      </View>
+      </View> */}
 
       <Text style={styles.title}>
         {enterpriseName || "Nome do Empreendimento"}
@@ -517,10 +518,11 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: "row",
+    justifyContent: "space-between",
     alignItems: "center",
     backgroundColor: "#E1272C",
-    paddingVertical: 16,
-    paddingHorizontal: 16,
+    paddingVertical: 15,
+    paddingHorizontal: 15,
   },
   headerTitle: {
     flex: 1,

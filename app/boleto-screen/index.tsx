@@ -348,17 +348,6 @@ const BoletoScreen = () => {
 
   return (
     <View style={styles.container}>
-      {/* Barra superior */}
-      <View style={styles.topBar}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name="arrow-back-outline" size={28} color="white" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>2ª Via do Boleto</Text>
-        <TouchableOpacity onPress={() => router.push('/notification-screen')}>
-          <Ionicons name="notifications-outline" size={28} color="white" />
-        </TouchableOpacity>
-      </View>
-
       <ScrollView contentContainerStyle={styles.contentContainer}>
         {/* Ícone e título */}
         <View style={styles.iconContainer}>

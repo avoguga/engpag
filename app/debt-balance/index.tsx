@@ -11,6 +11,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import axios from "axios";
 import { UserContext } from "../contexts/UserContext";
+import { router } from "expo-router";
 
 const DebtBalanceScreen = () => {
   const { userData } = useContext(UserContext);
@@ -123,7 +124,7 @@ const DebtBalanceScreen = () => {
   };
 
   const handleBoletoPress = () => {
-    Alert.alert("Boleto", "Função de boleto não implementada.");
+    // Alert.alert("Boleto", "Função de boleto não implementada.");
   };
 
   // Função para formatar valores monetários com pontuação de milhar
@@ -161,12 +162,18 @@ const DebtBalanceScreen = () => {
   }
 
   return (
+     <>
+       {/* Header */}
+       {/* <View style={styles.header}>
+       <TouchableOpacity onPress={() => router.back()}>
+           <Ionicons name="arrow-back-outline" size={28} color="white" />
+         </TouchableOpacity>
+         <TouchableOpacity onPress={() => router.push('/notification-screen')}>
+           <Ionicons name="notifications-outline" size={28} color="white" />
+         </TouchableOpacity>
+       </View> */}
     <ScrollView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Ionicons name="menu" size={28} color="white" />
-        <Ionicons name="notifications-outline" size={28} color="white" />
-      </View>
+   
 
       {/* Title */}
       <Text style={styles.title}>ENGENHARQ LTDA</Text>
@@ -236,6 +243,7 @@ const DebtBalanceScreen = () => {
        
       </View>
     </ScrollView>
+     </>
   );
 };
 
@@ -266,9 +274,10 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
+    alignItems: "center",
     backgroundColor: "#E1272C",
-    paddingVertical: 16,
-    paddingHorizontal: 16,
+    paddingVertical: 15,
+    paddingHorizontal: 15,
   },
   title: {
     fontSize: 18,

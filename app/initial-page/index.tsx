@@ -11,6 +11,7 @@ import { Ionicons } from "@expo/vector-icons";
 import axios from "axios";
 import { UserContext } from "../contexts/UserContext";
 import { useRouter } from "expo-router";
+import NotificationIcon from "@/components/NotificationIcon";
 
 const InitialPage = () => {
   const router = useRouter();
@@ -78,16 +79,6 @@ const InitialPage = () => {
 
   return (
     <View style={styles.container}>
-      {/* Barra superior */}
-      <View style={styles.topBar}>
-      <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name="arrow-back-outline" size={28} color="white" />
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => router.push("/notification-screen")}>
-          <Ionicons name="notifications-outline" size={28} color="white" />
-        </TouchableOpacity>
-      </View>
-
       <ScrollView contentContainerStyle={styles.content}>
         {/* Saudação */}
         <Text style={styles.greeting}>Olá, {userData.name || "Cliente"}!</Text>
