@@ -1,4 +1,4 @@
-import React, { useContext, useState } from "react";
+import React, { useContext, useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   StyleSheet,
   Alert,
   Linking,
+  ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -14,8 +15,58 @@ import { UserContext } from "../contexts/UserContext";
 
 const DebitOptionsPage = () => {
   const router = useRouter();
-  const { userData, installmentsData } = useContext(UserContext); // Adicionando o userData para obter o customerId
+  const { userData, installmentsData, enterpriseName, setEnterpriseName } = useContext(UserContext); 
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [loadingEnterpriseName, setLoadingEnterpriseName] = useState(true);
+
+  // Função para buscar o nome do empreendimento
+  const fetchEnterpriseName = async () => {
+    if (!installmentsData || installmentsData.length === 0 || !userData || !userData.id) {
+      Alert.alert("Erro", "Dados insuficientes para buscar o nome do empreendimento.");
+      return;
+    }
+
+    try {
+      const username = "engenharq-mozart";
+      const password = "i94B1q2HUXf7PP7oscuIBygquSRZ9lhb"; 
+      const credentials = btoa(`${username}:${password}`);
+
+      // Usando a primeira parcela disponível para obter o billReceivableId
+      const firstInstallment = installmentsData[0];
+      const billReceivableId = firstInstallment.billReceivableId;
+      const customerId = userData.id;
+
+      const response = await axios.get(
+        `https://api.sienge.com.br/engenharq/public/api/v1/accounts-receivable/receivable-bills/${billReceivableId}`,
+        {
+          params: {
+            customerId: customerId,
+          },
+          headers: {
+            Authorization: `Basic ${credentials}`,
+          },
+        }
+      );
+
+      const fetchedEnterpriseName = response.data.enterpriseName || "Nome do Empreendimento";
+      setEnterpriseName(fetchedEnterpriseName); // Atualiza o nome no contexto
+    } catch (error) {
+      console.error("Erro ao buscar nome do empreendimento:", error);
+      Alert.alert("Erro", "Não foi possível buscar o nome do empreendimento.");
+      setEnterpriseName("Erro ao buscar nome");
+    } finally {
+      setLoadingEnterpriseName(false); // Finaliza o estado de carregamento
+    }
+  };
+
+  useEffect(() => {
+    fetchEnterpriseName();
+    // if (!enterpriseName) {
+    //   fetchEnterpriseName(); // Busca o nome do empreendimento ao montar o componente
+    // } else {
+    //   setLoadingEnterpriseName(false); // Se o nome já estiver no contexto, não busca novamente
+    // }
+  }, [userData, installmentsData]);
 
   // Função para verificar se o título já foi quitado
   const isTitlePaid = (installments) => {
@@ -195,7 +246,11 @@ const DebitOptionsPage = () => {
         <View style={styles.circleIcon}>
           <Ionicons name="home-outline" size={40} color="white" />
         </View>
-        <Text style={styles.title}>ENGENHARQ LTDA</Text>
+        {loadingEnterpriseName ? (
+          <ActivityIndicator size="small" color="#E1272C" />
+        ) : (
+          <Text style={styles.title}>{enterpriseName || "Nome do Empreendimento"}</Text>
+        )}
       </View>
 
       {/* Botões de opções */}
@@ -269,14 +324,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#FFF8F8",
-  },
-  topBar: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    backgroundColor: "#E1272C",
-    paddingVertical: 15,
-    paddingHorizontal: 15,
   },
   iconContainer: {
     justifyContent: "center",

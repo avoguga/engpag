@@ -1,4 +1,4 @@
-import React, { useContext, useState, useEffect } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -20,13 +20,12 @@ import PixIcon from './logo-pix.svg';
 import { router } from 'expo-router';
 
 const BoletoScreen = () => {
-  const { userData } = useContext(UserContext);
+  const { userData, enterpriseName } = useContext(UserContext); // Obtendo enterpriseName do contexto
   const [loading, setLoading] = useState(false);
   const [boletoLink, setBoletoLink] = useState('');
   const [digitableNumber, setDigitableNumber] = useState('');
   const [installmentDetails, setInstallmentDetails] = useState(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
-  const [enterpriseName, setEnterpriseName] = useState('');
 
   useEffect(() => {
     fetchAvailableInstallment();
@@ -35,8 +34,8 @@ const BoletoScreen = () => {
   // Função para formatar a data no formato dd/mm/aaaa
   const formatDate = (dateString) => {
     const date = new Date(dateString);
-    const day = date.getDate().toString().padStart(2,'0');
-    const month = (date.getMonth()+1).toString().padStart(2,'0');
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
     const year = date.getFullYear();
     return `${day}/${month}/${year}`;
   };
@@ -103,25 +102,6 @@ const BoletoScreen = () => {
         }
 
         setInstallmentDetails({ ...installment, status });
-
-        // Agora, buscar o enterpriseName
-        const customerId = userData.id;
-        const billReceivableId = installment.billReceivableId;
-
-        const billResponse = await axios.get(
-          `https://api.sienge.com.br/engenharq/public/api/v1/accounts-receivable/receivable-bills/${billReceivableId}`,
-          {
-            params: {
-              customerId: customerId,
-            },
-            headers: {
-              Authorization: `Basic ${credentials}`,
-            },
-          }
-        );
-
-        const enterpriseName = billResponse.data.enterpriseName || 'Nome do Empreendimento';
-        setEnterpriseName(enterpriseName);
 
       } else {
         Alert.alert('Aviso', 'Nenhum boleto disponível no momento.');
@@ -219,7 +199,7 @@ const BoletoScreen = () => {
 
     try {
       const username = 'engenharq-mozart';
-      const password = 'i94B1q2HUXf7PP7oscuIBygquSRZ9lhb'; // Substitua pela sua senha
+      const password = 'i94B1q2HUXf7PP7oscuIBygquSRZ9lhb'; 
       const credentials = btoa(`${username}:${password}`);
 
       const response = await axios.get(

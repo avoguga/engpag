@@ -14,7 +14,7 @@ import { UserContext } from "../contexts/UserContext";
 import { router } from "expo-router";
 
 const DebtBalanceScreen = () => {
-  const { userData } = useContext(UserContext);
+  const { userData, enterpriseName } = useContext(UserContext);
   const [balance, setBalance] = useState(null);
   const [remainingTerm, setRemainingTerm] = useState(null);
   const [nextPaymentDate, setNextPaymentDate] = useState(null);
@@ -176,7 +176,7 @@ const DebtBalanceScreen = () => {
    
 
       {/* Title */}
-      <Text style={styles.title}>ENGENHARQ LTDA</Text>
+      <Text style={styles.title}>{enterpriseName || 'Nome do Empreendimento'}</Text>
 
       {/* Saldo Devedor Button */}
       <TouchableOpacity style={styles.debtButton}>

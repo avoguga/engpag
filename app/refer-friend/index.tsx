@@ -6,69 +6,20 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
-  ActivityIndicator,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { Picker } from "@react-native-picker/picker";
 import { useRouter } from "expo-router";
 import axios from "axios";
 import { UserContext } from "../contexts/UserContext";
-import NotificationIcon from "@/components/NotificationIcon";
 
 const ReferFriend = () => {
   const router = useRouter();
-  const { userData } = useContext(UserContext);
+  const { userData, enterpriseName } = useContext(UserContext);
   const [name, setName] = useState("");
-  const [empreendimento, setEmpreendimento] = useState("");
   const [email, setEmail] = useState("");
   const [telefone, setTelefone] = useState("");
   const [observacoes, setObservacoes] = useState("");
-  const [empreendimentosList, setEmpreendimentosList] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const empreendimento = enterpriseName;
 
-  useEffect(() => {
-    const fetchEmpreendimentos = async () => {
-      setLoading(true);
-      try {
-        const username = "engenharq-mozart";
-        const password = "i94B1q2HUXf7PP7oscuIBygquSRZ9lhb";
-        const credentials = btoa(`${username}:${password}`);
-
-        const response = await axios.get(
-          `https://api.sienge.com.br/engenharq/public/api/v1/current-debit-balance`,
-          {
-            params: {
-              cpf: userData.cpf,
-              correctAnnualInstallment: "N",
-            },
-            headers: {
-              Authorization: `Basic ${credentials}`,
-            },
-          }
-        );
-
-        const results = response.data.results || [];
-
-        // Extrair os empreendimentos dos resultados
-        const empreendimentos = results.map((item) => ({
-          billReceivableId: item.billReceivableId,
-          projectId: item.projectId,
-          projectName: item.projectName,
-        }));
-
-        setEmpreendimentosList(empreendimentos);
-      } catch (error) {
-        console.error("Erro ao buscar empreendimentos:", error);
-        alert("Erro ao buscar empreendimentos.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (userData && userData.cpf) {
-      fetchEmpreendimentos();
-    }
-  }, [userData]);
 
   const handleReferFriend = async () => {
     if (!name || !empreendimento || !email || !telefone) {
@@ -135,16 +86,6 @@ const ReferFriend = () => {
 
   return (
     <View style={styles.container}>
-      {/* Barra superior com ícone de notificação */}
-      {/* <View style={styles.topBar}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name="arrow-back-outline" size={28} color="white" />
-        </TouchableOpacity>
-        <Text style={styles.topBarTitle}>Indicar Amigo</Text>
-        <TouchableOpacity onPress={() => router.push("/notification-screen")}>
-          <Ionicons name="notifications-outline" size={28} color="white" />
-        </TouchableOpacity>
-      </View> */}
 
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <Text style={styles.descriptionText}>
@@ -163,25 +104,11 @@ const ReferFriend = () => {
 
         {/* Empreendimento */}
         <Text style={styles.label}>EMPREENDIMENTO</Text>
-        {loading ? (
-          <ActivityIndicator size="large" color="#E1272C" />
-        ) : (
-          <View style={styles.pickerContainer}>
-            <Picker
-              selectedValue={empreendimento}
-              onValueChange={(itemValue) => setEmpreendimento(itemValue)}
-            >
-              <Picker.Item label="Selecione um Empreendimento" value="" />
-              {empreendimentosList.map((emp) => (
-                <Picker.Item
-                  key={emp.billReceivableId}
-                  label={emp.projectName}
-                  value={emp.billReceivableId}
-                />
-              ))}
-            </Picker>
-          </View>
-        )}
+        <TextInput
+          style={[styles.input, { backgroundColor: "#f0f0f0" }]} 
+          value={empreendimento} 
+          editable={false} 
+        />
 
         {/* Email */}
         <Text style={styles.label}>E-MAIL</Text>

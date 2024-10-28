@@ -14,10 +14,9 @@ import { router, useLocalSearchParams } from "expo-router";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import axios from "axios";
 import { Picker } from "@react-native-picker/picker";
-import NotificationIcon from "@/components/NotificationIcon";
 
 const PaymentsCompleted = () => {
-  const { userData } = useContext(UserContext);
+  const { userData, enterpriseName } = useContext(UserContext);
   const { billReceivableId } = useLocalSearchParams();
   const [completedPayments, setCompletedPayments] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -186,7 +185,7 @@ const PaymentsCompleted = () => {
         </TouchableOpacity>
       </View> */}
 
-      <Text style={styles.title}>ENGENHARQ LTDA</Text>
+      <Text style={styles.title}>{enterpriseName || 'Nome do Empreendimento'}</Text>
       <TouchableOpacity style={styles.actionButton}>
         <Text style={styles.actionButtonText}>PAGAMENTOS REALIZADOS</Text>
       </TouchableOpacity>
