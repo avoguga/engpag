@@ -5,8 +5,8 @@ interface UserContextProps {
   setUserData: (data: any) => void;
   installmentsData: any;
   setInstallmentsData: (data: any) => void;
-  enterpriseName: string;
-  setEnterpriseName: (name: string) => void;
+  enterpriseNames: string[];
+  setEnterpriseNames: (names: string[]) => void;
 }
 
 export const UserContext = createContext<UserContextProps>({
@@ -14,17 +14,17 @@ export const UserContext = createContext<UserContextProps>({
   setUserData: () => {},
   installmentsData: [],
   setInstallmentsData: () => {},
-  enterpriseName: '',
-  setEnterpriseName: () => {},
+  enterpriseNames: [],
+  setEnterpriseNames: () => {},
 });
 
 export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [userData, setUserData] = useState<any>(null);
   const [installmentsData, setInstallmentsData] = useState<any>(null);
-  const [enterpriseName, setEnterpriseName] = useState<string>(''); // Novo estado para o nome do empreendimento
+  const [enterpriseNames, setEnterpriseNames] = useState<string[]>([]);
 
   return (
-    <UserContext.Provider value={{ userData, setUserData, installmentsData, setInstallmentsData, enterpriseName, setEnterpriseName }}>
+    <UserContext.Provider value={{ userData, setUserData, installmentsData, setInstallmentsData, enterpriseNames, setEnterpriseNames }}>
       {children}
     </UserContext.Provider>
   );

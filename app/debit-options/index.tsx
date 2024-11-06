@@ -1,4 +1,4 @@
-import React, { useContext, useState, useEffect } from "react";
+import React, { useContext, useState } from "react";
 import {
   View,
   Text,
@@ -9,66 +9,15 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
-import axios from "axios";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { UserContext } from "../contexts/UserContext";
 
 const DebitOptionsPage = () => {
   const router = useRouter();
-  const { userData, installmentsData, enterpriseName, setEnterpriseName } = useContext(UserContext); 
+  const { userData, installmentsData } = useContext(UserContext);
   const [loadingHistory, setLoadingHistory] = useState(false);
-  const [loadingEnterpriseName, setLoadingEnterpriseName] = useState(true);
+  const { enterpriseName } = useLocalSearchParams(); 
 
-  // Função para buscar o nome do empreendimento
-  const fetchEnterpriseName = async () => {
-    if (!installmentsData || installmentsData.length === 0 || !userData || !userData.id) {
-      Alert.alert("Erro", "Dados insuficientes para buscar o nome do empreendimento.");
-      return;
-    }
-
-    try {
-      const username = "engenharq-mozart";
-      const password = "i94B1q2HUXf7PP7oscuIBygquSRZ9lhb"; 
-      const credentials = btoa(`${username}:${password}`);
-
-      // Usando a primeira parcela disponível para obter o billReceivableId
-      const firstInstallment = installmentsData[0];
-      const billReceivableId = firstInstallment.billReceivableId;
-      const customerId = userData.id;
-
-      const response = await axios.get(
-        `https://api.sienge.com.br/engenharq/public/api/v1/accounts-receivable/receivable-bills/${billReceivableId}`,
-        {
-          params: {
-            customerId: customerId,
-          },
-          headers: {
-            Authorization: `Basic ${credentials}`,
-          },
-        }
-      );
-
-      const fetchedEnterpriseName = response.data.enterpriseName || "Nome do Empreendimento";
-      setEnterpriseName(fetchedEnterpriseName); // Atualiza o nome no contexto
-    } catch (error) {
-      console.error("Erro ao buscar nome do empreendimento:", error);
-      Alert.alert("Erro", "Não foi possível buscar o nome do empreendimento.");
-      setEnterpriseName("Erro ao buscar nome");
-    } finally {
-      setLoadingEnterpriseName(false); // Finaliza o estado de carregamento
-    }
-  };
-
-  useEffect(() => {
-    fetchEnterpriseName();
-    // if (!enterpriseName) {
-    //   fetchEnterpriseName(); // Busca o nome do empreendimento ao montar o componente
-    // } else {
-    //   setLoadingEnterpriseName(false); // Se o nome já estiver no contexto, não busca novamente
-    // }
-  }, [userData, installmentsData]);
-
-  // Função para verificar se o título já foi quitado
   const isTitlePaid = (installments) => {
     const unpaidInstallments = [
       ...(installments.dueInstallments || []),
@@ -77,8 +26,32 @@ const DebitOptionsPage = () => {
     return unpaidInstallments.length === 0;
   };
 
+  const handlePaymentsNavigation = () => {
+    if (!installmentsData || installmentsData.length === 0) {
+      Alert.alert("Erro", "Dados de parcelas não disponíveis.");
+      return;
+    }
+
+    const selectedResult = installmentsData[0]; // Seleciona o primeiro item como exemplo; pode ser ajustado conforme a lógica do projeto
+
+    if (selectedResult) {
+      router.push({
+        pathname: "/payments",
+        params: {
+          billReceivableId: selectedResult.billReceivableId,
+          enterpriseName,
+        },
+      });
+    } else {
+      Alert.alert("Erro", "Título não encontrado.");
+    }
+  };
+
   const handleReferFriendNavigation = () => {
-    router.push("/refer-friend");
+    router.push({
+      pathname: "/refer-friend",
+      params: { enterpriseName },
+    });
   };
 
   const handleBoletoNavigation = () => {
@@ -86,54 +59,52 @@ const DebitOptionsPage = () => {
       Alert.alert("Erro", "Dados de parcelas não disponíveis.");
       return;
     }
-
+  
     let lastInstallment = null;
     let selectedResult = null;
-
+  
     installmentsData.forEach((result) => {
       const unpaidInstallments = [
         ...(result.dueInstallments || []),
         ...(result.payableInstallments || []),
       ];
-
-      const overdueOrPendingInstallments = unpaidInstallments.filter(
-        (installment) => {
-          const dueDate = new Date(installment.dueDate);
-          const today = new Date();
-          return dueDate <= today;
-        }
+  
+      // Filtrar apenas as parcelas em aberto (sem data de pagamento)
+      const openInstallments = unpaidInstallments.filter(
+        (installment) => !installment.paymentDate
       );
-
-      if (overdueOrPendingInstallments.length > 0) {
-        overdueOrPendingInstallments.sort(
+  
+      if (openInstallments.length > 0) {
+        openInstallments.sort(
           (a, b) => new Date(b.dueDate) - new Date(a.dueDate)
         );
-
-        const latestInstallment = overdueOrPendingInstallments[0];
-
+  
+        const latestInstallment = openInstallments[0];
+  
         if (
           !lastInstallment ||
-          new Date(latestInstallment.dueDate) >
-            new Date(lastInstallment.dueDate)
+          new Date(latestInstallment.dueDate) > new Date(lastInstallment.dueDate)
         ) {
           lastInstallment = latestInstallment;
           selectedResult = result;
         }
       }
     });
-
+  
     if (lastInstallment && selectedResult) {
       router.push({
         pathname: "/boleto-screen",
         params: {
           billReceivableId: selectedResult.billReceivableId,
           installmentId: lastInstallment.installmentId,
+          enterpriseName,
         },
       });
     } else {
-      Alert.alert("Erro", "Não há parcelas vencidas ou pendentes.");
+      Alert.alert("Erro", "Não há parcelas em aberto.");
     }
   };
+  
 
   const handleParcelAntecipationNavigation = () => {
     if (!installmentsData || installmentsData.length === 0) {
@@ -148,6 +119,7 @@ const DebitOptionsPage = () => {
         pathname: "/parcel-antecipation",
         params: {
           billReceivableId: selectedResult.billReceivableId,
+          enterpriseName,
         },
       });
     } else {
@@ -168,6 +140,7 @@ const DebitOptionsPage = () => {
         pathname: "/payments-realized",
         params: {
           billReceivableId: selectedResult.billReceivableId,
+          enterpriseName,
         },
       });
     } else {
@@ -188,6 +161,7 @@ const DebitOptionsPage = () => {
         pathname: "/debt-balance",
         params: {
           billReceivableId: selectedResult.billReceivableId,
+          enterpriseName,
         },
       });
     } else {
@@ -195,65 +169,56 @@ const DebitOptionsPage = () => {
     }
   };
 
-  // Função para obter o histórico de pagamentos
-  const handlePaymentHistoryNavigation = async () => {
-    if (!userData || !userData.id) {
-      Alert.alert("Erro", "Dados do cliente não disponíveis.");
-      return;
-    }
+  // const handlePaymentHistoryNavigation = async () => {
+  //   if (!userData || !userData.id) {
+  //     Alert.alert("Erro", "Dados do cliente não disponíveis.");
+  //     return;
+  //   }
 
-    setLoadingHistory(true);
+  //   setLoadingHistory(true);
 
-    try {
-      const username = "engenharq-mozart";
-      const password = "i94B1q2HUXf7PP7oscuIBygquSRZ9lhb"; // Use suas credenciais corretas
-      const credentials = btoa(`${username}:${password}`);
+  //   try {
+  //     const username = "engenharq-mozart";
+  //     const password = "i94B1q2HUXf7PP7oscuIBygquSRZ9lhb"; 
+  //     const credentials = btoa(`${username}:${password}`);
 
-      const response = await axios.get(
-        `https://api.sienge.com.br/engenharq/public/api/v1/current-debit-balance/pdf`,
-        {
-          params: {
-            customerId: userData.id, // Obtenção do customerId do contexto
-          },
-          headers: {
-            Authorization: `Basic ${credentials}`,
-          },
-        }
-      );
+  //     const response = await axios.get(
+  //       `https://api.sienge.com.br/engenharq/public/api/v1/current-debit-balance/pdf`,
+  //       {
+  //         params: {
+  //           customerId: userData.id,
+  //         },
+  //         headers: {
+  //           Authorization: `Basic ${credentials}`,
+  //         },
+  //       }
+  //     );
 
-      if (response.data && response.data.results && response.data.results[0]) {
-        const url = response.data.results[0].urlReport;
-        Linking.openURL(url); // Abre o PDF no navegador ou aplicativo padrão
-      } else {
-        Alert.alert("Erro", "Histórico de pagamentos não disponível.");
-      }
-    } catch (error) {
-      console.error("Erro ao buscar histórico de pagamentos:", error);
-      Alert.alert("Erro", "Não foi possível obter o histórico de pagamentos.");
-    } finally {
-      setLoadingHistory(false);
-    }
-  };
+  //     if (response.data && response.data.results && response.data.results[0]) {
+  //       const url = response.data.results[0].urlReport;
+  //       Linking.openURL(url);
+  //     } else {
+  //       Alert.alert("Erro", "Histórico de pagamentos não disponível.");
+  //     }
+  //   } catch (error) {
+  //     console.error("Erro ao buscar histórico de pagamentos:", error);
+  //     Alert.alert("Erro", "Não foi possível obter o histórico de pagamentos.");
+  //   } finally {
+  //     setLoadingHistory(false);
+  //   }
+  // };
 
-  // Verifica se o título já foi quitado
-  const isPaid =
-    installmentsData?.length > 0 && isTitlePaid(installmentsData[0]);
+  const isPaid = installmentsData?.length > 0 && isTitlePaid(installmentsData[0]);
 
   return (
     <View style={styles.container}>
-      {/* Ícone e nome do empreendimento */}
       <View style={styles.iconContainer}>
         <View style={styles.circleIcon}>
           <Ionicons name="home-outline" size={40} color="white" />
         </View>
-        {loadingEnterpriseName ? (
-          <ActivityIndicator size="small" color="#E1272C" />
-        ) : (
-          <Text style={styles.title}>{enterpriseName || "Nome do Empreendimento"}</Text>
-        )}
+        <Text style={styles.title}>{enterpriseName || "Nome do Empreendimento"}</Text>
       </View>
 
-      {/* Botões de opções */}
       <View style={styles.buttonContainer}>
         <TouchableOpacity
           onPress={handleBoletoNavigation}
@@ -296,30 +261,31 @@ const DebitOptionsPage = () => {
           </TouchableOpacity>
 
           <TouchableOpacity
+          style={styles.buttonSmall}
+          onPress={handlePaymentsNavigation}
+        >
+          <Text style={styles.buttonText}>HISTÓRICO DE PAGAMENTOS</Text>
+        </TouchableOpacity>
+{/* 
+          <TouchableOpacity
             style={styles.buttonSmall}
             onPress={handleReferFriendNavigation}
           >
             <Text style={styles.buttonText}>INDIQUE UM AMIGO</Text>
-          </TouchableOpacity>
+          </TouchableOpacity> */}
         </View>
 
-        {/* Histórico de Pagamentos */}
-        <TouchableOpacity
-          style={[styles.buttonLarge, loadingHistory && styles.disabledButton]}
-          onPress={handlePaymentHistoryNavigation}
-          disabled={loadingHistory}
+        {/* <TouchableOpacity
+          style={styles.buttonLarge}
+          onPress={handlePaymentsNavigation}
         >
-          <Text
-            style={[styles.buttonText, loadingHistory && styles.disabledText]}
-          >
-            HISTÓRICO DE PAGAMENTOS
-          </Text>
-        </TouchableOpacity>
+          <Text style={styles.buttonText}>HISTÓRICO DE PAGAMENTOS</Text>
+        </TouchableOpacity> */}
+
       </View>
     </View>
   );
 };
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,

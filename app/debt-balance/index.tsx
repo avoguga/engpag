@@ -11,24 +11,37 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import axios from "axios";
 import { UserContext } from "../contexts/UserContext";
-import { router } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 
 const DebtBalanceScreen = () => {
-  const { userData, enterpriseName } = useContext(UserContext);
-  const [balance, setBalance] = useState(null);
+  const { userData } = useContext(UserContext);
+  
+  // Estados para armazenar os valores calculados
+  const [valorTotal, setValorTotal] = useState(null);
+  const [saldoFinanciado, setSaldoFinanciado] = useState(null);
+  const [saldoPago, setSaldoPago] = useState(null);
+  const [saldoDevedor, setSaldoDevedor] = useState(null);
+  
   const [remainingTerm, setRemainingTerm] = useState(null);
   const [nextPaymentDate, setNextPaymentDate] = useState(null);
   const [nextPaymentAmount, setNextPaymentAmount] = useState(null);
-  const [financedAmount, setFinancedAmount] = useState(null);
-  const [contractTerm, setContractTerm] = useState(null);
+  
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  const { enterpriseName, billReceivableId } = useLocalSearchParams();
+
+  // Definir conditionTypes que devem ser excluídos do saldo devedor
+  const excludeConditionTypes = [
+    "Cartão de crédito",
+    "Financiamento",
+  ];
+
   useEffect(() => {
-    if (userData && userData.cpf) {
+    if (userData && userData.cpf && billReceivableId) {
       fetchData();
     }
-  }, [userData]);
+  }, [userData, billReceivableId]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -37,29 +50,6 @@ const DebtBalanceScreen = () => {
       const username = "engenharq-mozart";
       const password = "i94B1q2HUXf7PP7oscuIBygquSRZ9lhb";
       const credentials = btoa(`${username}:${password}`);
-
-      // Chamada à API para obter o saldo total
-      const totalBalanceResponse = await axios.get(
-        "https://api.sienge.com.br/engenharq/public/api/v1/total-current-debit-balance",
-        {
-          params: {
-            cpf: userData.cpf,
-            correctAnnualInstallment: "N",
-          },
-          headers: {
-            Authorization: `Basic ${credentials}`,
-          },
-        }
-      );
-
-      const totalResults = totalBalanceResponse.data.results || [];
-
-      if (totalResults.length > 0) {
-        const totalData = totalResults[0];
-        setBalance(totalData.totalCurrentDebitBalanceValue);
-      } else {
-        setError("Não foi possível obter o saldo devedor total.");
-      }
 
       // Chamada à API para obter detalhes do contrato e próximas parcelas
       const response = await axios.get(
@@ -77,9 +67,12 @@ const DebtBalanceScreen = () => {
 
       const results = response.data.results || [];
 
-      if (results.length > 0) {
-        const selectedResult = results[0];
+      // Filtrar o resultado pelo billReceivableId
+      const selectedResult = results.find(
+        (result) => result.billReceivableId === parseInt(billReceivableId, 10)
+      );
 
+      if (selectedResult) {
         const allInstallments = [
           ...(selectedResult.dueInstallments || []),
           ...(selectedResult.payableInstallments || []),
@@ -90,30 +83,64 @@ const DebtBalanceScreen = () => {
           ...(selectedResult.dueInstallments || []),
           ...(selectedResult.payableInstallments || []),
         ];
+
         setRemainingTerm(outstandingInstallments.length);
 
+        // Filtrar parcelas que NÃO devem ser contadas no saldo devedor
+        const filteredDevedorInstallments = outstandingInstallments.filter(
+          (installment) =>
+            !excludeConditionTypes.includes(installment.conditionType.trim())
+        );
+
+        // Cálculo do Valor Total (soma de originalValue de todas as parcelas)
+        const totalValue = allInstallments.reduce(
+          (sum, installment) => sum + (installment.originalValue || 0),
+          0
+        );
+        setValorTotal(totalValue);
+
+        // Cálculo do Saldo Financiado (soma de originalValue das parcelas com conditionType "Financiamento")
+        const totalFinanciado = allInstallments
+          .filter(
+            (installment) =>
+              installment.conditionType.trim() === "Financiamento"
+          )
+          .reduce((sum, installment) => sum + (installment.originalValue || 0), 0);
+        setSaldoFinanciado(totalFinanciado);
+
+        // Cálculo do Saldo Pago (soma de currentBalance das parcelas pagas)
+        const totalPaid = (selectedResult.paidInstallments || []).reduce(
+          (sum, installment) => sum + (installment.currentBalance || 0),
+          0
+        );
+        setSaldoPago(totalPaid);
+
+        // Cálculo do Saldo Devedor (soma de currentBalance das parcelas filtradas)
+        const totalDebt = filteredDevedorInstallments.reduce(
+          (sum, installment) => sum + (installment.currentBalance || 0),
+          0
+        );
+        setSaldoDevedor(totalDebt);
+
+        // Seleção do próximo pagamento (considerando apenas parcelas filtradas)
         const today = new Date();
-        const upcomingInstallments = outstandingInstallments.filter(
+        const upcomingInstallments = filteredDevedorInstallments.filter(
           (installment) => new Date(installment.dueDate) >= today
         );
 
         if (upcomingInstallments.length > 0) {
           const nextInstallment = upcomingInstallments.reduce((prev, current) =>
-            new Date(prev.dueDate) < new Date(current.dueDate) ? prev : current
+            new Date(prev.dueDate) > new Date(current.dueDate) ? current : prev
           );
           setNextPaymentDate(nextInstallment.dueDate);
           setNextPaymentAmount(nextInstallment.currentBalance);
+        } else {
+          setNextPaymentDate(null);
+          setNextPaymentAmount(null);
         }
 
-        const financedAmountValue = allInstallments.reduce(
-          (sum, installment) => sum + (installment.originalValue || 0),
-          0
-        );
-        setFinancedAmount(financedAmountValue);
-
-        setContractTerm(allInstallments.length);
       } else {
-        setError("Nenhum contrato encontrado.");
+        setError("Nenhum contrato encontrado para o ID fornecido.");
       }
     } catch (error) {
       console.error("Erro ao buscar dados:", error);
@@ -124,7 +151,7 @@ const DebtBalanceScreen = () => {
   };
 
   const handleBoletoPress = () => {
-    // Alert.alert("Boleto", "Função de boleto não implementada.");
+    Alert.alert("Informação", "Função de boleto não implementada.");
   };
 
   // Função para formatar valores monetários com pontuação de milhar
@@ -132,17 +159,17 @@ const DebtBalanceScreen = () => {
     if (isNaN(value)) return "R$ 0,00";
     return `R$ ${parseFloat(value)
       .toFixed(2)
-      .replace('.', ',')
-      .replace(/\B(?=(\d{3})+(?!\d))/g, '.')}`;
+      .replace(".", ",")
+      .replace(/\B(?=(\d{3})+(?!\d))/g, ".")}`;
   };
 
   // Função para formatar datas
   const formatDate = (dateString) => {
     if (!dateString) return "";
     const date = new Date(dateString);
-    return `${String(date.getDate()).padStart(2, "0")}/${String(
-      date.getMonth() + 1
-    ).padStart(2, "0")}`;
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    return `${day}/${month}`;
   };
 
   if (loading) {
@@ -157,51 +184,62 @@ const DebtBalanceScreen = () => {
     return (
       <View style={styles.errorContainer}>
         <Text style={styles.errorText}>{error}</Text>
+        <TouchableOpacity style={styles.retryButton} onPress={fetchData}>
+          <Ionicons name="reload-outline" size={20} color="#fff" />
+          <Text style={styles.retryButtonText}>Tentar Novamente</Text>
+        </TouchableOpacity>
       </View>
     );
   }
 
   return (
-     <>
-       {/* Header */}
-       {/* <View style={styles.header}>
-       <TouchableOpacity onPress={() => router.back()}>
-           <Ionicons name="arrow-back-outline" size={28} color="white" />
-         </TouchableOpacity>
-         <TouchableOpacity onPress={() => router.push('/notification-screen')}>
-           <Ionicons name="notifications-outline" size={28} color="white" />
-         </TouchableOpacity>
-       </View> */}
     <ScrollView style={styles.container}>
-   
-
-      {/* Title */}
-      <Text style={styles.title}>{enterpriseName || 'Nome do Empreendimento'}</Text>
+      {/* Título */}
+      <Text style={styles.title}>{enterpriseName || "Nome do Empreendimento"}</Text>
 
       {/* Saldo Devedor Button */}
       <TouchableOpacity style={styles.debtButton}>
         <Text style={styles.debtButtonText}>SALDO DEVEDOR</Text>
       </TouchableOpacity>
 
-      {/* Saldo Devedor Information */}
-      <View style={styles.balanceContainer}>
-        <View style={styles.balanceRow}>
-          <Text style={styles.balanceLabel}>SALDO DEVEDOR</Text>
-          <Text style={styles.balanceLabel}>PRAZO RESTANTE</Text>
-        </View>
-        <View style={styles.balanceRow}>
-          <Text style={styles.balanceValue}>
-            {balance !== null ? formatCurrency(balance) : "R$ 0,00"}
+      {/* Informações Financeiras */}
+      <View style={styles.financialInfoContainer}>
+        {/* Valor Total */}
+        <View style={styles.financialRow}>
+          <Text style={styles.financialLabel}>Valor Total</Text>
+          <Text style={styles.financialValue}>
+            {valorTotal !== null ? formatCurrency(valorTotal) : "R$ 0,00"}
           </Text>
-          <Text style={styles.balanceValue}>
-            {remainingTerm !== null ? remainingTerm : "0"}
+        </View>
+
+        {/* Saldo Financiado */}
+        <View style={styles.financialRow}>
+          <Text style={styles.financialLabel}>Saldo Financiado</Text>
+          <Text style={styles.financialValue}>
+            {saldoFinanciado !== null ? formatCurrency(saldoFinanciado) : "R$ 0,00"}
+          </Text>
+        </View>
+
+        {/* Saldo Pago */}
+        <View style={styles.financialRow}>
+          <Text style={styles.financialLabel}>Saldo Pago</Text>
+          <Text style={styles.financialValue}>
+            {saldoPago !== null ? formatCurrency(saldoPago) : "R$ 0,00"}
+          </Text>
+        </View>
+
+        {/* Saldo Devedor */}
+        <View style={styles.financialRow}>
+          <Text style={styles.financialLabel}>Saldo Devedor</Text>
+          <Text style={styles.financialValue}>
+            {saldoDevedor !== null ? formatCurrency(saldoDevedor) : "R$ 0,00"}
           </Text>
         </View>
       </View>
 
+      {/* Informações Adicionais sobre o Saldo Devedor */}
       <Text style={styles.balanceInfo}>
-        O saldo devedor não inclui o valor das prestações em aberto. Valor
-        sujeito a alteração.
+        O saldo devedor não inclui o valor das prestações em aberto. Valor sujeito a alteração.
       </Text>
 
       {/* Próximo Vencimento */}
@@ -227,23 +265,21 @@ const DebtBalanceScreen = () => {
       <View style={styles.contractDetailsContainer}>
         <Text style={styles.sectionTitle}>DETALHES DO CONTRATO</Text>
         <View style={styles.contractRow}>
-          <Text style={styles.contractLabel}>Valor financiado</Text>
+          <Text style={styles.contractLabel}>Valor Financiado</Text>
           <Text style={styles.contractValue}>
-            {financedAmount !== null
-              ? formatCurrency(financedAmount)
+            {saldoFinanciado !== null
+              ? formatCurrency(saldoFinanciado)
               : "R$ 0,00"}
           </Text>
         </View>
         <View style={styles.contractRow}>
-          <Text style={styles.contractLabel}>Prazo contratado</Text>
+          <Text style={styles.contractLabel}>Prazo Contratado</Text>
           <Text style={styles.contractValue}>
-            {contractTerm !== null ? `${contractTerm} Meses` : "0 Meses"}
+            {remainingTerm !== null ? `${remainingTerm} Meses` : "0 Meses"}
           </Text>
         </View>
-       
       </View>
     </ScrollView>
-     </>
   );
 };
 
@@ -270,17 +306,24 @@ const styles = StyleSheet.create({
     color: "#E1272C",
     fontSize: 18,
     textAlign: "center",
+    marginBottom: 20,
   },
-  header: {
+  retryButton: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
     backgroundColor: "#E1272C",
-    paddingVertical: 15,
-    paddingHorizontal: 15,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  retryButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "bold",
+    marginLeft: 8,
   },
   title: {
-    fontSize: 18,
+    fontSize: 22,
     fontWeight: "bold",
     textAlign: "center",
     color: "#333",
@@ -300,24 +343,26 @@ const styles = StyleSheet.create({
     fontSize: 16,
     textTransform: "uppercase",
   },
-  balanceContainer: {
+  financialInfoContainer: {
     borderWidth: 1,
     borderColor: "#E1272C",
     borderRadius: 8,
     padding: 16,
+    backgroundColor: "#fff",
+    marginBottom: 10,
   },
-  balanceRow: {
+  financialRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     marginBottom: 8,
   },
-  balanceLabel: {
+  financialLabel: {
     fontSize: 14,
     fontWeight: "bold",
     color: "#333",
   },
-  balanceValue: {
-    fontSize: 22,
+  financialValue: {
+    fontSize: 16,
     fontWeight: "bold",
     color: "#333",
   },
@@ -331,7 +376,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   sectionTitle: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: "bold",
     color: "#333",
     marginBottom: 8,
@@ -384,6 +429,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 6,
     elevation: 3,
+    marginBottom: 20,
   },
   contractRow: {
     flexDirection: "row",
@@ -399,11 +445,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "bold",
     color: "#333",
-  },
-  additionalInfo: {
-    fontSize: 12,
-    color: "#555",
-    marginTop: 16,
   },
 });
 

@@ -6,20 +6,40 @@ import {
   ScrollView,
   ActivityIndicator,
   TouchableOpacity,
+  Alert,
+  BackHandler, // Import BackHandler
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import axios from "axios";
 import { UserContext } from "../contexts/UserContext";
-import { useRouter } from "expo-router";
-import NotificationIcon from "@/components/NotificationIcon";
+import { useFocusEffect, useRouter } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const InitialPage = () => {
   const router = useRouter();
-  const { userData, setInstallmentsData } = useContext(UserContext);
+  const { userData, setInstallmentsData, enterpriseNames, setEnterpriseNames } =
+    useContext(UserContext);
   const [installmentsData, setLocalInstallmentsData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  useFocusEffect(
+    React.useCallback(() => {
+      const backAction = () => {
+        // Optionally, show an alert to inform the user
+        // Alert.alert("Atenção", "Você não pode voltar a partir desta tela.");
+        return true; // Returning true disables the back button
+      };
+  
+      const backHandler = BackHandler.addEventListener(
+        "hardwareBackPress",
+        backAction
+      );
+  
+      return () => backHandler.remove(); // Cleanup when the screen is unfocused
+    }, [])
+  );
+  
   useEffect(() => {
     if (userData && userData.cpf) {
       fetchInstallments();
@@ -32,28 +52,62 @@ const InitialPage = () => {
 
     try {
       const username = "engenharq-mozart";
-      const password = "i94B1q2HUXf7PP7oscuIBygquSRZ9lhb"; // Substitua pela sua senha
+      const password = "i94B1q2HUXf7PP7oscuIBygquSRZ9lhb";
       const credentials = btoa(`${username}:${password}`);
 
       const response = await axios.get(
         `https://api.sienge.com.br/engenharq/public/api/v1/current-debit-balance`,
         {
-          params: {
-            cpf: userData.cpf,
-            correctAnnualInstallment: "N",
-          },
-          headers: {
-            Authorization: `Basic ${credentials}`,
-          },
+          params: { cpf: userData.cpf, correctAnnualInstallment: "N" },
+          headers: { Authorization: `Basic ${credentials}` },
         }
       );
 
-      setLocalInstallmentsData(response.data.results || []);
+      const fetchedData = response.data.results || [];
+      setLocalInstallmentsData(fetchedData);
+
+      if (fetchedData.length > 0) {
+        await fetchEnterpriseNames(fetchedData);
+      }
     } catch (err) {
       setError("Falha ao buscar saldo devedor.");
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchEnterpriseNames = async (installments) => {
+    try {
+      const username = "engenharq-mozart";
+      const password = "i94B1q2HUXf7PP7oscuIBygquSRZ9lhb";
+      const credentials = btoa(`${username}:${password}`);
+
+      const names = await Promise.all(
+        installments.map(async (item) => {
+          try {
+            const response = await axios.get(
+              `https://api.sienge.com.br/engenharq/public/api/v1/accounts-receivable/receivable-bills/${item.billReceivableId}`,
+              {
+                params: { customerId: userData.id },
+                headers: { Authorization: `Basic ${credentials}` },
+              }
+            );
+            return response.data.enterpriseName || "Nome do Empreendimento";
+          } catch (error) {
+            console.error("Erro ao buscar nome do empreendimento:", error);
+            return "Erro ao buscar nome";
+          }
+        })
+      );
+
+      setEnterpriseNames(names);
+    } catch (error) {
+      console.error("Erro ao buscar nomes dos empreendimentos:", error);
+      Alert.alert(
+        "Erro",
+        "Não foi possível buscar os nomes dos empreendimentos."
+      );
     }
   };
 
@@ -65,14 +119,14 @@ const InitialPage = () => {
       : "N/A";
   };
 
-  const handleCardPress = (item) => {
+  const handleCardPress = (item, index) => {
     setInstallmentsData([item]);
 
     router.push({
       pathname: "/debit-options",
       params: {
         billReceivableId: item.billReceivableId,
-        title: `Título: ${item.billReceivableId}`,
+        enterpriseName: enterpriseNames[index],
       },
     });
   };
@@ -80,12 +134,12 @@ const InitialPage = () => {
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
-        {/* Saudação */}
-        <Text style={styles.greeting}>Olá, {userData.name || "Cliente"}!</Text>
+        <Text style={styles.greeting}>
+          Olá, {userData.name?.split(" ")[0]}!
+        </Text>
         <View style={styles.lineSeparatorLarge} />
         <View style={styles.lineSeparatorSmall} />
 
-        {/* Título da seção de empreendimentos */}
         <Text style={styles.sectionTitle}>Empreendimentos</Text>
 
         {loading && <ActivityIndicator size="large" color="#007bff" />}
@@ -94,8 +148,9 @@ const InitialPage = () => {
         {!loading &&
         Array.isArray(installmentsData) &&
         installmentsData.length > 0
-          ? installmentsData.map((item) => {
-              const title = `Título: ${item.billReceivableId}`;
+          ? installmentsData.map((item, index) => {
+              const enterpriseName =
+                enterpriseNames[index] || `Título: ${item.billReceivableId}`;
               const allDueInstallments = [
                 ...(item.dueInstallments || []),
                 ...(item.payableInstallments || []),
@@ -122,13 +177,13 @@ const InitialPage = () => {
                 <TouchableOpacity
                   key={item.billReceivableId}
                   style={styles.card}
-                  onPress={() => handleCardPress(item)}
+                  onPress={() => handleCardPress(item, index)}
                 >
                   <View style={styles.cardIcon}>
                     <Ionicons name="home-outline" size={30} color="#E1272C" />
                   </View>
                   <View style={styles.cardContent}>
-                    <Text style={styles.cardTitle}>{title}</Text>
+                    <Text style={styles.cardTitle}>{enterpriseName}</Text>
                     <View style={styles.cardRow}>
                       <Text style={styles.cardSubtitle}>
                         Valor da próxima parcela

@@ -25,7 +25,9 @@ const NotificationIcon = () => {
       });
 
       if (Array.isArray(response.data)) {
-        setNotificationCount(response.data.length);
+        // Count only unread notifications
+        const unreadCount = response.data.filter(notification => !notification.read).length;
+        setNotificationCount(unreadCount);
       } else {
         setNotificationCount(0);
       }
@@ -41,10 +43,10 @@ const NotificationIcon = () => {
   useEffect(() => {
     fetchNotificationCount();
     const interval = setInterval(() => {
-      fetchNotificationCount(); // Atualiza a contagem de notificações a cada 60 segundos
+      fetchNotificationCount(); // Update every 60 seconds
     }, 60000);
 
-    return () => clearInterval(interval); // Limpa o intervalo ao desmontar
+    return () => clearInterval(interval);
   }, [userData]);
 
   const handlePress = () => {

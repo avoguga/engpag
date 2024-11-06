@@ -16,7 +16,7 @@ import axios from "axios";
 import { Picker } from "@react-native-picker/picker";
 
 const PaymentsCompleted = () => {
-  const { userData, enterpriseName } = useContext(UserContext);
+  const { userData } = useContext(UserContext);
   const { billReceivableId } = useLocalSearchParams();
   const [completedPayments, setCompletedPayments] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -26,6 +26,8 @@ const PaymentsCompleted = () => {
   const [endDate, setEndDate] = useState(null);
   const [showStartDatePicker, setShowStartDatePicker] = useState(false);
   const [showEndDatePicker, setShowEndDatePicker] = useState(false);
+  const { enterpriseName } = useLocalSearchParams(); 
+
 
   useEffect(() => {
     fetchCompletedPayments();

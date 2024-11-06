@@ -10,14 +10,14 @@ import {
   Modal,
   Linking,
   ScrollView,
+  TextInput,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Picker } from "@react-native-picker/picker";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import axios from "axios";
 import { UserContext } from "../contexts/UserContext";
-import { router, useLocalSearchParams } from "expo-router";
-import NotificationIcon from "@/components/NotificationIcon";
+import { useLocalSearchParams } from "expo-router";
 
 const ParcelAntecipation = () => {
   const { userData } = useContext(UserContext);
@@ -26,15 +26,17 @@ const ParcelAntecipation = () => {
   const [selectedParcel, setSelectedParcel] = useState("Selecione a parcela");
   const [startDate, setStartDate] = useState(null); // Data inicial
   const [endDate, setEndDate] = useState(null); // Data final
+  const [startDateInput, setStartDateInput] = useState(""); // Input para data inicial
+  const [endDateInput, setEndDateInput] = useState(""); // Input para data final
   const [showStartDatePicker, setShowStartDatePicker] = useState(false);
   const [showEndDatePicker, setShowEndDatePicker] = useState(false);
   const [data, setData] = useState([]); // Dados das parcelas
-  const [loading, setLoading] = useState(false); // Loading for the main screen
-  const [enterpriseName, setEnterpriseName] = useState(""); // Nome do empreendimento
+  const [loading, setLoading] = useState(false);
 
   const [confirmModalVisible, setConfirmModalVisible] = useState(false);
   const [newDueDate, setNewDueDate] = useState(null);
   const [showNewDueDatePicker, setShowNewDueDatePicker] = useState(false);
+  const { enterpriseName } = useLocalSearchParams();
 
   useEffect(() => {
     fetchInstallments();
@@ -53,8 +55,8 @@ const ParcelAntecipation = () => {
 
     setLoading(true);
     try {
-      const username = 'engenharq-mozart';
-      const password = 'i94B1q2HUXf7PP7oscuIBygquSRZ9lhb';
+      const username = "engenharq-mozart";
+      const password = "i94B1q2HUXf7PP7oscuIBygquSRZ9lhb";
       const credentials = btoa(`${username}:${password}`);
 
       const response = await axios.get(
@@ -96,10 +98,6 @@ const ParcelAntecipation = () => {
         }
       );
 
-      const enterpriseName =
-        billResponse.data.enterpriseName || "Nome do Empreendimento";
-      setEnterpriseName(enterpriseName);
-
       let allInstallments = [];
 
       const { dueInstallments, payableInstallments } = selectedResult;
@@ -112,10 +110,12 @@ const ParcelAntecipation = () => {
         number: installment.installmentNumber,
         billReceivableId: selectedResult.billReceivableId,
         dueDate: new Date(installment.dueDate), // Armazenar como Date
-        formattedDueDate: new Date(installment.dueDate).toLocaleDateString('pt-BR'), // Formato para exibição
-        value: parseFloat(installment.currentBalance).toLocaleString('pt-BR', {
-          style: 'currency',
-          currency: 'BRL',
+        formattedDueDate: new Date(installment.dueDate).toLocaleDateString(
+          "pt-BR"
+        ), // Formato para exibição
+        value: parseFloat(installment.currentBalance).toLocaleString("pt-BR", {
+          style: "currency",
+          currency: "BRL",
         }),
         status:
           new Date(installment.dueDate) < new Date() ? "vencido" : "pendente",
@@ -136,16 +136,47 @@ const ParcelAntecipation = () => {
   };
 
   const handleSelectInstallment = (item) => {
-    if (selectedInstallments.some((installment) => installment.id === item.id)) {
-      // Remove da seleção
+    if (
+      selectedInstallments.some((installment) => installment.id === item.id)
+    ) {
       setSelectedInstallments(
         selectedInstallments.filter((installment) => installment.id !== item.id)
       );
     } else {
-      // Adiciona à seleção
       setSelectedInstallments([...selectedInstallments, item]);
     }
   };
+
+  const handleDateInputWithMask = (text, setDate, setDateInput) => {
+    let formattedText = text.replace(/\D/g, ""); 
+  
+    if (formattedText.length > 2) {
+      formattedText = formattedText.replace(/(\d{2})(\d)/, "$1/$2");
+    }
+    if (formattedText.length > 5) {
+      formattedText = formattedText.replace(/(\d{2})\/(\d{2})(\d)/, "$1/$2/$3");
+    }
+    if (formattedText.length > 10) {
+      formattedText = formattedText.slice(0, 10); // Limita a 10 caracteres
+    }
+  
+    setDateInput(formattedText);
+  
+    // Verifica se o formato está completo para validação de data
+    if (formattedText.length === 10) {
+      const [day, month, year] = formattedText.split("/");
+      if (parseInt(month) > 12) {
+        Alert.alert("Data inválida", "O mês não pode ser maior que 12.");
+        return;
+      }
+      const date = new Date(`${year}-${month}-${day}`);
+      if (!isNaN(date) && day <= 31) {
+        setDate(date); // Define a data se válida
+      }
+    }
+  };
+  
+  
 
   const handleConfirmSelection = () => {
     if (selectedInstallments.length === 0) {
@@ -162,15 +193,11 @@ const ParcelAntecipation = () => {
     let filteredData = installments;
 
     if (startDate) {
-      filteredData = filteredData.filter((item) => {
-        return item.dueDate >= startDate;
-      });
+      filteredData = filteredData.filter((item) => item.dueDate >= startDate);
     }
 
     if (endDate) {
-      filteredData = filteredData.filter((item) => {
-        return item.dueDate <= endDate;
-      });
+      filteredData = filteredData.filter((item) => item.dueDate <= endDate);
     }
 
     return filteredData;
@@ -187,6 +214,19 @@ const ParcelAntecipation = () => {
     setSelectedParcel("Selecione a parcela");
     setStartDate(null);
     setEndDate(null);
+    setStartDateInput("");
+    setEndDateInput("");
+  };
+
+  const handleDateInputChange = (text, setDate, setDateInput) => {
+    setDateInput(text);
+    const dateParts = text.split("/");
+    if (dateParts.length === 3) {
+      const date = new Date(`${dateParts[2]}-${dateParts[1]}-${dateParts[0]}`);
+      if (!isNaN(date)) {
+        setDate(date);
+      }
+    }
   };
 
   const renderItem = ({ item }) => (
@@ -194,8 +234,9 @@ const ParcelAntecipation = () => {
       style={[
         styles.card,
         item.status === "vencido" ? styles.overdueCard : styles.pendingCard,
-        selectedInstallments.some((installment) => installment.id === item.id) &&
-          styles.selectedCard,
+        selectedInstallments.some(
+          (installment) => installment.id === item.id
+        ) && styles.selectedCard,
       ]}
       onPress={() => handleSelectInstallment(item)}
     >
@@ -206,7 +247,9 @@ const ParcelAntecipation = () => {
       <Text style={styles.cardSubtitle}>
         Número do Título {item.billReceivableId}
       </Text>
-      <Text style={styles.cardSubtitle}>Vencimento {item.formattedDueDate}</Text>
+      <Text style={styles.cardSubtitle}>
+        Vencimento {item.formattedDueDate}
+      </Text>
       <Text style={styles.cardValue}>Valor {item.value}</Text>
     </TouchableOpacity>
   );
@@ -231,8 +274,8 @@ const ParcelAntecipation = () => {
     setLoading(true);
 
     try {
-      const username = 'engenharq-mozart';
-      const password = 'i94B1q2HUXf7PP7oscuIBygquSRZ9lhb';// Substitua pela sua senha
+      const username = "engenharq-mozart";
+      const password = "i94B1q2HUXf7PP7oscuIBygquSRZ9lhb"; // Substitua pela sua senha
       const credentials = btoa(`${username}:${password}`);
 
       const billReceivableId = selectedInstallments[0].billReceivableId;
@@ -279,10 +322,15 @@ const ParcelAntecipation = () => {
 
       const message = `Olá, meu nome é ${userData?.name}, meu CPF é ${
         userData?.cpf
-      }, gostaria de negociar as parcelas: ${installmentNumbers} do título ${billReceivableId}. Valor total: ${totalAmount.toLocaleString('pt-BR', {
-        style: 'currency',
-        currency: 'BRL',
-      })}. Desejo uma nova data de vencimento para ${newDueDate.toLocaleDateString('pt-BR')}.`;
+      }, gostaria de negociar as parcelas: ${installmentNumbers} do título ${billReceivableId}. Valor total: ${totalAmount.toLocaleString(
+        "pt-BR",
+        {
+          style: "currency",
+          currency: "BRL",
+        }
+      )}. Desejo uma nova data de vencimento para ${newDueDate.toLocaleDateString(
+        "pt-BR"
+      )}.`;
 
       const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
         message
@@ -316,16 +364,6 @@ const ParcelAntecipation = () => {
 
   return (
     <View style={styles.container}>
-      {/* <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name="arrow-back-outline" size={28} color="white" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Antecipação de Parcelas</Text>
-        <TouchableOpacity onPress={() => router.push("/notification-screen")}>
-          <Ionicons name="notifications-outline" size={28} color="white" />
-        </TouchableOpacity>
-      </View> */}
-
       <Text style={styles.title}>
         {enterpriseName || "Nome do Empreendimento"}
       </Text>
@@ -333,12 +371,10 @@ const ParcelAntecipation = () => {
         <Text style={styles.actionButtonText}>Antecipar Parcelas</Text>
       </TouchableOpacity>
 
-      {/* Mostra a quantidade de parcelas selecionadas */}
       <Text style={styles.selectedCountText}>
         {selectedInstallments.length} parcela(s) selecionada(s)
       </Text>
 
-      {/* Filtro por parcela */}
       <View style={styles.searchContainer}>
         <Picker
           selectedValue={selectedParcel}
@@ -359,30 +395,51 @@ const ParcelAntecipation = () => {
         </Picker>
       </View>
 
-      {/* Filtro por intervalo de datas */}
+      {/* Filtro por intervalo de datas com Picker e Input */}
       <View style={styles.dateFilterContainer}>
-        <TouchableOpacity
-          style={styles.datePicker}
-          onPress={() => setShowStartDatePicker(true)}
-        >
-          <Ionicons name="calendar-outline" size={20} color="#E1272C" />
-          <Text style={styles.dateText}>
-            {startDate ? startDate.toLocaleDateString('pt-BR') : "Data inicial"}
-          </Text>
-        </TouchableOpacity>
+        {/* Data Inicial */}
+        <View style={styles.dateInputContainer}>
+          <TextInput
+            style={[
+              styles.dateInput,
+              startDateInput.length === 10
+                ? styles.validInput
+                : styles.invalidInput,
+            ]}
+            placeholder="Data inicial"
+            value={startDateInput}
+            onChangeText={(text) =>
+              handleDateInputWithMask(text, setStartDate, setStartDateInput)
+            }
+            keyboardType="numeric"
+          />
+          <TouchableOpacity onPress={() => setShowStartDatePicker(true)}>
+            <Ionicons name="calendar-outline" size={20} color="#E1272C" />
+          </TouchableOpacity>
+        </View>
 
-        <TouchableOpacity
-          style={styles.datePicker}
-          onPress={() => setShowEndDatePicker(true)}
-        >
-          <Ionicons name="calendar-outline" size={20} color="#E1272C" />
-          <Text style={styles.dateText}>
-            {endDate ? endDate.toLocaleDateString('pt-BR') : "Data final"}
-          </Text>
-        </TouchableOpacity>
+        {/* Data Final */}
+        <View style={styles.dateInputContainer}>
+          <TextInput
+            style={[
+              styles.dateInput,
+              endDateInput.length === 10
+                ? styles.validInput
+                : styles.invalidInput,
+            ]}
+            placeholder="Data final"
+            value={endDateInput}
+            onChangeText={(text) =>
+              handleDateInputWithMask(text, setEndDate, setEndDateInput)
+            }
+            keyboardType="numeric"
+          />
+          <TouchableOpacity onPress={() => setShowEndDatePicker(true)}>
+            <Ionicons name="calendar-outline" size={20} color="#E1272C" />
+          </TouchableOpacity>
+        </View>
       </View>
 
-      {/* Botão de Limpar Filtros */}
       <TouchableOpacity style={styles.resetButton} onPress={resetFilters}>
         <Text style={styles.resetButtonText}>Limpar Filtros</Text>
       </TouchableOpacity>
@@ -394,7 +451,10 @@ const ParcelAntecipation = () => {
           display="default"
           onChange={(event, selectedDate) => {
             setShowStartDatePicker(false);
-            if (selectedDate) setStartDate(selectedDate);
+            if (selectedDate) {
+              setStartDate(selectedDate);
+              setStartDateInput(selectedDate.toLocaleDateString("pt-BR"));
+            }
           }}
         />
       )}
@@ -406,7 +466,10 @@ const ParcelAntecipation = () => {
           display="default"
           onChange={(event, selectedDate) => {
             setShowEndDatePicker(false);
-            if (selectedDate) setEndDate(selectedDate);
+            if (selectedDate) {
+              setEndDate(selectedDate);
+              setEndDateInput(selectedDate.toLocaleDateString("pt-BR"));
+            }
           }}
         />
       )}
@@ -429,7 +492,6 @@ const ParcelAntecipation = () => {
       >
         <Ionicons name="cash-outline" size={24} color="white" />
       </TouchableOpacity>
-
       {/* Modal de Confirmação */}
       {confirmModalVisible && (
         <Modal
@@ -461,9 +523,9 @@ const ParcelAntecipation = () => {
                       sum + parseFloat(installment.currentBalance),
                     0
                   )
-                  .toLocaleString('pt-BR', {
-                    style: 'currency',
-                    currency: 'BRL',
+                  .toLocaleString("pt-BR", {
+                    style: "currency",
+                    currency: "BRL",
                   })}
               </Text>
               <TouchableOpacity
@@ -473,7 +535,7 @@ const ParcelAntecipation = () => {
                 <Ionicons name="calendar-outline" size={20} color="#E1272C" />
                 <Text style={styles.dateText}>
                   {newDueDate
-                    ? newDueDate.toLocaleDateString('pt-BR')
+                    ? newDueDate.toLocaleDateString("pt-BR")
                     : "Selecione a nova data de vencimento"}
                 </Text>
               </TouchableOpacity>
@@ -511,7 +573,23 @@ const ParcelAntecipation = () => {
 };
 
 const styles = StyleSheet.create({
-  // ... (mantenha seus estilos existentes ou ajuste conforme necessário)
+  dateInputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  validInput: {
+    borderColor: "#28a745",
+  },
+  invalidInput: {
+    borderColor: "#dc3545",
+  },
+  dateInput: {
+    borderBottomWidth: 1,
+    padding: 8,
+    width: 110,
+    marginRight: 10,
+  },
+
   container: {
     flex: 1,
     backgroundColor: "#FAF6F6",

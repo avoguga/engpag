@@ -9,7 +9,7 @@ import {
   Alert,
   RefreshControl,
   StatusBar,
-  Pressable, // Adicionado para melhorar feedback do botão
+  Pressable,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -23,7 +23,7 @@ const NotificationScreen = () => {
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState(null);
-  const [refreshing, setRefreshing] = useState(false); // Estado para "pull to refresh"
+  const [refreshing, setRefreshing] = useState(false);
 
   const fetchNotifications = async () => {
     if (!userData || !userData.cpf) {
@@ -43,13 +43,39 @@ const NotificationScreen = () => {
       setError("Falha ao buscar notificações.");
     } finally {
       setLoading(false);
-      setRefreshing(false); // Para parar o "pull to refresh"
+      setRefreshing(false);
     }
   };
 
   useEffect(() => {
     fetchNotifications();
   }, [userData]);
+
+  // Função para marcar uma notificação como lida
+  const handleNotificationPress = async (notification) => {
+    if (notification.read) {
+      // Já está lida, nenhuma ação necessária
+      return;
+    }
+
+    try {
+      // Marcar como lida no servidor
+      await axios.put(
+        `http://hw0oc4gc8ccwswwg4gk0kss8.167.88.39.225.sslip.io/notifications/${notification._id}`,
+        { read: true }
+      );
+
+      // Atualizar o estado local
+      setNotifications((prevNotifications) =>
+        prevNotifications.map((n) =>
+          n._id === notification._id ? { ...n, read: true } : n
+        )
+      );
+    } catch (err) {
+      console.error("Erro ao marcar notificação como lida:", err);
+      Alert.alert("Erro", "Falha ao marcar notificação como lida.");
+    }
+  };
 
   // Função para deletar todas as notificações
   const deleteAllNotifications = () => {
@@ -110,10 +136,7 @@ const NotificationScreen = () => {
             <Ionicons name="arrow-back-outline" size={28} color="white" />
           </Pressable>
           <Text style={styles.headerTitle}>Notificações</Text>
-          <TouchableOpacity
-            onPress={deleteAllNotifications}
-            disabled={deleting}
-          >
+          <TouchableOpacity onPress={deleteAllNotifications} disabled={deleting}>
             {deleting ? (
               <ActivityIndicator size="small" color="#fff" />
             ) : (
@@ -127,7 +150,7 @@ const NotificationScreen = () => {
         contentContainerStyle={styles.contentContainer}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        } // Adicionado pull to refresh
+        }
       >
         {loading ? (
           <ActivityIndicator
@@ -139,7 +162,16 @@ const NotificationScreen = () => {
           <Text style={styles.errorText}>{error}</Text>
         ) : notifications.length > 0 ? (
           notifications.map((notification) => (
-            <View key={notification._id} style={styles.notificationCard}>
+            <TouchableOpacity
+              key={notification._id}
+              style={[
+                styles.notificationCard,
+                notification.read
+                  ? styles.notificationCardRead
+                  : styles.notificationCardUnread,
+              ]}
+              onPress={() => handleNotificationPress(notification)}
+            >
               <Text style={styles.notificationTitle}>
                 {notification.subject}
               </Text>
@@ -149,7 +181,7 @@ const NotificationScreen = () => {
               <Text style={styles.notificationDate}>
                 {new Date(notification.dateSent).toLocaleDateString("pt-BR")}
               </Text>
-            </View>
+            </TouchableOpacity>
           ))
         ) : (
           <Text style={styles.noNotificationsText}>
@@ -167,8 +199,8 @@ const styles = StyleSheet.create({
     backgroundColor: "#FAF6F6",
   },
   topBarWrapper: {
-    paddingTop: StatusBar.currentHeight || 24, // Adiciona padding dinâmico com base na altura da status bar
-    backgroundColor: "#E1272C", // Mesma cor de fundo da topBar para criar uma sensação de continuidade
+    paddingTop: StatusBar.currentHeight || 24,
+    backgroundColor: "#E1272C",
   },
   topBar: {
     flexDirection: "row",
@@ -182,7 +214,7 @@ const styles = StyleSheet.create({
     padding: 10,
   },
   backButtonPressed: {
-    opacity: 0.5, // Feedback visual ao pressionar
+    opacity: 0.5,
   },
   headerTitle: {
     flex: 1,
@@ -197,11 +229,16 @@ const styles = StyleSheet.create({
     paddingVertical: 20,
   },
   notificationCard: {
-    backgroundColor: "#FFFFFF",
     borderRadius: 8,
     padding: 20,
     marginBottom: 15,
     elevation: 2,
+  },
+  notificationCardUnread: {
+    backgroundColor: "#FFFFFF",
+  },
+  notificationCardRead: {
+    backgroundColor: "#F0F0F0",
   },
   notificationTitle: {
     fontSize: 16,

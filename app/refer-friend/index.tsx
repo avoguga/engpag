@@ -7,17 +7,19 @@ import {
   StyleSheet,
   ScrollView,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import axios from "axios";
 import { UserContext } from "../contexts/UserContext";
 
 const ReferFriend = () => {
   const router = useRouter();
-  const { userData, enterpriseName } = useContext(UserContext);
+  const { userData } = useContext(UserContext);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [telefone, setTelefone] = useState("");
   const [observacoes, setObservacoes] = useState("");
+  const { enterpriseName } = useLocalSearchParams(); 
+
   const empreendimento = enterpriseName;
 
 

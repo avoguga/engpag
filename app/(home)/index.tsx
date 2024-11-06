@@ -1,4 +1,5 @@
-import React, { useState, useContext } from "react";
+// Index.js
+import React, { useState, useContext, useEffect } from "react";
 import {
   View,
   Text,
@@ -17,7 +18,7 @@ import axios from "axios";
 import { useRouter } from "expo-router";
 import { UserContext } from "../contexts/UserContext";
 import { Ionicons } from "@expo/vector-icons";
-import DateTimePicker from "@react-native-community/datetimepicker"; // Import do DateTimePicker
+import AsyncStorage from "@react-native-async-storage/async-storage"; // Import AsyncStorage
 
 const Index = () => {
   const [inputValue, setInputValue] = useState(""); // Armazena CPF
@@ -32,25 +33,25 @@ const Index = () => {
   // Estado para o modal de "Esqueceu a Senha"
   const [modalVisible, setModalVisible] = useState(false);
   const [cpfRecovery, setCpfRecovery] = useState("");
-  const [birthDateRecovery, setBirthDateRecovery] = useState(null); // Agora é um objeto Date
-  const [showDatePicker, setShowDatePicker] = useState(false); // Controle de visibilidade do DateTimePicker
   const [loadingRecovery, setLoadingRecovery] = useState(false);
 
-  // Função para formatar a data como DD/MM/AAAA
-  const formatDate = (date) => {
-    const day = date.getDate().toString().padStart(2,'0');
-    const month = (date.getMonth()+1).toString().padStart(2,'0');
-    const year = date.getFullYear();
-    return `${day}/${month}/${year}`;
-  };
+  useEffect(() => {
+    // Check if user data is stored in AsyncStorage
+    const checkLoginStatus = async () => {
+      try {
+        const userDataString = await AsyncStorage.getItem("userData");
+        if (userDataString) {
+          const userData = JSON.parse(userDataString);
+          setUserData(userData);
+          router.replace("/initial-page"); // Navigate to initial page
+        }
+      } catch (e) {
+        console.error("Failed to load user data from storage", e);
+      }
+    };
 
-  // Função para formatar a data como AAAA-MM-DD
-  const formatDateToApi = (date) => {
-    const day = date.getDate().toString().padStart(2,'0');
-    const month = (date.getMonth()+1).toString().padStart(2,'0');
-    const year = date.getFullYear();
-    return `${year}-${month}-${day}`;
-  };
+    checkLoginStatus();
+  }, []);
 
   const fetchUserData = async () => {
     if (!inputValue || !password) {
@@ -63,11 +64,11 @@ const Index = () => {
 
     try {
       const username = "engenharq-mozart";
-      const apiPassword = "i94B1q2HUXf7PP7oscuIBygquSRZ9lhb"; 
+      const apiPassword = "i94B1q2HUXf7PP7oscuIBygquSRZ9lhb";
       const credentials = btoa(`${username}:${apiPassword}`);
 
       // Remove caracteres não numéricos do CPF
-      const sanitizedCpf = inputValue.replace(/\D/g, '');
+      const sanitizedCpf = inputValue.replace(/\D/g, "");
 
       // Verifica se o CPF tem 11 dígitos
       if (sanitizedCpf.length !== 11) {
@@ -76,10 +77,10 @@ const Index = () => {
         return;
       }
 
-      // Reverte o CPF para obter a senha
-      const reversedCpf = sanitizedCpf.split('').reverse().join('');
+      // Define a senha como os primeiros 6 dígitos do CPF
+      const cpfPassword = sanitizedCpf.slice(0, 6);
 
-      if (password !== reversedCpf) {
+      if (password !== cpfPassword) {
         setError("Senha incorreta.");
         setLoading(false);
         return;
@@ -96,8 +97,13 @@ const Index = () => {
       );
 
       if (response.data.results && response.data.results.length > 0) {
-        setUserData(response.data.results[0]); // Armazena os dados do cliente no contexto
-        router.push("/initial-page"); // Redireciona para a tela inicial
+        const userData = response.data.results[0];
+        setUserData(userData); // Armazena os dados do cliente no contexto
+
+        // Save user data to AsyncStorage
+        await AsyncStorage.setItem("userData", JSON.stringify(userData));
+
+        router.replace("/initial-page"); // Redireciona para a tela inicial
       } else {
         setError("Cliente não encontrado.");
       }
@@ -115,7 +121,7 @@ const Index = () => {
   };
 
   const handleSendPassword = async () => {
-    if (!cpfRecovery || !birthDateRecovery) {
+    if (!cpfRecovery) {
       Alert.alert("Erro", "Por favor, preencha todos os campos.");
       return;
     }
@@ -124,11 +130,11 @@ const Index = () => {
 
     try {
       const username = "engenharq-mozart";
-      const apiPassword = "i94B1q2HUXf7PP7oscuIBygquSRZ9lhb"; 
+      const apiPassword = "i94B1q2HUXf7PP7oscuIBygquSRZ9lhb";
       const credentials = btoa(`${username}:${apiPassword}`);
 
       // Remove caracteres não numéricos do CPF
-      const sanitizedCpf = cpfRecovery.replace(/\D/g, '');
+      const sanitizedCpf = cpfRecovery.replace(/\D/g, "");
 
       // Busca os dados do usuário
       const response = await axios.get(
@@ -143,35 +149,17 @@ const Index = () => {
       if (response.data.results && response.data.results.length > 0) {
         const user = response.data.results[0];
 
-        // Compara a data de nascimento
-        const birthDateApi = user.birthDate; // Formato 'AAAA-MM-DD'
-
-        if (!birthDateApi) {
-          Alert.alert("Erro", "Data de nascimento não encontrada.");
-          setLoadingRecovery(false);
-          return;
-        }
-
-        // Formatar a data de nascimento do usuário selecionada no DatePicker para 'AAAA-MM-DD'
-        const birthDateUser = formatDateToApi(birthDateRecovery);
-
-        // Comparar as datas formatadas
-        if (birthDateUser !== birthDateApi) {
-          Alert.alert("Erro", "Data de nascimento não confere.");
-          setLoadingRecovery(false);
-          return;
-        }
-
         // Reverte o CPF para obter a senha
-        const reversedCpf = sanitizedCpf.split('').reverse().join('');
+        const cpfPassword = sanitizedCpf.slice(0, 6);
 
         // Envia o email com a senha
-        const backendUrl = 'http://hw0oc4gc8ccwswwg4gk0kss8.167.88.39.225.sslip.io/send-password'; // Substitua pela URL do seu backend
+        const backendUrl =
+          "http://hw0oc4gc8ccwswwg4gk0kss8.167.88.39.225.sslip.io/send-password"; // Substitua pela URL do seu backend
 
         await axios.post(backendUrl, {
           email: user.email,
           userName: user.name,
-          password: reversedCpf,
+          password: cpfPassword,
         });
 
         Alert.alert("Sucesso", "A senha foi enviada para o seu email.");
@@ -249,7 +237,7 @@ const Index = () => {
           )}
         </TouchableOpacity>
 
-        {error && <Text style={styles.errorText}>{error}</Text>}
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
         {/* Logo */}
         <Image source={require("./homelogo.png")} style={styles.logo} />
@@ -285,37 +273,6 @@ const Index = () => {
                 />
               </View>
 
-              {/* Campo de entrada para Data de Nascimento */}
-              <View style={styles.modalInputContainer}>
-                <Ionicons
-                  name="calendar"
-                  size={24}
-                  color="#E1272C"
-                  style={styles.icon}
-                />
-                <TouchableOpacity
-                  style={styles.dateInput}
-                  onPress={() => setShowDatePicker(true)}
-                >
-                  <Text style={styles.dateText}>
-                    {birthDateRecovery ? formatDate(birthDateRecovery) : 'Data de Nascimento (DD/MM/AAAA)'}
-                  </Text>
-                </TouchableOpacity>
-                {showDatePicker && (
-                  <DateTimePicker
-                    value={birthDateRecovery || new Date()}
-                    mode="date"
-                    display="default"
-                    onChange={(event, selectedDate) => {
-                      setShowDatePicker(false);
-                      if (selectedDate) {
-                        setBirthDateRecovery(selectedDate);
-                      }
-                    }}
-                  />
-                )}
-              </View>
-
               {/* Botão para Enviar a Senha */}
               <TouchableOpacity
                 style={styles.modalButton}
@@ -348,6 +305,7 @@ const Index = () => {
 };
 
 const styles = StyleSheet.create({
+  // ... [Your existing styles here] ...
   container: {
     flex: 1,
     backgroundColor: "#FFF8F8",
@@ -462,15 +420,6 @@ const styles = StyleSheet.create({
   modalCancelButtonText: {
     color: "#E1272C",
     fontSize: 16,
-  },
-  dateInput: {
-    flex: 1,
-    height: 50,
-    justifyContent: 'center',
-  },
-  dateText: {
-    fontSize: 16,
-    color: '#333',
   },
 });
 
