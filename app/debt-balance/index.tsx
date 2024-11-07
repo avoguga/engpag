@@ -237,10 +237,10 @@ const DebtBalanceScreen = () => {
         </View>
       </View>
 
-      {/* Informações Adicionais sobre o Saldo Devedor */}
-      <Text style={styles.balanceInfo}>
-        O saldo devedor não inclui o valor das prestações em aberto. Valor sujeito a alteração.
-      </Text>
+        {/* Informações Adicionais sobre o Saldo Devedor
+        <Text style={styles.balanceInfo}>
+          O saldo devedor não inclui o valor das prestações em aberto. Valor sujeito a alteração.
+        </Text> */}
 
       {/* Próximo Vencimento */}
       {nextPaymentDate && nextPaymentAmount ? (
@@ -251,12 +251,7 @@ const DebtBalanceScreen = () => {
             <Text style={styles.paymentAmount}>
               {formatCurrency(nextPaymentAmount)}
             </Text>
-            <TouchableOpacity
-              style={styles.boletoButton}
-              onPress={handleBoletoPress}
-            >
-              <Text style={styles.boletoButtonText}>BOLETO</Text>
-            </TouchableOpacity>
+           
           </View>
         </View>
       ) : null}

@@ -18,7 +18,7 @@ import { UserContext } from "../contexts/UserContext";
 
 const NotificationScreen = () => {
   const router = useRouter();
-  const { userData } = useContext(UserContext);
+  const { userData, notificationCount, setNotificationCount, fetchNotificationCount } = useContext(UserContext);
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
@@ -38,6 +38,11 @@ const NotificationScreen = () => {
         { params: { cpf: userData.cpf } }
       );
       setNotifications(response.data);
+
+      // Update notification count in context
+      const unreadCount = response.data.filter(notification => !notification.read).length;
+      setNotificationCount(unreadCount);
+
     } catch (err) {
       console.error("Erro ao buscar notificações:", err);
       setError("Falha ao buscar notificações.");
@@ -51,33 +56,35 @@ const NotificationScreen = () => {
     fetchNotifications();
   }, [userData]);
 
-  // Função para marcar uma notificação como lida
   const handleNotificationPress = async (notification) => {
     if (notification.read) {
-      // Já está lida, nenhuma ação necessária
+      // Already read, no action needed
       return;
     }
 
     try {
-      // Marcar como lida no servidor
+      // Mark as read on the server
       await axios.put(
         `http://hw0oc4gc8ccwswwg4gk0kss8.167.88.39.225.sslip.io/notifications/${notification._id}`,
         { read: true }
       );
 
-      // Atualizar o estado local
+      // Update local state
       setNotifications((prevNotifications) =>
         prevNotifications.map((n) =>
           n._id === notification._id ? { ...n, read: true } : n
         )
       );
+
+      // Update notification count in context
+      setNotificationCount(notificationCount - 1);
+
     } catch (err) {
       console.error("Erro ao marcar notificação como lida:", err);
       Alert.alert("Erro", "Falha ao marcar notificação como lida.");
     }
   };
 
-  // Função para deletar todas as notificações
   const deleteAllNotifications = () => {
     if (!userData || !userData.cpf) {
       Alert.alert("Erro", "Dados do usuário não disponíveis.");
@@ -102,7 +109,8 @@ const NotificationScreen = () => {
                 }
               );
               Alert.alert("Sucesso", "Você apagou as notificações!");
-              setNotifications([]); // Limpa a lista de notificações
+              setNotifications([]); // Clear notifications
+              setNotificationCount(0); // Reset notification count in context
             } catch (err) {
               console.error("Erro ao deletar notificações:", err);
               Alert.alert("Erro", "Falha ao deletar notificações.");
@@ -136,7 +144,10 @@ const NotificationScreen = () => {
             <Ionicons name="arrow-back-outline" size={28} color="white" />
           </Pressable>
           <Text style={styles.headerTitle}>Notificações</Text>
-          <TouchableOpacity onPress={deleteAllNotifications} disabled={deleting}>
+          <TouchableOpacity
+            onPress={deleteAllNotifications}
+            disabled={deleting}
+          >
             {deleting ? (
               <ActivityIndicator size="small" color="#fff" />
             ) : (
@@ -192,7 +203,6 @@ const NotificationScreen = () => {
     </View>
   );
 };
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,

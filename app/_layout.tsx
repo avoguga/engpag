@@ -4,14 +4,13 @@ import {
   TouchableOpacity,
   View,
   StyleSheet,
-  ActivityIndicator,
   Text,
   StatusBar,
   Modal,
 } from "react-native"; // Adicionei StatusBar
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import NotificationIcon from "../components/NotificationIcon"; // Verifique que este ícone está corretamente definido
+import NotificationIcon from "../components/NotificationIcon"; 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useState } from "react";
 

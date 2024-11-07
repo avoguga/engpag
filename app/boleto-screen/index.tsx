@@ -23,6 +23,7 @@ const BoletoScreen = () => {
   const [digitableNumber, setDigitableNumber] = useState("");
   const [installmentDetails, setInstallmentDetails] = useState(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
+  const [isSupportModalVisible, setIsSupportModalVisible] = useState(false);
   const [hasOverdueInstallment, setHasOverdueInstallment] = useState(false);
   const { enterpriseName } = useLocalSearchParams();
   const [sendingEmail, setSendingEmail] = useState(false);
@@ -60,42 +61,73 @@ const BoletoScreen = () => {
 
       const results = response.data.results || [];
       let availableInstallments = [];
+      let nonGeneratedInstallments = [];
 
       results.forEach((bill) => {
         const installments = [
           ...(bill.dueInstallments || []),
           ...(bill.payableInstallments || []),
-        ]
-          .filter((installment) => installment.generatedBoleto)
-          .map((installment) => ({
-            ...installment,
-            billReceivableId: bill.billReceivableId,
-          }));
-        availableInstallments.push(...installments);
+        ];
+
+        installments.forEach((installment) => {
+          if (installment.generatedBoleto) {
+            availableInstallments.push({
+              ...installment,
+              billReceivableId: bill.billReceivableId,
+            });
+          } else {
+            nonGeneratedInstallments.push({
+              ...installment,
+              billReceivableId: bill.billReceivableId,
+            });
+          }
+        });
       });
 
       if (availableInstallments.length > 0) {
+        // Ordenar as parcelas por data de vencimento
         availableInstallments.sort(
           (a, b) => new Date(a.dueDate) - new Date(b.dueDate)
         );
         const installment = availableInstallments[0];
         let status = "Pendente";
         const today = new Date();
+        const dueDate = new Date(installment.dueDate);
+        const daysOverdue = Math.floor((today - dueDate) / (1000 * 60 * 60 * 24));
 
-        if (
-          availableInstallments.some(
-            (i) => new Date(i.dueDate) < today && !i.paidDate
-          )
-        ) {
-          setHasOverdueInstallment(true);
-          status = "Vencido";
-        } else if (installment.paidDate) {
+        if (installment.paidDate) {
           status = "Pago";
+        } else if (dueDate < today) {
+          status = "Vencido";
+          if (daysOverdue > 30) {
+            setHasOverdueInstallment(true);
+          }
         }
 
         setInstallmentDetails({ ...installment, status });
+      } else if (nonGeneratedInstallments.length > 0) {
+        // Boletos existem mas não estão gerados
+        Alert.alert(
+          "Boleto Indisponível",
+          "Nenhum boleto está disponível no momento. Por favor, entre em contato com o suporte via WhatsApp para liberar o pagamento.",
+          [
+            {
+              text: "Falar com Suporte",
+              onPress: () => handleSendWhatsAppMessage(),
+            },
+            {
+              text: "Cancelar",
+              style: "cancel",
+            },
+          ]
+        );
       } else {
-        Alert.alert("Aviso", "Nenhum boleto disponível no momento.");
+        // Nenhum boleto disponível
+        Alert.alert(
+          "Nenhum Boleto Disponível",
+          "Nenhum boleto está disponível no momento.",
+          [{ text: "OK" }]
+        );
       }
     } catch (error) {
       console.error("Erro ao buscar detalhes da parcela:", error);
@@ -106,8 +138,8 @@ const BoletoScreen = () => {
   };
 
   const handleSendWhatsAppMessage = async () => {
-    if (!userData || !userData.id || !installmentDetails) {
-      Alert.alert("Erro", "Dados do cliente ou da parcela não encontrados.");
+    if (!userData) {
+      Alert.alert("Erro", "Dados do cliente não encontrados.");
       return;
     }
 
@@ -118,17 +150,20 @@ const BoletoScreen = () => {
         "engenharq-mozart:i94B1q2HUXf7PP7oscuIBygquSRZ9lhb"
       );
 
-      const billReceivableId = installmentDetails.billReceivableId;
+      let companyId = null;
 
-      const response = await axios.get(
-        `https://api.sienge.com.br/engenharq/public/api/v1/accounts-receivable/receivable-bills/${billReceivableId}`,
-        {
-          params: { customerId: userData.id },
-          headers: { Authorization: `Basic ${credentials}` },
-        }
-      );
+      if (installmentDetails) {
+        const billReceivableId = installmentDetails.billReceivableId;
+        const response = await axios.get(
+          `https://api.sienge.com.br/engenharq/public/api/v1/accounts-receivable/receivable-bills/${billReceivableId}`,
+          {
+            params: { customerId: userData.id },
+            headers: { Authorization: `Basic ${credentials}` },
+          }
+        );
 
-      const companyId = response.data.companyId;
+        companyId = response.data.companyId;
+      }
 
       const companyInfo = {
         1: { name: "Engenharq", whatsappNumber: "558296890033" },
@@ -137,17 +172,10 @@ const BoletoScreen = () => {
         default: { name: "Desconhecida", whatsappNumber: "5585986080000" },
       };
 
-      const { whatsappNumber } = companyInfo[companyId] || companyInfo.default;
+      const { whatsappNumber } =
+        (companyId && companyInfo[companyId]) || companyInfo.default;
 
-      const message = `Olá, meu nome é ${userData.name}, portador do CPF ${
-        userData.cpf
-      }. Gostaria de solicitar assistência para a parcela ${
-        installmentDetails.installmentNumber
-      } do título ${billReceivableId} referente ao empreendimento ${enterpriseName}. A parcela tem vencimento em ${formatDate(
-        installmentDetails.dueDate
-      )} e um valor de ${parseFloat(
-        installmentDetails.currentBalance
-      ).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}.`;
+      const message = `Olá, meu nome é ${userData.name}, portador do CPF ${userData.cpf}. Gostaria de solicitar assistência para liberar o pagamento do meu boleto referente ao empreendimento ${enterpriseName}.`;
 
       const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
         message
@@ -189,10 +217,10 @@ const BoletoScreen = () => {
     if (hasOverdueInstallment || daysOverdue > 30) {
       Alert.alert(
         "Boleto Indisponível",
-        "Este boleto está vencido ou há outras parcelas vencidas. Entre em contato com o suporte pelo WhatsApp para mais informações.",
+        "Este boleto está vencido há mais de 30 dias. Por favor, entre em contato com o suporte via WhatsApp para liberar o pagamento e gerar uma nova via.",
         [
           {
-            text: "Ir para o WhatsApp",
+            text: "Falar com Suporte",
             onPress: () => handleSendWhatsAppMessage(),
           },
           {
@@ -201,6 +229,11 @@ const BoletoScreen = () => {
           },
         ]
       );
+      return;
+    }
+
+    if (!installmentDetails.generatedBoleto) {
+      setIsSupportModalVisible(true);
       return;
     }
 
@@ -250,6 +283,11 @@ const BoletoScreen = () => {
         "Erro",
         "Dados do usuário ou informações da parcela não encontrados."
       );
+      return;
+    }
+
+    if (!installmentDetails.generatedBoleto) {
+      setIsSupportModalVisible(true);
       return;
     }
 
@@ -304,7 +342,10 @@ const BoletoScreen = () => {
                     "E-mail com o boleto enviado com sucesso!"
                   );
                 } else {
-                  Alert.alert("Erro", "Falha ao enviar o e-mail com o boleto.");
+                  Alert.alert(
+                    "Erro",
+                    "Falha ao enviar o e-mail com o boleto."
+                  );
                 }
               } else {
                 Alert.alert("Erro", "Falha ao obter o link do boleto.");
@@ -345,82 +386,120 @@ const BoletoScreen = () => {
         ) : (
           <>
             {installmentDetails ? (
-              <View style={styles.infoContainer}>
-                <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>Número da Parcela:</Text>
-                  <Text style={styles.infoValue}>
-                    {installmentDetails.installmentNumber}
+              <>
+                <View style={styles.infoContainer}>
+                  <View style={styles.infoRow}>
+                    <Text style={styles.infoLabel}>Número da Parcela:</Text>
+                    <Text style={styles.infoValue}>
+                      {installmentDetails.installmentNumber}
+                    </Text>
+                  </View>
+                  <View style={styles.infoRow}>
+                    <Text style={styles.infoLabel}>Vencimento:</Text>
+                    <Text style={styles.infoValue}>
+                      {formatDate(installmentDetails.dueDate)}
+                    </Text>
+                  </View>
+                  <View style={styles.infoRow}>
+                    <Text style={styles.infoLabel}>Número do Título:</Text>
+                    <Text style={styles.infoValue}>
+                      {installmentDetails.billReceivableId}
+                    </Text>
+                  </View>
+                  <View style={styles.infoRow}>
+                    <Text style={styles.infoLabel}>Situação:</Text>
+                    <Text style={styles.infoValue}>
+                      {installmentDetails.status}
+                    </Text>
+                  </View>
+                  <View style={styles.infoRow}>
+                    <Text style={styles.infoLabel}>Valor:</Text>
+                    <Text style={styles.infoValue}>
+                      {parseFloat(
+                        installmentDetails.currentBalance
+                      ).toLocaleString("pt-BR", {
+                        style: "currency",
+                        currency: "BRL",
+                      })}
+                    </Text>
+                  </View>
+                  <Text style={styles.availabilityText}>
+                    Boleto {installmentDetails.generatedBoleto ? "Disponível" : "Indisponível"}
                   </Text>
                 </View>
-                <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>Vencimento:</Text>
-                  <Text style={styles.infoValue}>
-                    {formatDate(installmentDetails.dueDate)}
-                  </Text>
-                </View>
-                <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>Número do Título:</Text>
-                  <Text style={styles.infoValue}>
-                    {installmentDetails.billReceivableId}
-                  </Text>
-                </View>
-                <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>Situação:</Text>
-                  <Text style={styles.infoValue}>
-                    {installmentDetails.status}
-                  </Text>
-                </View>
-                <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>Valor:</Text>
-                  <Text style={styles.infoValue}>
-                    {parseFloat(
-                      installmentDetails.currentBalance
-                    ).toLocaleString("pt-BR", {
-                      style: "currency",
-                      currency: "BRL",
-                    })}
-                  </Text>
-                </View>
-                <View style={styles.warningContainer}>
-                  <Text style={styles.warningText}>
-                    {hasOverdueInstallment
-                      ? "Como se passaram 30 dias após o vencimento da parcela, é necessário solicitar uma nova via do boleto.\n \n Entre em contato com o suporte para gerar uma nova via do boleto e ficar em dia com os pagamentos!"
-                      : "Após 30 dias de vencimento, é necessário falar com o suporte para solicitar uma nova via do boleto."}
-                  </Text>
-                </View>
-              </View>
-            ) : (
-              <Text style={styles.noBoletoText}>
-                Nenhum boleto disponível no momento.
-              </Text>
-            )}
 
-            {installmentDetails && !hasOverdueInstallment && (
-              <View style={styles.buttonContainer}>
-                <TouchableOpacity
-                  style={styles.actionButton}
-                  onPress={requestBoletoLink}
-                >
-                  <Ionicons name="download-outline" size={20} color="white" />
-                  <Text style={styles.actionButtonText}>
-                    {" "}
-                    Gerar Link da Segunda Via
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.actionButton}
-                  onPress={requestBoletoEmail}
-                >
-                  <Ionicons name="mail" size={20} color="white" />
-                  <Text style={styles.actionButtonText}>
-                    {" "}
-                    Enviar para email
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            )}
-            {hasOverdueInstallment && (
-              <View style={styles.buttonContainer}>
+                {hasOverdueInstallment ? (
+                  <View style={styles.warningContainer}>
+                    <Text style={styles.warningText}>
+                      Este boleto está vencido há mais de 30 dias. Por favor,
+                      entre em contato com o suporte via WhatsApp para liberar o
+                      pagamento e gerar uma nova via.
+                    </Text>
+                  </View>
+                ) : installmentDetails.status === "Vencido" ? (
+                  <View style={styles.warningContainer}>
+                    <Text style={styles.warningText}>
+                      Este boleto está vencido. Você pode gerar uma segunda via
+                      ou entrar em contato com o suporte para mais informações.
+                    </Text>
+                  </View>
+                ) : (
+                  <View style={styles.warningContainer}>
+                    <Text style={styles.warningText}>
+                      Após 30 dias de vencimento, será necessário falar com o
+                      suporte para solicitar uma nova via do boleto.
+                    </Text>
+                  </View>
+                )}
+
+                <View style={styles.buttonContainer}>
+                  {hasOverdueInstallment ? (
+                    <TouchableOpacity
+                      style={styles.contactSupportButton}
+                      onPress={() => handleSendWhatsAppMessage()}
+                    >
+                      <Ionicons name="logo-whatsapp" size={20} color="white" />
+                      <Text style={styles.contactSupportButtonText}>
+                        {" "}
+                        Falar com Suporte
+                      </Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <>
+                      <TouchableOpacity
+                        style={styles.actionButton}
+                        onPress={requestBoletoLink}
+                      >
+                        <Ionicons
+                          name="download-outline"
+                          size={20}
+                          color="white"
+                        />
+                        <Text style={styles.actionButtonText}>
+                          {" "}
+                          Gerar Link da Segunda Via
+                        </Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.actionButton}
+                        onPress={requestBoletoEmail}
+                      >
+                        <Ionicons name="mail" size={20} color="white" />
+                        <Text style={styles.actionButtonText}>
+                          {" "}
+                          Enviar para E-mail
+                        </Text>
+                      </TouchableOpacity>
+                    </>
+                  )}
+                </View>
+              </>
+            ) : (
+              <View style={styles.noBoletoContainer}>
+                <Text style={styles.noBoletoText}>
+                  Nenhum boleto está disponível no momento. Por favor, entre em
+                  contato com o suporte via WhatsApp para liberar o pagamento.
+                </Text>
                 <TouchableOpacity
                   style={styles.contactSupportButton}
                   onPress={() => handleSendWhatsAppMessage()}
@@ -435,6 +514,8 @@ const BoletoScreen = () => {
             )}
           </>
         )}
+
+        {/* Modal de Linha Digitável */}
         <Modal
           visible={isModalVisible}
           animationType="slide"
@@ -449,9 +530,14 @@ const BoletoScreen = () => {
                   {digitableNumber}
                 </Text>
                 <TouchableOpacity
-                  onPress={() => Clipboard.setString(digitableNumber)}
+                  style={styles.copyButton}
+                  onPress={() => {
+                    Clipboard.setString(digitableNumber);
+                    Alert.alert("Copiado", "Linha digitável copiada!");
+                  }}
                 >
                   <Ionicons name="copy-outline" size={24} color="#E1272C" />
+                  <Text style={styles.copyButtonText}>Copiar</Text>
                 </TouchableOpacity>
               </View>
               <TouchableOpacity
@@ -476,12 +562,54 @@ const BoletoScreen = () => {
             </View>
           </View>
         </Modal>
+
+        {/* Modal de Suporte */}
+        <Modal
+          visible={isSupportModalVisible}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setIsSupportModalVisible(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.supportModalContainer}>
+              <Text style={styles.supportModalTitle}>Suporte</Text>
+              <Text style={styles.supportModalText}>
+                Este boleto não está disponível. Por favor, entre em contato com o suporte via WhatsApp para liberar o pagamento.
+              </Text>
+              <View style={styles.supportModalButtons}>
+                <TouchableOpacity
+                  style={styles.supportButton}
+                  onPress={() => {
+                    setIsSupportModalVisible(false);
+                    handleSendWhatsAppMessage();
+                  }}
+                >
+                  <Ionicons name="logo-whatsapp" size={20} color="white" />
+                  <Text style={styles.supportButtonText}>Falar com Suporte</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.cancelSupportButton}
+                  onPress={() => setIsSupportModalVisible(false)}
+                >
+                  <Text style={styles.cancelSupportButtonText}>Cancelar</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
       </ScrollView>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
+  availabilityText: {
+    marginTop: 10,
+    fontSize: 14,
+    color: "#555",
+    textAlign: "center",
+    fontStyle: "italic",
+  },
   warningContainer: {
     backgroundColor: "#FFF3CD",
     padding: 10,
@@ -519,20 +647,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 20,
     alignItems: "center",
-  },
-  topBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#E1272C",
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-  },
-  headerTitle: {
-    flex: 1,
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "bold",
-    textAlign: "center",
   },
   iconContainer: {
     justifyContent: "center",
@@ -576,11 +690,15 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#333",
   },
+  noBoletoContainer: {
+    alignItems: "center",
+    marginTop: 20,
+  },
   noBoletoText: {
     fontSize: 16,
     color: "#888",
     textAlign: "center",
-    marginTop: 20,
+    marginBottom: 15,
   },
   buttonContainer: {
     marginTop: 10,
@@ -640,6 +758,16 @@ const styles = StyleSheet.create({
     color: "#333",
     flex: 1,
   },
+  copyButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginLeft: 10,
+  },
+  copyButtonText: {
+    color: "#E1272C",
+    fontSize: 16,
+    marginLeft: 5,
+  },
   boletoDownloadButton: {
     backgroundColor: "#E1272C",
     paddingVertical: 15,
@@ -668,6 +796,64 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 16,
     fontWeight: "bold",
+  },
+  supportModalContainer: {
+    backgroundColor: "#fff",
+    width: "85%",
+    borderRadius: 10,
+    padding: 20,
+    alignItems: "center",
+  },
+  supportModalTitle: {
+    fontSize: 18,
+    color: "#333",
+    marginBottom: 15,
+    fontWeight: "bold",
+    textAlign: "center",
+  },
+  supportModalText: {
+    fontSize: 16,
+    color: "#555",
+    textAlign: "center",
+    marginBottom: 20,
+  },
+  supportModalButtons: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    width: "100%",
+  },
+  supportButton: {
+    backgroundColor: "#25D366",
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+    marginRight: 10,
+    elevation: 2,
+  },
+  supportButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "bold",
+    marginLeft: 10,
+    textAlign: "center",
+  },
+  cancelSupportButton: {
+    backgroundColor: "#5B5B5B",
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    flex: 1,
+    marginLeft: 10,
+    elevation: 2,
+  },
+  cancelSupportButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "bold",
+    textAlign: "center",
   },
 });
 
