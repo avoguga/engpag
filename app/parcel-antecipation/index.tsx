@@ -86,49 +86,32 @@ const ParcelAntecipation = () => {
         return;
       }
 
-      // Obter o enterpriseName
-      const customerId = userData.id;
-      const billResponse = await axios.get(
-        `http://localhost:3000/proxy/accounts-receivable/receivable-bills/${billReceivableId}`,
-        {
-          params: {
-            customerId: customerId,
-          },
-          headers: {
-            Authorization: `Basic ${credentials}`,
-          },
-        }
-      );
-
-      let allInstallments = [];
-
-      const { dueInstallments, payableInstallments } = selectedResult;
-
       const installments = [
-        ...(dueInstallments || []),
-        ...(payableInstallments || []),
-      ].map((installment) => ({
-        id: installment.installmentId.toString(),
-        number: installment.installmentNumber,
-        billReceivableId: selectedResult.billReceivableId,
-        dueDate: new Date(installment.dueDate), // Armazenar como Date
-        formattedDueDate: new Date(installment.dueDate).toLocaleDateString(
-          "pt-BR"
-        ), // Formato para exibição
-        value: parseFloat(installment.currentBalance).toLocaleString("pt-BR", {
-          style: "currency",
-          currency: "BRL",
-        }),
-        status:
-          new Date(installment.dueDate) < new Date() ? "vencido" : "pendente",
-        installmentId: installment.installmentId,
-        generatedBoleto: installment.generatedBoleto,
-        currentBalance: installment.currentBalance,
-      }));
+        ...(selectedResult.dueInstallments || []),
+        ...(selectedResult.payableInstallments || []),
+      ].map((installment) => {
+        const [year, month, day] = installment.dueDate.split("-");
+        const dueDateUTC = new Date(Date.UTC(year, month - 1, day));
+        const formattedDueDate = `${day}/${month}/${year}`;
 
-      allInstallments = [...allInstallments, ...installments];
+        return {
+          id: installment.installmentId.toString(),
+          number: installment.installmentNumber,
+          billReceivableId: selectedResult.billReceivableId,
+          dueDate: dueDateUTC,
+          formattedDueDate: formattedDueDate,
+          value: parseFloat(installment.currentBalance).toLocaleString("pt-BR", {
+            style: "currency",
+            currency: "BRL",
+          }),
+          status: dueDateUTC < new Date() ? "vencido" : "pendente",
+          installmentId: installment.installmentId,
+          generatedBoleto: installment.generatedBoleto,
+          currentBalance: installment.currentBalance,
+        };
+      });
 
-      setData(allInstallments);
+      setData(installments);
     } catch (error) {
       console.error("Erro ao buscar parcelas:", error);
       Alert.alert("Erro", "Não foi possível obter as parcelas.");
@@ -138,9 +121,7 @@ const ParcelAntecipation = () => {
   };
 
   const handleSelectInstallment = (item) => {
-    if (
-      selectedInstallments.some((installment) => installment.id === item.id)
-    ) {
+    if (selectedInstallments.some((installment) => installment.id === item.id)) {
       setSelectedInstallments(
         selectedInstallments.filter((installment) => installment.id !== item.id)
       );
@@ -150,7 +131,7 @@ const ParcelAntecipation = () => {
   };
 
   const handleDateInputWithMask = (text, setDate, setDateInput) => {
-    let formattedText = text.replace(/\D/g, ""); 
+    let formattedText = text.replace(/\D/g, "");
   
     if (formattedText.length > 2) {
       formattedText = formattedText.replace(/(\d{2})(\d)/, "$1/$2");
@@ -159,31 +140,21 @@ const ParcelAntecipation = () => {
       formattedText = formattedText.replace(/(\d{2})\/(\d{2})(\d)/, "$1/$2/$3");
     }
     if (formattedText.length > 10) {
-      formattedText = formattedText.slice(0, 10); // Limita a 10 caracteres
+      formattedText = formattedText.slice(0, 10);
     }
   
     setDateInput(formattedText);
   
-    // Verifica se o formato está completo para validação de data
     if (formattedText.length === 10) {
       const [day, month, year] = formattedText.split("/");
-      if (parseInt(month) > 12) {
-        Alert.alert("Data inválida", "O mês não pode ser maior que 12.");
-        return;
-      }
       const date = new Date(`${year}-${month}-${day}`);
-      if (!isNaN(date) && day <= 31) {
-        setDate(date); // Define a data se válida
-      }
+      if (!isNaN(date)) setDate(date);
     }
   };
 
   const handleConfirmSelection = () => {
     if (selectedInstallments.length === 0) {
-      Alert.alert(
-        "Atenção",
-        "Selecione ao menos uma parcela antes de continuar."
-      );
+      Alert.alert("Atenção", "Selecione ao menos uma parcela antes de continuar.");
       return;
     }
     setConfirmModalVisible(true);
@@ -218,25 +189,12 @@ const ParcelAntecipation = () => {
     setEndDateInput("");
   };
 
-  const handleDateInputChange = (text, setDate, setDateInput) => {
-    setDateInput(text);
-    const dateParts = text.split("/");
-    if (dateParts.length === 3) {
-      const date = new Date(`${dateParts[2]}-${dateParts[1]}-${dateParts[0]}`);
-      if (!isNaN(date)) {
-        setDate(date);
-      }
-    }
-  };
-
   const renderItem = ({ item }) => (
     <TouchableOpacity
       style={[
         styles.card,
         item.status === "vencido" ? styles.overdueCard : styles.pendingCard,
-        selectedInstallments.some(
-          (installment) => installment.id === item.id
-        ) && styles.selectedCard,
+        selectedInstallments.some((installment) => installment.id === item.id) && styles.selectedCard,
       ]}
       onPress={() => handleSelectInstallment(item)}
     >
@@ -247,9 +205,7 @@ const ParcelAntecipation = () => {
       <Text style={styles.cardSubtitle}>
         Número do Título {item.billReceivableId}
       </Text>
-      <Text style={styles.cardSubtitle}>
-        Vencimento {item.formattedDueDate}
-      </Text>
+      <Text style={styles.cardSubtitle}>Vencimento {item.formattedDueDate}</Text>
       <Text style={styles.cardValue}>Valor {item.value}</Text>
     </TouchableOpacity>
   );
@@ -266,76 +222,37 @@ const ParcelAntecipation = () => {
     }
 
     const customerId = userData.id;
-
-    const totalAmount = selectedInstallments.reduce((sum, installment) => {
-      return sum + parseFloat(installment.currentBalance);
-    }, 0);
-
+    const totalAmount = selectedInstallments.reduce((sum, installment) => sum + parseFloat(installment.currentBalance), 0);
     setLoading(true);
 
     try {
       const username = "engenharq-mozart";
       const password = "i94B1q2HUXf7PP7oscuIBygquSRZ9lhb";
       const credentials = btoa(`${username}:${password}`);
-
       const billReceivableId = selectedInstallments[0].billReceivableId;
 
       const response = await axios.get(
         `http://localhost:3000/proxy/accounts-receivable/receivable-bills/${billReceivableId}`,
         {
-          params: {
-            customerId: customerId,
-          },
-          headers: {
-            Authorization: `Basic ${credentials}`,
-          },
+          params: { customerId: customerId },
+          headers: { Authorization: `Basic ${credentials}` },
         }
       );
 
       const companyId = response.data.companyId;
+      const companyInfo = {
+        1: { name: "Engenharq", whatsappNumber: "558296890033" },
+        2: { name: "EngeLot", whatsappNumber: "558296890066" },
+        3: { name: "EngeLoc", whatsappNumber: "558296890202" },
+        default: { name: "Desconhecida", whatsappNumber: "5585986080000" },
+      };
 
-      let companyName = "";
-      let whatsappNumber = "";
-
-      switch (companyId) {
-        case 1:
-          companyName = "Engenharq";
-          whatsappNumber = "558296890033";
-          break;
-        case 2:
-          companyName = "EngeLot";
-          whatsappNumber = "558296890066";
-          break;
-        case 3:
-          companyName = "EngeLoc";
-          whatsappNumber = "558296890202";
-          break;
-        default:
-          companyName = "Desconhecida";
-          whatsappNumber = "5585986080000"; // Número padrão
-      }
-
-      // Gerar a mensagem
-      const installmentNumbers = selectedInstallments
-        .map((installment) => installment.number)
-        .join(", ");
-
+      const { name: companyName, whatsappNumber } = companyInfo[companyId] || companyInfo.default;
+      const installmentNumbers = selectedInstallments.map((installment) => installment.number).join(", ");
       const document = userData.cpf ? `CPF ${userData.cpf}` : `CNPJ ${userData.cnpj}`;
-      const message = `Olá, meu nome é ${userData?.name}, meu ${document}, gostaria de negociar as parcelas: ${installmentNumbers} do título ${billReceivableId}. Valor total: ${totalAmount.toLocaleString(
-        "pt-BR",
-        {
-          style: "currency",
-          currency: "BRL",
-        }
-      )}. Desejo uma nova data de vencimento para ${newDueDate.toLocaleDateString(
-        "pt-BR"
-      )}.`;
+      const message = `Olá, meu nome é ${userData?.name}, meu ${document}, gostaria de negociar as parcelas: ${installmentNumbers} do título ${billReceivableId}. Valor total: ${totalAmount.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}. Desejo uma nova data de vencimento para ${newDueDate.toLocaleDateString("pt-BR")}.`;
 
-      const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
-        message
-      )}`;
-
-      // Abrir o WhatsApp
+      const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`;
       const supported = await Linking.canOpenURL(whatsappUrl);
 
       if (supported) {
@@ -360,6 +277,7 @@ const ParcelAntecipation = () => {
   ];
 
   const filteredData = filterByDate(filterByParcelNumber(data));
+
 
   return (
     <View style={styles.container}>

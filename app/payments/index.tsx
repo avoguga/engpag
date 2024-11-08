@@ -15,8 +15,8 @@ import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { useLocalSearchParams } from "expo-router";
 
 const formatDate = (dateString) => {
+  if (!dateString) return "Data indisponível";
   const [year, month, day] = dateString.split("-");
-  const date = new Date(Date.UTC(year, month - 1, day));
   return `${day.padStart(2, "0")}/${month.padStart(2, "0")}/${year}`;
 };
 
@@ -75,7 +75,7 @@ const PaymentHistory = () => {
       ].map((installment) => ({
         ...installment,
         billReceivableId: selectedResult.billReceivableId,
-        dueDate: formatDate(installment.dueDate),
+        formattedDueDate: formatDate(installment.dueDate),
         currentBalance: parseFloat(
           installment.currentBalance || 0
         ).toLocaleString("pt-BR", {
@@ -268,13 +268,10 @@ const PaymentHistory = () => {
     </View>
   );
 
-
   return (
     <View style={styles.container}>
       <Text style={styles.enterpriseName}>{enterpriseName}</Text>
-
       <Text style={styles.sectionTitle}>Extrato de Pagamentos</Text>
-
       <TouchableOpacity
         style={styles.downloadButton}
         onPress={handlePaymentHistoryNavigation}
@@ -287,46 +284,19 @@ const PaymentHistory = () => {
           </Text>
         </View>
       </TouchableOpacity>
-
       <View style={styles.filterContainer}>
         <TouchableOpacity onPress={() => setFilter("VENCIDOS")}>
-          <Text
-            style={[
-              styles.filterText,
-              filter === "VENCIDOS" && styles.activeFilter,
-            ]}
-          >
-            Vencidos
-          </Text>
+          <Text style={[styles.filterText, filter === "VENCIDOS" && styles.activeFilter]}>Vencidos</Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={() => setFilter("A VENCER")}>
-          <Text
-            style={[
-              styles.filterText,
-              filter === "A VENCER" && styles.activeFilter,
-            ]}
-          >
-            A Vencer
-          </Text>
+          <Text style={[styles.filterText, filter === "A VENCER" && styles.activeFilter]}>A Vencer</Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={() => setFilter("PAGOS")}>
-          <Text
-            style={[
-              styles.filterText,
-              filter === "PAGOS" && styles.activeFilter,
-            ]}
-          >
-            Pagos
-          </Text>
+          <Text style={[styles.filterText, filter === "PAGOS" && styles.activeFilter]}>Pagos</Text>
         </TouchableOpacity>
       </View>
-
       {loading ? (
-        <ActivityIndicator
-          size="large"
-          color="#E1272C"
-          style={{ marginTop: 20 }}
-        />
+        <ActivityIndicator size="large" color="#E1272C" style={{ marginTop: 20 }} />
       ) : (
         <FlatList
           data={getFilteredInstallments()}
