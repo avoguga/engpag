@@ -21,29 +21,33 @@ import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage"; // Import AsyncStorage
 
 const Index = () => {
-  const [inputValue, setInputValue] = useState(""); // Armazena CPF
+  const [inputValue, setInputValue] = useState(""); // Armazena CPF ou CNPJ
   const [password, setPassword] = useState(""); // Armazena a senha
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
 
-  // Acessa setUserData do contexto
   const { setUserData } = useContext(UserContext);
 
-  // Estado para o modal de "Esqueceu a Senha"
   const [modalVisible, setModalVisible] = useState(false);
   const [cpfRecovery, setCpfRecovery] = useState("");
   const [loadingRecovery, setLoadingRecovery] = useState(false);
 
   useEffect(() => {
-    // Check if user data is stored in AsyncStorage
     const checkLoginStatus = async () => {
       try {
-        const userDataString = await AsyncStorage.getItem("userData");
+        let userDataString;
+
+        if (Platform.OS === "web") {
+          userDataString = localStorage.getItem("userData");
+        } else {
+          userDataString = await AsyncStorage.getItem("userData");
+        }
+
         if (userDataString) {
           const userData = JSON.parse(userDataString);
           setUserData(userData);
-          router.replace("/initial-page"); // Navigate to initial page
+          router.replace("/initial-page");
         }
       } catch (e) {
         console.error("Failed to load user data from storage", e);
@@ -55,7 +59,7 @@ const Index = () => {
 
   const fetchUserData = async () => {
     if (!inputValue || !password) {
-      setError(`Por favor, insira um CPF e a senha.`);
+      setError("Por favor, insira um CPF/CNPJ e a senha.");
       return;
     }
 
@@ -67,28 +71,35 @@ const Index = () => {
       const apiPassword = "i94B1q2HUXf7PP7oscuIBygquSRZ9lhb";
       const credentials = btoa(`${username}:${apiPassword}`);
 
-      // Remove caracteres não numéricos do CPF
-      const sanitizedCpf = inputValue.replace(/\D/g, "");
+      const sanitizedInput = inputValue.replace(/\D/g, "");
 
-      // Verifica se o CPF tem 11 dígitos
-      if (sanitizedCpf.length !== 11) {
-        setError("CPF inválido.");
+      // Verifica se o valor é CPF (11 dígitos) ou CNPJ (14 dígitos)
+      const isCpf = sanitizedInput.length === 11;
+      const isCnpj = sanitizedInput.length === 14;
+
+      if (!isCpf && !isCnpj) {
+        setError("CPF ou CNPJ inválido.");
         setLoading(false);
         return;
       }
 
-      // Define a senha como os primeiros 6 dígitos do CPF
-      const cpfPassword = sanitizedCpf.slice(0, 6);
+      // Define a senha como os primeiros 6 dígitos para CPF e últimos 6 dígitos para CNPJ
+      const expectedPassword = isCpf
+        ? sanitizedInput.slice(0, 6)
+        : sanitizedInput.slice(0, 6);
 
-      if (password !== cpfPassword) {
+      if (password !== expectedPassword) {
         setError("Senha incorreta.");
         setLoading(false);
         return;
       }
 
+      // Define a URL de acordo com o tipo de documento
+      const searchParam = isCpf ? `cpf=${sanitizedInput}` : `cnpj=${sanitizedInput}`;
+
       // Busca os dados do usuário
       const response = await axios.get(
-        `https://api.sienge.com.br/engenharq/public/api/v1/customers?cpf=${sanitizedCpf}&limit=100&offset=0`,
+        `http://localhost:3000/proxy/customers?${searchParam}&limit=100&offset=0`,
         {
           headers: {
             Authorization: `Basic ${credentials}`,
@@ -98,12 +109,15 @@ const Index = () => {
 
       if (response.data.results && response.data.results.length > 0) {
         const userData = response.data.results[0];
-        setUserData(userData); // Armazena os dados do cliente no contexto
+        setUserData(userData);
 
-        // Save user data to AsyncStorage
-        await AsyncStorage.setItem("userData", JSON.stringify(userData));
+        if (Platform.OS === "web") {
+          localStorage.setItem("userData", JSON.stringify(userData));
+        } else {
+          await AsyncStorage.setItem("userData", JSON.stringify(userData));
+        }
 
-        router.replace("/initial-page"); // Redireciona para a tela inicial
+        router.replace("/initial-page");
       } else {
         setError("Cliente não encontrado.");
       }
@@ -116,7 +130,6 @@ const Index = () => {
   };
 
   const handleForgotPassword = () => {
-    // Abre o modal de recuperação de senha
     setModalVisible(true);
   };
 
@@ -133,12 +146,10 @@ const Index = () => {
       const apiPassword = "i94B1q2HUXf7PP7oscuIBygquSRZ9lhb";
       const credentials = btoa(`${username}:${apiPassword}`);
 
-      // Remove caracteres não numéricos do CPF
       const sanitizedCpf = cpfRecovery.replace(/\D/g, "");
 
-      // Busca os dados do usuário
       const response = await axios.get(
-        `https://api.sienge.com.br/engenharq/public/api/v1/customers?cpf=${sanitizedCpf}&limit=100&offset=0`,
+        `http://localhost:3000/proxy/customers?cpf=${sanitizedCpf}&limit=100&offset=0`,
         {
           headers: {
             Authorization: `Basic ${credentials}`,
@@ -148,13 +159,10 @@ const Index = () => {
 
       if (response.data.results && response.data.results.length > 0) {
         const user = response.data.results[0];
-
-        // Reverte o CPF para obter a senha
         const cpfPassword = sanitizedCpf.slice(0, 6);
 
-        // Envia o email com a senha
         const backendUrl =
-          "http://hw0oc4gc8ccwswwg4gk0kss8.167.88.39.225.sslip.io/send-password"; // Substitua pela URL do seu backend
+          "http://hw0oc4gc8ccwswwg4gk0kss8.167.88.39.225.sslip.io/send-password";
 
         await axios.post(backendUrl, {
           email: user.email,
@@ -174,7 +182,7 @@ const Index = () => {
       setLoadingRecovery(false);
     }
   };
-
+  
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -183,7 +191,6 @@ const Index = () => {
       <ScrollView contentContainerStyle={styles.contentContainer}>
         <Text style={styles.title}>ENGEPAG</Text>
 
-        {/* Campo de entrada para CPF */}
         <View style={styles.inputContainer}>
           <Ionicons
             name="person"
@@ -193,7 +200,7 @@ const Index = () => {
           />
           <TextInput
             style={styles.input}
-            placeholder="CPF"
+            placeholder="CPF ou CNPJ"
             value={inputValue}
             onChangeText={setInputValue}
             keyboardType="numeric"
@@ -201,7 +208,6 @@ const Index = () => {
           />
         </View>
 
-        {/* Campo de entrada para Senha */}
         <View style={styles.inputContainer}>
           <Ionicons
             name="lock-closed"
@@ -219,12 +225,10 @@ const Index = () => {
           />
         </View>
 
-        {/* Esqueceu a senha */}
         <TouchableOpacity onPress={handleForgotPassword}>
           <Text style={styles.forgotPasswordText}>Esqueceu a senha?</Text>
         </TouchableOpacity>
 
-        {/* Botão de Acesso */}
         <TouchableOpacity style={styles.accessButton} onPress={fetchUserData}>
           {loading ? (
             <ActivityIndicator
@@ -239,11 +243,9 @@ const Index = () => {
 
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-        {/* Logo */}
         <Image source={require("./homelogo.png")} style={styles.logo} />
       </ScrollView>
 
-      {/* Modal de Recuperação de Senha */}
       {modalVisible && (
         <Modal
           visible={modalVisible}
@@ -254,8 +256,6 @@ const Index = () => {
           <View style={styles.modalOverlay}>
             <View style={styles.modalContainer}>
               <Text style={styles.modalTitle}>Recuperar Senha</Text>
-
-              {/* Campo de entrada para CPF */}
               <View style={styles.modalInputContainer}>
                 <Ionicons
                   name="person"
@@ -273,7 +273,6 @@ const Index = () => {
                 />
               </View>
 
-              {/* Botão para Enviar a Senha */}
               <TouchableOpacity
                 style={styles.modalButton}
                 onPress={handleSendPassword}
@@ -289,7 +288,6 @@ const Index = () => {
                 )}
               </TouchableOpacity>
 
-              {/* Botão de Cancelar */}
               <TouchableOpacity
                 style={styles.modalCancelButton}
                 onPress={() => setModalVisible(false)}
@@ -303,6 +301,7 @@ const Index = () => {
     </KeyboardAvoidingView>
   );
 };
+
 
 const styles = StyleSheet.create({
   // ... [Your existing styles here] ...

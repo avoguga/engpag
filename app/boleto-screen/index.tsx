@@ -41,20 +41,19 @@ const BoletoScreen = () => {
   };
 
   const fetchAvailableInstallment = async () => {
-    if (!userData || !userData.cpf) {
+    if (!userData || (!userData.cpf && !userData.cnpj)) {
       Alert.alert("Erro", "Dados do cliente não encontrados.");
       return;
     }
 
     setLoading(true);
     try {
-      const credentials = btoa(
-        "engenharq-mozart:i94B1q2HUXf7PP7oscuIBygquSRZ9lhb"
-      );
+      const credentials = btoa("engenharq-mozart:i94B1q2HUXf7PP7oscuIBygquSRZ9lhb");
+      const searchParam = userData.cpf ? { cpf: userData.cpf, correctAnnualInstallment: "N" } : { cnpj: userData.cnpj, correctAnnualInstallment: "N" };
       const response = await axios.get(
-        "https://api.sienge.com.br/engenharq/public/api/v1/current-debit-balance",
+        "http://localhost:3000/proxy/current-debit-balance",
         {
-          params: { cpf: userData.cpf, correctAnnualInstallment: "N" },
+          params: searchParam,
           headers: { Authorization: `Basic ${credentials}` },
         }
       );
@@ -85,10 +84,7 @@ const BoletoScreen = () => {
       });
 
       if (availableInstallments.length > 0) {
-        // Ordenar as parcelas por data de vencimento
-        availableInstallments.sort(
-          (a, b) => new Date(a.dueDate) - new Date(b.dueDate)
-        );
+        availableInstallments.sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
         const installment = availableInstallments[0];
         let status = "Pendente";
         const today = new Date();
@@ -106,7 +102,6 @@ const BoletoScreen = () => {
 
         setInstallmentDetails({ ...installment, status });
       } else if (nonGeneratedInstallments.length > 0) {
-        // Boletos existem mas não estão gerados
         Alert.alert(
           "Boleto Indisponível",
           "Nenhum boleto está disponível no momento. Por favor, entre em contato com o suporte via WhatsApp para liberar o pagamento.",
@@ -122,12 +117,7 @@ const BoletoScreen = () => {
           ]
         );
       } else {
-        // Nenhum boleto disponível
-        Alert.alert(
-          "Nenhum Boleto Disponível",
-          "Nenhum boleto está disponível no momento.",
-          [{ text: "OK" }]
-        );
+        Alert.alert("Nenhum Boleto Disponível", "Nenhum boleto está disponível no momento.", [{ text: "OK" }]);
       }
     } catch (error) {
       console.error("Erro ao buscar detalhes da parcela:", error);
@@ -146,16 +136,14 @@ const BoletoScreen = () => {
     setLoading(true);
 
     try {
-      const credentials = btoa(
-        "engenharq-mozart:i94B1q2HUXf7PP7oscuIBygquSRZ9lhb"
-      );
+      const credentials = btoa("engenharq-mozart:i94B1q2HUXf7PP7oscuIBygquSRZ9lhb");
 
       let companyId = null;
 
       if (installmentDetails) {
         const billReceivableId = installmentDetails.billReceivableId;
         const response = await axios.get(
-          `https://api.sienge.com.br/engenharq/public/api/v1/accounts-receivable/receivable-bills/${billReceivableId}`,
+          `http://localhost:3000/proxy/accounts-receivable/receivable-bills/${billReceivableId}`,
           {
             params: { customerId: userData.id },
             headers: { Authorization: `Basic ${credentials}` },
@@ -172,14 +160,11 @@ const BoletoScreen = () => {
         default: { name: "Desconhecida", whatsappNumber: "5585986080000" },
       };
 
-      const { whatsappNumber } =
-        (companyId && companyInfo[companyId]) || companyInfo.default;
+      const { whatsappNumber } = (companyId && companyInfo[companyId]) || companyInfo.default;
 
-      const message = `Olá, meu nome é ${userData.name}, portador do CPF ${userData.cpf}. Gostaria de solicitar assistência para liberar o pagamento do meu boleto referente ao empreendimento ${enterpriseName}.`;
+      const message = `Olá, meu nome é ${userData.name}, portador do ${userData.cpf ? `CPF ${userData.cpf}` : `CNPJ ${userData.cnpj}`}. Gostaria de solicitar assistência para liberar o pagamento do meu boleto referente ao empreendimento ${enterpriseName}.`;
 
-      const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
-        message
-      )}`;
+      const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`;
 
       const supported = await Linking.canOpenURL(whatsappUrl);
       if (supported) {
@@ -201,11 +186,7 @@ const BoletoScreen = () => {
       return;
     }
 
-    if (
-      !installmentDetails ||
-      !installmentDetails.billReceivableId ||
-      !installmentDetails.installmentId
-    ) {
+    if (!installmentDetails || !installmentDetails.billReceivableId || !installmentDetails.installmentId) {
       Alert.alert("Erro", "Informações da parcela não disponíveis.");
       return;
     }
@@ -240,12 +221,10 @@ const BoletoScreen = () => {
     setLoading(true);
 
     try {
-      const credentials = btoa(
-        "engenharq-mozart:i94B1q2HUXf7PP7oscuIBygquSRZ9lhb"
-      );
+      const credentials = btoa("engenharq-mozart:i94B1q2HUXf7PP7oscuIBygquSRZ9lhb");
 
       const response = await axios.get(
-        "https://api.sienge.com.br/engenharq/public/api/v1/payment-slip-notification",
+        "http://localhost:3000/proxy/payment-slip-notification",
         {
           params: {
             billReceivableId: installmentDetails.billReceivableId,
@@ -273,16 +252,8 @@ const BoletoScreen = () => {
   };
 
   const requestBoletoEmail = async () => {
-    if (
-      !userData ||
-      !installmentDetails ||
-      !installmentDetails.billReceivableId ||
-      !installmentDetails.installmentId
-    ) {
-      Alert.alert(
-        "Erro",
-        "Dados do usuário ou informações da parcela não encontrados."
-      );
+    if (!userData || !installmentDetails || !installmentDetails.billReceivableId || !installmentDetails.installmentId) {
+      Alert.alert("Erro", "Dados do usuário ou informações da parcela não encontrados.");
       return;
     }
 
@@ -305,11 +276,9 @@ const BoletoScreen = () => {
             setSendingEmail(true);
 
             try {
-              const credentials = btoa(
-                "engenharq-mozart:i94B1q2HUXf7PP7oscuIBygquSRZ9lhb"
-              );
+              const credentials = btoa("engenharq-mozart:i94B1q2HUXf7PP7oscuIBygquSRZ9lhb");
               const responseBoleto = await axios.get(
-                "https://api.sienge.com.br/engenharq/public/api/v1/payment-slip-notification",
+                "http://localhost:3000/proxy/payment-slip-notification",
                 {
                   params: {
                     billReceivableId: installmentDetails.billReceivableId,
@@ -321,10 +290,7 @@ const BoletoScreen = () => {
                 }
               );
 
-              if (
-                responseBoleto.data.results &&
-                responseBoleto.data.results[0]
-              ) {
+              if (responseBoleto.data.results && responseBoleto.data.results[0]) {
                 const boletoUrl = responseBoleto.data.results[0].urlReport;
 
                 const responseEmail = await axios.post(
@@ -337,25 +303,16 @@ const BoletoScreen = () => {
                 );
 
                 if (responseEmail.status === 200) {
-                  Alert.alert(
-                    "Sucesso",
-                    "E-mail com o boleto enviado com sucesso!"
-                  );
+                  Alert.alert("Sucesso", "E-mail com o boleto enviado com sucesso!");
                 } else {
-                  Alert.alert(
-                    "Erro",
-                    "Falha ao enviar o e-mail com o boleto."
-                  );
+                  Alert.alert("Erro", "Falha ao enviar o e-mail com o boleto.");
                 }
               } else {
                 Alert.alert("Erro", "Falha ao obter o link do boleto.");
               }
             } catch (error) {
               console.error("Erro ao enviar o e-mail:", error);
-              Alert.alert(
-                "Erro",
-                "Não foi possível enviar o e-mail com o boleto."
-              );
+              Alert.alert("Erro", "Não foi possível enviar o e-mail com o boleto.");
             } finally {
               setSendingEmail(false);
             }
@@ -515,7 +472,6 @@ const BoletoScreen = () => {
           </>
         )}
 
-        {/* Modal de Linha Digitável */}
         <Modal
           visible={isModalVisible}
           animationType="slide"

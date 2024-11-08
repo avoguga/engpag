@@ -26,20 +26,22 @@ const NotificationScreen = () => {
   const [refreshing, setRefreshing] = useState(false);
 
   const fetchNotifications = async () => {
-    if (!userData || !userData.cpf) {
+    if (!userData || (!userData.cpf && !userData.cnpj)) {
       setError("Dados do usuário não disponíveis.");
       setLoading(false);
       return;
     }
 
     try {
+      const searchParam = userData.cpf ? { cpf: userData.cpf } : { cnpj: userData.cnpj };
+
       const response = await axios.get(
         `http://hw0oc4gc8ccwswwg4gk0kss8.167.88.39.225.sslip.io/notifications`,
-        { params: { cpf: userData.cpf } }
+        { params: searchParam }
       );
+      
       setNotifications(response.data);
 
-      // Update notification count in context
       const unreadCount = response.data.filter(notification => !notification.read).length;
       setNotificationCount(unreadCount);
 
@@ -58,25 +60,21 @@ const NotificationScreen = () => {
 
   const handleNotificationPress = async (notification) => {
     if (notification.read) {
-      // Already read, no action needed
       return;
     }
 
     try {
-      // Mark as read on the server
       await axios.put(
         `http://hw0oc4gc8ccwswwg4gk0kss8.167.88.39.225.sslip.io/notifications/${notification._id}`,
         { read: true }
       );
 
-      // Update local state
       setNotifications((prevNotifications) =>
         prevNotifications.map((n) =>
           n._id === notification._id ? { ...n, read: true } : n
         )
       );
 
-      // Update notification count in context
       setNotificationCount(notificationCount - 1);
 
     } catch (err) {
@@ -86,7 +84,7 @@ const NotificationScreen = () => {
   };
 
   const deleteAllNotifications = () => {
-    if (!userData || !userData.cpf) {
+    if (!userData || (!userData.cpf && !userData.cnpj)) {
       Alert.alert("Erro", "Dados do usuário não disponíveis.");
       return;
     }
@@ -102,15 +100,18 @@ const NotificationScreen = () => {
           onPress: async () => {
             setDeleting(true);
             try {
+              const deleteParam = userData.cpf ? { cpf: userData.cpf } : { cnpj: userData.cnpj };
+
               await axios.delete(
                 "http://hw0oc4gc8ccwswwg4gk0kss8.167.88.39.225.sslip.io/notifications",
                 {
-                  params: { cpf: userData.cpf },
+                  params: deleteParam,
                 }
               );
+
               Alert.alert("Sucesso", "Você apagou as notificações!");
-              setNotifications([]); // Clear notifications
-              setNotificationCount(0); // Reset notification count in context
+              setNotifications([]);
+              setNotificationCount(0);
             } catch (err) {
               console.error("Erro ao deletar notificações:", err);
               Alert.alert("Erro", "Falha ao deletar notificações.");
@@ -131,7 +132,6 @@ const NotificationScreen = () => {
 
   return (
     <View style={styles.container}>
-      {/* Top bar */}
       <View style={styles.topBarWrapper}>
         <View style={styles.topBar}>
           <Pressable
@@ -203,6 +203,8 @@ const NotificationScreen = () => {
     </View>
   );
 };
+
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,

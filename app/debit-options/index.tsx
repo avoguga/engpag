@@ -183,7 +183,7 @@ const DebitOptionsPage = () => {
   //     const credentials = btoa(`${username}:${password}`);
 
   //     const response = await axios.get(
-  //       `https://api.sienge.com.br/engenharq/public/api/v1/current-debit-balance/pdf`,
+  //       `http://localhost:3000/proxy/current-debit-balance/pdf`,
   //       {
   //         params: {
   //           customerId: userData.id,

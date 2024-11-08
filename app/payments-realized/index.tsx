@@ -26,15 +26,14 @@ const PaymentsCompleted = () => {
   const [endDate, setEndDate] = useState(null);
   const [showStartDatePicker, setShowStartDatePicker] = useState(false);
   const [showEndDatePicker, setShowEndDatePicker] = useState(false);
-  const { enterpriseName } = useLocalSearchParams(); 
-
+  const { enterpriseName } = useLocalSearchParams();
 
   useEffect(() => {
     fetchCompletedPayments();
   }, [userData, billReceivableId]);
 
   const fetchCompletedPayments = async () => {
-    if (!userData || !userData.cpf) {
+    if (!userData || (!userData.cpf && !userData.cnpj)) {
       Alert.alert("Erro", "Dados do cliente não encontrados.");
       return;
     }
@@ -51,13 +50,14 @@ const PaymentsCompleted = () => {
       const password = "i94B1q2HUXf7PP7oscuIBygquSRZ9lhb";
       const credentials = btoa(`${username}:${password}`);
 
+      const searchParam = userData.cpf
+        ? { cpf: userData.cpf, correctAnnualInstallment: "N" }
+        : { cnpj: userData.cnpj, correctAnnualInstallment: "N" };
+
       const response = await axios.get(
-        "https://api.sienge.com.br/engenharq/public/api/v1/current-debit-balance",
+        "http://localhost:3000/proxy/current-debit-balance",
         {
-          params: {
-            cpf: userData.cpf,
-            correctAnnualInstallment: "N",
-          },
+          params: searchParam,
           headers: {
             Authorization: `Basic ${credentials}`,
           },
@@ -88,7 +88,7 @@ const PaymentsCompleted = () => {
 
       // Mapear as parcelas pagas para o formato desejado
       const payments = paidInstallments.map((installment) => {
-        // Extrair a data de pagamento do primeiro recibo
+        // Extrair e formatar a data de pagamento do recibo
         let paymentDate = null;
         let formattedPaymentDate = "Data indisponível";
 
@@ -97,20 +97,30 @@ const PaymentsCompleted = () => {
           installment.receipts.length > 0 &&
           installment.receipts[0].receiptDate
         ) {
-          paymentDate = new Date(installment.receipts[0].receiptDate);
-          formattedPaymentDate = paymentDate.toLocaleDateString("pt-BR");
+          // Ajuste para data UTC no receiptDate
+          const receiptDate = installment.receipts[0].receiptDate;
+          const [year, month, day] = receiptDate.split("-");
+          paymentDate = new Date(Date.UTC(year, month - 1, day));
+          formattedPaymentDate = `${day}/${month}/${year}`;
+        }
+
+        // Ajuste para data UTC no dueDate
+        const dueDate = installment.dueDate;
+        let formattedDueDate = "Data indisponível";
+        if (dueDate) {
+          const [dueYear, dueMonth, dueDay] = dueDate.split("-");
+          const dueDateUTC = new Date(Date.UTC(dueYear, dueMonth - 1, dueDay));
+          formattedDueDate = `${dueDay}/${dueMonth}/${dueYear}`;
         }
 
         return {
           id: installment.installmentId.toString(),
           number: installment.installmentNumber,
           billReceivableId: selectedResult.billReceivableId,
-          dueDate: new Date(installment.dueDate),
-          formattedDueDate: new Date(installment.dueDate).toLocaleDateString(
-            "pt-BR"
-          ),
-          paymentDate: paymentDate,
-          formattedPaymentDate: formattedPaymentDate,
+          dueDate: dueDate, // Mantém a data original se precisar usá-la
+          formattedDueDate: formattedDueDate, // Data formatada para exibição
+          paymentDate: paymentDate, // Data do pagamento
+          formattedPaymentDate: formattedPaymentDate, // Data do pagamento formatada
           value: parseFloat(installment.originalValue).toLocaleString("pt-BR", {
             style: "currency",
             currency: "BRL",
@@ -177,17 +187,9 @@ const PaymentsCompleted = () => {
 
   return (
     <View style={styles.container}>
-      {/* <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name="arrow-back-outline" size={28} color="white" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Pagamentos Realizados</Text>
-        <TouchableOpacity onPress={() => router.push("/notification-screen")}>
-          <Ionicons name="notifications-outline" size={28} color="white" />
-        </TouchableOpacity>
-      </View> */}
-
-      <Text style={styles.title}>{enterpriseName || 'Nome do Empreendimento'}</Text>
+      <Text style={styles.title}>
+        {enterpriseName || "Nome do Empreendimento"}
+      </Text>
       <TouchableOpacity style={styles.actionButton}>
         <Text style={styles.actionButtonText}>PAGAMENTOS REALIZADOS</Text>
       </TouchableOpacity>

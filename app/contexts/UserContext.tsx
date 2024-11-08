@@ -1,5 +1,3 @@
-// UserContext.js
-
 import React, { createContext, useState, useEffect } from "react";
 import axios from 'axios';
 
@@ -12,7 +10,7 @@ interface UserContextProps {
   setEnterpriseNames: (names: string[]) => void;
   notificationCount: number;
   setNotificationCount: (count: number) => void;
-  fetchNotificationCount: () => void; // Added fetch function
+  fetchNotificationCount: () => void;
 }
 
 export const UserContext = createContext<UserContextProps>({
@@ -35,16 +33,19 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
   const [enterpriseNames, setEnterpriseNames] = useState<string[]>([]);
   const [notificationCount, setNotificationCount] = useState<number>(0);
 
-  // Function to fetch notification count
+
   const fetchNotificationCount = async () => {
-    if (!userData || !userData.cpf) {
+    if (!userData || (!userData.cpf && !userData.cnpj)) {
       setNotificationCount(0);
       return;
     }
 
     try {
+
+      const searchParam = userData.cpf ? { cpf: userData.cpf } : { cnpj: userData.cnpj };
+
       const response = await axios.get('http://hw0oc4gc8ccwswwg4gk0kss8.167.88.39.225.sslip.io/notifications', {
-        params: { cpf: userData.cpf },
+        params: searchParam,
       });
 
       if (Array.isArray(response.data)) {
@@ -59,7 +60,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
-  // Fetch notification count when userData changes and every 60 seconds
+
   useEffect(() => {
     fetchNotificationCount();
 

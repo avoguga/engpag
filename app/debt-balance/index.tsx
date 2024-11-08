@@ -38,11 +38,11 @@ const DebtBalanceScreen = () => {
   ];
 
   useEffect(() => {
-    if (userData && userData.cpf && billReceivableId) {
+    if (userData && (userData.cpf || userData.cnpj) && billReceivableId) {
       fetchData();
     }
   }, [userData, billReceivableId]);
-
+  
   const fetchData = async () => {
     setLoading(true);
     setError("");
@@ -50,55 +50,57 @@ const DebtBalanceScreen = () => {
       const username = "engenharq-mozart";
       const password = "i94B1q2HUXf7PP7oscuIBygquSRZ9lhb";
       const credentials = btoa(`${username}:${password}`);
-
+  
+      // Define o parâmetro de busca dinamicamente para CPF ou CNPJ
+      const searchParam = userData.cpf
+        ? { cpf: userData.cpf, correctAnnualInstallment: "N" }
+        : { cnpj: userData.cnpj, correctAnnualInstallment: "N" };
+  
       // Chamada à API para obter detalhes do contrato e próximas parcelas
       const response = await axios.get(
-        "https://api.sienge.com.br/engenharq/public/api/v1/current-debit-balance",
+        "http://localhost:3000/proxy/current-debit-balance",
         {
-          params: {
-            cpf: userData.cpf,
-            correctAnnualInstallment: "N",
-          },
+          params: searchParam,
           headers: {
             Authorization: `Basic ${credentials}`,
           },
         }
       );
-
+  
       const results = response.data.results || [];
-
+  
       // Filtrar o resultado pelo billReceivableId
       const selectedResult = results.find(
         (result) => result.billReceivableId === parseInt(billReceivableId, 10)
       );
-
+  
       if (selectedResult) {
         const allInstallments = [
           ...(selectedResult.dueInstallments || []),
           ...(selectedResult.payableInstallments || []),
           ...(selectedResult.paidInstallments || []),
         ];
-
+  
         const outstandingInstallments = [
           ...(selectedResult.dueInstallments || []),
           ...(selectedResult.payableInstallments || []),
         ];
-
+  
         setRemainingTerm(outstandingInstallments.length);
-
+  
         // Filtrar parcelas que NÃO devem ser contadas no saldo devedor
         const filteredDevedorInstallments = outstandingInstallments.filter(
           (installment) =>
             !excludeConditionTypes.includes(installment.conditionType.trim())
         );
-
+  
         // Cálculo do Valor Total (soma de originalValue de todas as parcelas)
         const totalValue = allInstallments.reduce(
           (sum, installment) => sum + (installment.originalValue || 0),
           0
         );
         setValorTotal(totalValue);
-
+  
         // Cálculo do Saldo Financiado (soma de originalValue das parcelas com conditionType "Financiamento")
         const totalFinanciado = allInstallments
           .filter(
@@ -107,27 +109,27 @@ const DebtBalanceScreen = () => {
           )
           .reduce((sum, installment) => sum + (installment.originalValue || 0), 0);
         setSaldoFinanciado(totalFinanciado);
-
+  
         // Cálculo do Saldo Pago (soma de currentBalance das parcelas pagas)
         const totalPaid = (selectedResult.paidInstallments || []).reduce(
           (sum, installment) => sum + (installment.currentBalance || 0),
           0
         );
         setSaldoPago(totalPaid);
-
+  
         // Cálculo do Saldo Devedor (soma de currentBalance das parcelas filtradas)
         const totalDebt = filteredDevedorInstallments.reduce(
           (sum, installment) => sum + (installment.currentBalance || 0),
           0
         );
         setSaldoDevedor(totalDebt);
-
+  
         // Seleção do próximo pagamento (considerando apenas parcelas filtradas)
         const today = new Date();
         const upcomingInstallments = filteredDevedorInstallments.filter(
           (installment) => new Date(installment.dueDate) >= today
         );
-
+  
         if (upcomingInstallments.length > 0) {
           const nextInstallment = upcomingInstallments.reduce((prev, current) =>
             new Date(prev.dueDate) > new Date(current.dueDate) ? current : prev
@@ -138,7 +140,7 @@ const DebtBalanceScreen = () => {
           setNextPaymentDate(null);
           setNextPaymentAmount(null);
         }
-
+  
       } else {
         setError("Nenhum contrato encontrado para o ID fornecido.");
       }
@@ -149,10 +151,7 @@ const DebtBalanceScreen = () => {
       setLoading(false);
     }
   };
-
-  const handleBoletoPress = () => {
-    Alert.alert("Informação", "Função de boleto não implementada.");
-  };
+  
 
   // Função para formatar valores monetários com pontuação de milhar
   const formatCurrency = (value) => {
@@ -165,11 +164,11 @@ const DebtBalanceScreen = () => {
 
   // Função para formatar datas
   const formatDate = (dateString) => {
-    if (!dateString) return "";
-    const date = new Date(dateString);
-    const day = String(date.getDate()).padStart(2, "0");
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    return `${day}/${month}`;
+    const date = new Date(dateString + 'T00:00:00Z'); 
+    const day = date.getUTCDate().toString().padStart(2, '0');
+    const month = (date.getUTCMonth() + 1).toString().padStart(2, '0');
+    const year = date.getUTCFullYear();
+    return `${day}/${month}/${year}`;
   };
 
   if (loading) {
@@ -237,12 +236,6 @@ const DebtBalanceScreen = () => {
         </View>
       </View>
 
-        {/* Informações Adicionais sobre o Saldo Devedor
-        <Text style={styles.balanceInfo}>
-          O saldo devedor não inclui o valor das prestações em aberto. Valor sujeito a alteração.
-        </Text> */}
-
-      {/* Próximo Vencimento */}
       {nextPaymentDate && nextPaymentAmount ? (
         <View style={styles.nextPaymentContainer}>
           <Text style={styles.sectionTitle}>PRÓXIMO VENCIMENTO</Text>

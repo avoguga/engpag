@@ -43,7 +43,7 @@ const ParcelAntecipation = () => {
   }, [userData, billReceivableId]);
 
   const fetchInstallments = async () => {
-    if (!userData || !userData.cpf) {
+    if (!userData || (!userData.cpf && !userData.cnpj)) {
       Alert.alert("Erro", "Dados do cliente não encontrados.");
       return;
     }
@@ -59,13 +59,15 @@ const ParcelAntecipation = () => {
       const password = "i94B1q2HUXf7PP7oscuIBygquSRZ9lhb";
       const credentials = btoa(`${username}:${password}`);
 
+      // Define o parâmetro de busca dinamicamente para CPF ou CNPJ
+      const searchParam = userData.cpf
+        ? { cpf: userData.cpf, correctAnnualInstallment: "N" }
+        : { cnpj: userData.cnpj, correctAnnualInstallment: "N" };
+  
       const response = await axios.get(
-        "https://api.sienge.com.br/engenharq/public/api/v1/current-debit-balance",
+        "http://localhost:3000/proxy/current-debit-balance",
         {
-          params: {
-            cpf: userData.cpf,
-            correctAnnualInstallment: "N",
-          },
+          params: searchParam,
           headers: {
             Authorization: `Basic ${credentials}`,
           },
@@ -87,7 +89,7 @@ const ParcelAntecipation = () => {
       // Obter o enterpriseName
       const customerId = userData.id;
       const billResponse = await axios.get(
-        `https://api.sienge.com.br/engenharq/public/api/v1/accounts-receivable/receivable-bills/${billReceivableId}`,
+        `http://localhost:3000/proxy/accounts-receivable/receivable-bills/${billReceivableId}`,
         {
           params: {
             customerId: customerId,
@@ -175,8 +177,6 @@ const ParcelAntecipation = () => {
       }
     }
   };
-  
-  
 
   const handleConfirmSelection = () => {
     if (selectedInstallments.length === 0) {
@@ -275,13 +275,13 @@ const ParcelAntecipation = () => {
 
     try {
       const username = "engenharq-mozart";
-      const password = "i94B1q2HUXf7PP7oscuIBygquSRZ9lhb"; // Substitua pela sua senha
+      const password = "i94B1q2HUXf7PP7oscuIBygquSRZ9lhb";
       const credentials = btoa(`${username}:${password}`);
 
       const billReceivableId = selectedInstallments[0].billReceivableId;
 
       const response = await axios.get(
-        `https://api.sienge.com.br/engenharq/public/api/v1/accounts-receivable/receivable-bills/${billReceivableId}`,
+        `http://localhost:3000/proxy/accounts-receivable/receivable-bills/${billReceivableId}`,
         {
           params: {
             customerId: customerId,
@@ -320,9 +320,8 @@ const ParcelAntecipation = () => {
         .map((installment) => installment.number)
         .join(", ");
 
-      const message = `Olá, meu nome é ${userData?.name}, meu CPF é ${
-        userData?.cpf
-      }, gostaria de negociar as parcelas: ${installmentNumbers} do título ${billReceivableId}. Valor total: ${totalAmount.toLocaleString(
+      const document = userData.cpf ? `CPF ${userData.cpf}` : `CNPJ ${userData.cnpj}`;
+      const message = `Olá, meu nome é ${userData?.name}, meu ${document}, gostaria de negociar as parcelas: ${installmentNumbers} do título ${billReceivableId}. Valor total: ${totalAmount.toLocaleString(
         "pt-BR",
         {
           style: "currency",
