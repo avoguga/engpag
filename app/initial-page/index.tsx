@@ -39,7 +39,7 @@ const formatCurrency = (value) => {
 
 const InitialPage = () => {
   const router = useRouter();
-  const { userData, setInstallmentsData, enterpriseNames, setEnterpriseNames } =
+  const { userData, setUserData, setInstallmentsData, enterpriseNames, setEnterpriseNames } =
     useContext(UserContext);
   const [installmentsData, setLocalInstallmentsData] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -54,8 +54,30 @@ const InitialPage = () => {
   );
 
   useEffect(() => {
+    const loadUserDataFromStorage = async () => {
+      try {
+        const storedUserData = localStorage.getItem('userData');
+        if (storedUserData) {
+          const parsedUserData = JSON.parse(storedUserData);
+          setUserData(parsedUserData);
+        }
+      } catch (error) {
+        console.error("Erro ao carregar dados do usuário do localStorage:", error);
+      }
+    };
+
+    loadUserDataFromStorage();
+  }, [setUserData]);
+
+  useEffect(() => {
     if (userData && (userData.cpf || userData.cnpj)) {
       fetchInstallments();
+    }
+  }, [userData]);
+
+  useEffect(() => {
+    if (userData) {
+      localStorage.setItem('userData', JSON.stringify(userData));
     }
   }, [userData]);
 
@@ -157,11 +179,12 @@ const InitialPage = () => {
       },
     });
   };
+
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.greeting}>
-          Olá, {userData.name?.split(" ")[0]}!
+          Olá, {userData?.name?.split(" ")[0] || "Usuário"}!
         </Text>
         <View style={styles.lineSeparatorLarge} />
         <View style={styles.lineSeparatorSmall} />

@@ -33,13 +33,13 @@ const BoletoScreen = () => {
   }, [userData]);
 
   const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    const day = date.getDate().toString().padStart(2, "0");
-    const month = (date.getMonth() + 1).toString().padStart(2, "0");
-    const year = date.getFullYear();
+    const date = new Date(dateString + 'T00:00:00Z'); 
+    const day = date.getUTCDate().toString().padStart(2, '0');
+    const month = (date.getUTCMonth() + 1).toString().padStart(2, '0');
+    const year = date.getUTCFullYear();
     return `${day}/${month}/${year}`;
   };
-
+  
   const fetchAvailableInstallment = async () => {
     if (!userData || (!userData.cpf && !userData.cnpj)) {
       Alert.alert("Erro", "Dados do cliente não encontrados.");

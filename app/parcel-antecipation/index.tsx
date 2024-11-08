@@ -21,22 +21,20 @@ import { useLocalSearchParams } from "expo-router";
 
 const ParcelAntecipation = () => {
   const { userData } = useContext(UserContext);
-  const { billReceivableId } = useLocalSearchParams();
+  const { billReceivableId, enterpriseName } = useLocalSearchParams();
   const [selectedInstallments, setSelectedInstallments] = useState([]);
   const [selectedParcel, setSelectedParcel] = useState("Selecione a parcela");
-  const [startDate, setStartDate] = useState(null); // Data inicial
-  const [endDate, setEndDate] = useState(null); // Data final
-  const [startDateInput, setStartDateInput] = useState(""); // Input para data inicial
-  const [endDateInput, setEndDateInput] = useState(""); // Input para data final
+  const [startDate, setStartDate] = useState(null);
+  const [endDate, setEndDate] = useState(null);
+  const [startDateInput, setStartDateInput] = useState("");
+  const [endDateInput, setEndDateInput] = useState("");
   const [showStartDatePicker, setShowStartDatePicker] = useState(false);
   const [showEndDatePicker, setShowEndDatePicker] = useState(false);
-  const [data, setData] = useState([]); // Dados das parcelas
+  const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
-
   const [confirmModalVisible, setConfirmModalVisible] = useState(false);
   const [newDueDate, setNewDueDate] = useState(null);
   const [showNewDueDatePicker, setShowNewDueDatePicker] = useState(false);
-  const { enterpriseName } = useLocalSearchParams();
 
   useEffect(() => {
     fetchInstallments();
@@ -59,11 +57,10 @@ const ParcelAntecipation = () => {
       const password = "i94B1q2HUXf7PP7oscuIBygquSRZ9lhb";
       const credentials = btoa(`${username}:${password}`);
 
-      // Define o parâmetro de busca dinamicamente para CPF ou CNPJ
       const searchParam = userData.cpf
         ? { cpf: userData.cpf, correctAnnualInstallment: "N" }
         : { cnpj: userData.cnpj, correctAnnualInstallment: "N" };
-  
+
       const response = await axios.get(
         "http://localhost:3000/proxy/current-debit-balance",
         {
@@ -75,7 +72,6 @@ const ParcelAntecipation = () => {
       );
 
       const results = response.data.results || [];
-
       const selectedResult = results.find(
         (result) => result.billReceivableId == billReceivableId
       );
@@ -132,7 +128,7 @@ const ParcelAntecipation = () => {
 
   const handleDateInputWithMask = (text, setDate, setDateInput) => {
     let formattedText = text.replace(/\D/g, "");
-  
+
     if (formattedText.length > 2) {
       formattedText = formattedText.replace(/(\d{2})(\d)/, "$1/$2");
     }
@@ -142,9 +138,9 @@ const ParcelAntecipation = () => {
     if (formattedText.length > 10) {
       formattedText = formattedText.slice(0, 10);
     }
-  
+
     setDateInput(formattedText);
-  
+
     if (formattedText.length === 10) {
       const [day, month, year] = formattedText.split("/");
       const date = new Date(`${year}-${month}-${day}`);
@@ -162,6 +158,12 @@ const ParcelAntecipation = () => {
 
   const filterByDate = (installments) => {
     let filteredData = installments;
+
+    // Excluir parcelas do mês vigente e meses que já passaram
+    const currentDate = new Date();
+    const nextMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1);
+
+    filteredData = filteredData.filter((item) => item.dueDate >= nextMonth);
 
     if (startDate) {
       filteredData = filteredData.filter((item) => item.dueDate >= startDate);
@@ -312,9 +314,7 @@ const ParcelAntecipation = () => {
         </Picker>
       </View>
 
-      {/* Filtro por intervalo de datas com Picker e Input */}
       <View style={styles.dateFilterContainer}>
-        {/* Data Inicial */}
         <View style={styles.dateInputContainer}>
           <TextInput
             style={[
@@ -335,7 +335,6 @@ const ParcelAntecipation = () => {
           </TouchableOpacity>
         </View>
 
-        {/* Data Final */}
         <View style={styles.dateInputContainer}>
           <TextInput
             style={[
@@ -373,6 +372,7 @@ const ParcelAntecipation = () => {
               setStartDateInput(selectedDate.toLocaleDateString("pt-BR"));
             }
           }}
+          minimumDate={new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1)}
         />
       )}
 
@@ -388,6 +388,7 @@ const ParcelAntecipation = () => {
               setEndDateInput(selectedDate.toLocaleDateString("pt-BR"));
             }
           }}
+          minimumDate={new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1)}
         />
       )}
 
@@ -409,7 +410,6 @@ const ParcelAntecipation = () => {
       >
         <Ionicons name="cash-outline" size={24} color="white" />
       </TouchableOpacity>
-      {/* Modal de Confirmação */}
       {confirmModalVisible && (
         <Modal
           animationType="slide"
@@ -461,6 +461,7 @@ const ParcelAntecipation = () => {
                   value={newDueDate || new Date()}
                   mode="date"
                   display="default"
+                  minimumDate={new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1)}
                   onChange={(event, selectedDate) => {
                     setShowNewDueDatePicker(false);
                     if (selectedDate) setNewDueDate(selectedDate);
