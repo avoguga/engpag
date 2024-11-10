@@ -36,7 +36,7 @@ const NotificationScreen = () => {
       const searchParam = userData.cpf ? { cpf: userData.cpf } : { cnpj: userData.cnpj };
 
       const response = await axios.get(
-        `http://hw0oc4gc8ccwswwg4gk0kss8.167.88.39.225.sslip.io/notifications`,
+        `https://engpag.backend.gustavohenrique.dev/notifications`,
         { params: searchParam }
       );
       
@@ -65,7 +65,7 @@ const NotificationScreen = () => {
 
     try {
       await axios.put(
-        `http://hw0oc4gc8ccwswwg4gk0kss8.167.88.39.225.sslip.io/notifications/${notification._id}`,
+        `https://engpag.backend.gustavohenrique.dev/notifications/${notification._id}`,
         { read: true }
       );
 
@@ -103,7 +103,7 @@ const NotificationScreen = () => {
               const deleteParam = userData.cpf ? { cpf: userData.cpf } : { cnpj: userData.cnpj };
 
               await axios.delete(
-                "http://hw0oc4gc8ccwswwg4gk0kss8.167.88.39.225.sslip.io/notifications",
+                "https://engpag.backend.gustavohenrique.dev/notifications",
                 {
                   params: deleteParam,
                 }

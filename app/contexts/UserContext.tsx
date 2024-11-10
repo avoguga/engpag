@@ -44,7 +44,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
 
       const searchParam = userData.cpf ? { cpf: userData.cpf } : { cnpj: userData.cnpj };
 
-      const response = await axios.get('http://hw0oc4gc8ccwswwg4gk0kss8.167.88.39.225.sslip.io/notifications', {
+      const response = await axios.get('https://engpag.backend.gustavohenrique.dev/notifications', {
         params: searchParam,
       });
 

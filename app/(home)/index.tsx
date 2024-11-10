@@ -162,7 +162,7 @@ const Index = () => {
         const cpfPassword = sanitizedCpf.slice(0, 6);
 
         const backendUrl =
-          "http://hw0oc4gc8ccwswwg4gk0kss8.167.88.39.225.sslip.io/send-password";
+          "https://engpag.backend.gustavohenrique.dev/send-password";
 
         await axios.post(backendUrl, {
           email: user.email,

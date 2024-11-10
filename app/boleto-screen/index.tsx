@@ -294,7 +294,7 @@ const BoletoScreen = () => {
                 const boletoUrl = responseBoleto.data.results[0].urlReport;
 
                 const responseEmail = await axios.post(
-                  "http://hw0oc4gc8ccwswwg4gk0kss8.167.88.39.225.sslip.io/send-email",
+                  "https://engpag.backend.gustavohenrique.dev/send-email",
                   {
                     email: userData.email,
                     boletoUrl: boletoUrl,
