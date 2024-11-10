@@ -51,7 +51,7 @@ const BoletoScreen = () => {
       const credentials = btoa("engenharq-mozart:i94B1q2HUXf7PP7oscuIBygquSRZ9lhb");
       const searchParam = userData.cpf ? { cpf: userData.cpf, correctAnnualInstallment: "N" } : { cnpj: userData.cnpj, correctAnnualInstallment: "N" };
       const response = await axios.get(
-        "https://api.sienge.com.br/engenharq/public/api/v1/current-debit-balance",
+        "https://engpag.backend.gustavohenrique.dev/proxy/current-debit-balance",
         {
           params: searchParam,
           headers: { Authorization: `Basic ${credentials}` },
@@ -143,7 +143,7 @@ const BoletoScreen = () => {
       if (installmentDetails) {
         const billReceivableId = installmentDetails.billReceivableId;
         const response = await axios.get(
-          `https://api.sienge.com.br/engenharq/public/api/v1/accounts-receivable/receivable-bills/${billReceivableId}`,
+          `https://engpag.backend.gustavohenrique.dev/proxy/accounts-receivable/receivable-bills/${billReceivableId}`,
           {
             params: { customerId: userData.id },
             headers: { Authorization: `Basic ${credentials}` },
@@ -224,7 +224,7 @@ const BoletoScreen = () => {
       const credentials = btoa("engenharq-mozart:i94B1q2HUXf7PP7oscuIBygquSRZ9lhb");
 
       const response = await axios.get(
-        "https://api.sienge.com.br/engenharq/public/api/v1/payment-slip-notification",
+        "https://engpag.backend.gustavohenrique.dev/proxy/payment-slip-notification",
         {
           params: {
             billReceivableId: installmentDetails.billReceivableId,
@@ -278,7 +278,7 @@ const BoletoScreen = () => {
             try {
               const credentials = btoa("engenharq-mozart:i94B1q2HUXf7PP7oscuIBygquSRZ9lhb");
               const responseBoleto = await axios.get(
-                "https://api.sienge.com.br/engenharq/public/api/v1/payment-slip-notification",
+                "https://engpag.backend.gustavohenrique.dev/proxy/payment-slip-notification",
                 {
                   params: {
                     billReceivableId: installmentDetails.billReceivableId,

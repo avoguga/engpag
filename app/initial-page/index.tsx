@@ -122,7 +122,7 @@ const InitialPage = () => {
 
       // Faz a requisição com o parâmetro dinâmico
       const response = await axios.get(
-        `https://api.sienge.com.br/engenharq/public/api/v1/current-debit-balance`,
+        `https://engpag.backend.gustavohenrique.dev/proxy/current-debit-balance`,
         {
           params: { ...searchParam, correctAnnualInstallment: "N" },
           headers: { Authorization: `Basic ${credentials}` },
@@ -163,7 +163,7 @@ const InitialPage = () => {
         installments.map(async (item) => {
           try {
             const response = await axios.get(
-              `https://api.sienge.com.br/engenharq/public/api/v1/accounts-receivable/receivable-bills/${item.billReceivableId}`,
+              `https://engpag.backend.gustavohenrique.dev/proxy/accounts-receivable/receivable-bills/${item.billReceivableId}`,
               {
                 params: { customerId: userData.id },
                 headers: { Authorization: `Basic ${credentials}` },

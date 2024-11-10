@@ -58,7 +58,7 @@ const DebtBalanceScreen = () => {
   
       // Chamada à API para obter detalhes do contrato e próximas parcelas
       const response = await axios.get(
-        "https://api.sienge.com.br/engenharq/public/api/v1/current-debit-balance",
+        "https://engpag.backend.gustavohenrique.dev/proxy/current-debit-balance",
         {
           params: searchParam,
           headers: {

@@ -99,7 +99,7 @@ const Index = () => {
 
       // Busca os dados do usuário
       const response = await axios.get(
-        `https://api.sienge.com.br/engenharq/public/api/v1/customers?${searchParam}&limit=100&offset=0`,
+        `https://engpag.backend.gustavohenrique.dev/proxy/customers?${searchParam}&limit=100&offset=0`,
         {
           headers: {
             Authorization: `Basic ${credentials}`,
@@ -149,7 +149,7 @@ const Index = () => {
       const sanitizedCpf = cpfRecovery.replace(/\D/g, "");
 
       const response = await axios.get(
-        `https://api.sienge.com.br/engenharq/public/api/v1/customers?cpf=${sanitizedCpf}&limit=100&offset=0`,
+        `https://engpag.backend.gustavohenrique.dev/proxy/customers?cpf=${sanitizedCpf}&limit=100&offset=0`,
         {
           headers: {
             Authorization: `Basic ${credentials}`,

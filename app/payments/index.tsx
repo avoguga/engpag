@@ -51,7 +51,7 @@ const PaymentHistory = () => {
         : { cnpj: userData.cnpj, correctAnnualInstallment: "N" };
 
       const response = await axios.get(
-        "https://api.sienge.com.br/engenharq/public/api/v1/current-debit-balance",
+        "https://engpag.backend.gustavohenrique.dev/proxy/current-debit-balance",
         {
           params: searchParam,
           headers: { Authorization: `Basic ${credentials}` },
@@ -111,7 +111,7 @@ const PaymentHistory = () => {
         : { cnpj: userData.cnpj, correctAnnualInstallment: "N" };
 
       const response = await axios.get(
-        "https://api.sienge.com.br/engenharq/public/api/v1/current-debit-balance",
+        "https://engpag.backend.gustavohenrique.dev/proxy/current-debit-balance",
         {
           params: searchParam,
           headers: { Authorization: `Basic ${credentials}` },
@@ -190,7 +190,7 @@ const PaymentHistory = () => {
       const credentials = btoa(`${username}:${password}`);
 
       const response = await axios.get(
-        `https://api.sienge.com.br/engenharq/public/api/v1/current-debit-balance/pdf`,
+        `https://engpag.backend.gustavohenrique.dev/proxy/current-debit-balance/pdf`,
         {
           params: {
             customerId: userData.id,
