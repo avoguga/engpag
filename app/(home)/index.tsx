@@ -18,7 +18,7 @@ import axios from "axios";
 import { useRouter } from "expo-router";
 import { UserContext } from "../contexts/UserContext";
 import { Ionicons } from "@expo/vector-icons";
-import AsyncStorage from "@react-native-async-storage/async-storage"; // Import AsyncStorage
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const Index = () => {
   const [inputValue, setInputValue] = useState(""); // Armazena CPF ou CNPJ
@@ -99,7 +99,7 @@ const Index = () => {
 
       // Busca os dados do usuário
       const response = await axios.get(
-        `http://localhost:3000/proxy/customers?${searchParam}&limit=100&offset=0`,
+        `https://api.sienge.com.br/engenharq/public/api/v1/customers?${searchParam}&limit=100&offset=0`,
         {
           headers: {
             Authorization: `Basic ${credentials}`,
@@ -149,7 +149,7 @@ const Index = () => {
       const sanitizedCpf = cpfRecovery.replace(/\D/g, "");
 
       const response = await axios.get(
-        `http://localhost:3000/proxy/customers?cpf=${sanitizedCpf}&limit=100&offset=0`,
+        `https://api.sienge.com.br/engenharq/public/api/v1/customers?cpf=${sanitizedCpf}&limit=100&offset=0`,
         {
           headers: {
             Authorization: `Basic ${credentials}`,

@@ -55,7 +55,7 @@ const PaymentsCompleted = () => {
         : { cnpj: userData.cnpj, correctAnnualInstallment: "N" };
 
       const response = await axios.get(
-        "http://localhost:3000/proxy/current-debit-balance",
+        "https://api.sienge.com.br/engenharq/public/api/v1/current-debit-balance",
         {
           params: searchParam,
           headers: {
@@ -91,6 +91,7 @@ const PaymentsCompleted = () => {
         // Extrair e formatar a data de pagamento do recibo
         let paymentDate = null;
         let formattedPaymentDate = "Data indisponível";
+        let receiptValue = "Valor indisponível";
 
         if (
           installment.receipts &&
@@ -102,6 +103,12 @@ const PaymentsCompleted = () => {
           const [year, month, day] = receiptDate.split("-");
           paymentDate = new Date(Date.UTC(year, month - 1, day));
           formattedPaymentDate = `${day}/${month}/${year}`;
+
+          // Extrair receiptValue
+          receiptValue = parseFloat(installment.receipts[0].receiptValue).toLocaleString("pt-BR", {
+            style: "currency",
+            currency: "BRL",
+          });
         }
 
         // Ajuste para data UTC no dueDate
@@ -125,6 +132,17 @@ const PaymentsCompleted = () => {
             style: "currency",
             currency: "BRL",
           }),
+          indexerName: installment.indexerName || "N/A",
+          conditionType: installment.conditionType || "N/A",
+          adjustedValue: parseFloat(installment.adjustedValue).toLocaleString("pt-BR", {
+            style: "currency",
+            currency: "BRL",
+          }),
+          originalValue: parseFloat(installment.originalValue).toLocaleString("pt-BR", {
+            style: "currency",
+            currency: "BRL",
+          }),
+          receiptValue: receiptValue,
         };
       });
 
@@ -145,9 +163,9 @@ const PaymentsCompleted = () => {
 
   const renderItem = ({ item }) => (
     <View style={styles.card}>
-      <Text style={styles.cardTitle}>Número da Parcela {item.number}</Text>
+      <Text style={styles.cardTitle}>Número da Parcela: {item.number}</Text>
       <Text style={styles.cardSubtitle}>
-        Número do Título {item.billReceivableId}
+        Número do Título: {item.billReceivableId}
       </Text>
       <Text style={styles.cardSubtitle}>
         Vencimento: {item.formattedDueDate}
@@ -156,6 +174,22 @@ const PaymentsCompleted = () => {
         Data de Pagamento: {item.formattedPaymentDate}
       </Text>
       <Text style={styles.cardValue}>Valor: {item.value}</Text>
+      {/* Novos campos adicionados */}
+      <Text style={styles.cardSubtitle}>
+        Indexador: {item.indexerName}
+      </Text>
+      <Text style={styles.cardSubtitle}>
+        Tipo de Condição: {item.conditionType}
+      </Text>
+      <Text style={styles.cardSubtitle}>
+        Valor do Recibo: {item.receiptValue}
+      </Text>
+      <Text style={styles.cardSubtitle}>
+        Valor Ajustado: {item.adjustedValue}
+      </Text>
+      <Text style={styles.cardSubtitle}>
+        Valor Original: {item.originalValue}
+      </Text>
     </View>
   );
 

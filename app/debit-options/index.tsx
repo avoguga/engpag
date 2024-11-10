@@ -1,12 +1,11 @@
-import React, { useContext, useState } from "react";
+import React, { useContext, useEffect } from "react";
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
   Alert,
-  Linking,
-  ActivityIndicator,
+  Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -14,9 +13,52 @@ import { UserContext } from "../contexts/UserContext";
 
 const DebitOptionsPage = () => {
   const router = useRouter();
-  const { userData, installmentsData } = useContext(UserContext);
-  const [loadingHistory, setLoadingHistory] = useState(false);
-  const { enterpriseName } = useLocalSearchParams(); 
+  const { userData, setUserData, installmentsData, setInstallmentsData } =
+    useContext(UserContext);
+  const { enterpriseName } = useLocalSearchParams();
+
+  // Load userData and installmentsData from localStorage on mount (Web only)
+  useEffect(() => {
+    if (Platform.OS === "web") {
+      try {
+        const storedUserData = localStorage.getItem("userData");
+        if (storedUserData) {
+          const parsedUserData = JSON.parse(storedUserData);
+          setUserData(parsedUserData);
+        }
+
+        const storedInstallmentsData = localStorage.getItem("installmentsData");
+        if (storedInstallmentsData) {
+          const parsedInstallmentsData = JSON.parse(storedInstallmentsData);
+          setInstallmentsData(parsedInstallmentsData);
+        }
+      } catch (error) {
+        console.error("Erro ao carregar dados do localStorage:", error);
+      }
+    }
+  }, [setUserData, setInstallmentsData]);
+
+  // Save userData to localStorage whenever it changes (Web only)
+  useEffect(() => {
+    if (Platform.OS === "web" && userData) {
+      try {
+        localStorage.setItem("userData", JSON.stringify(userData));
+      } catch (error) {
+        console.error("Erro ao salvar userData no localStorage:", error);
+      }
+    }
+  }, [userData]);
+
+  // Save installmentsData to localStorage whenever it changes (Web only)
+  useEffect(() => {
+    if (Platform.OS === "web" && installmentsData) {
+      try {
+        localStorage.setItem("installmentsData", JSON.stringify(installmentsData));
+      } catch (error) {
+        console.error("Erro ao salvar installmentsData no localStorage:", error);
+      }
+    }
+  }, [installmentsData]);
 
   const isTitlePaid = (installments) => {
     const unpaidInstallments = [
@@ -59,28 +101,28 @@ const DebitOptionsPage = () => {
       Alert.alert("Erro", "Dados de parcelas não disponíveis.");
       return;
     }
-  
+
     let lastInstallment = null;
     let selectedResult = null;
-  
+
     installmentsData.forEach((result) => {
       const unpaidInstallments = [
         ...(result.dueInstallments || []),
         ...(result.payableInstallments || []),
       ];
-  
+
       // Filtrar apenas as parcelas em aberto (sem data de pagamento)
       const openInstallments = unpaidInstallments.filter(
         (installment) => !installment.paymentDate
       );
-  
+
       if (openInstallments.length > 0) {
         openInstallments.sort(
           (a, b) => new Date(b.dueDate) - new Date(a.dueDate)
         );
-  
+
         const latestInstallment = openInstallments[0];
-  
+
         if (
           !lastInstallment ||
           new Date(latestInstallment.dueDate) > new Date(lastInstallment.dueDate)
@@ -90,7 +132,7 @@ const DebitOptionsPage = () => {
         }
       }
     });
-  
+
     if (lastInstallment && selectedResult) {
       router.push({
         pathname: "/boleto-screen",
@@ -104,7 +146,6 @@ const DebitOptionsPage = () => {
       Alert.alert("Erro", "Não há parcelas em aberto.");
     }
   };
-  
 
   const handleParcelAntecipationNavigation = () => {
     if (!installmentsData || installmentsData.length === 0) {
@@ -169,46 +210,9 @@ const DebitOptionsPage = () => {
     }
   };
 
-  // const handlePaymentHistoryNavigation = async () => {
-  //   if (!userData || !userData.id) {
-  //     Alert.alert("Erro", "Dados do cliente não disponíveis.");
-  //     return;
-  //   }
-
-  //   setLoadingHistory(true);
-
-  //   try {
-  //     const username = "engenharq-mozart";
-  //     const password = "i94B1q2HUXf7PP7oscuIBygquSRZ9lhb"; 
-  //     const credentials = btoa(`${username}:${password}`);
-
-  //     const response = await axios.get(
-  //       `http://localhost:3000/proxy/current-debit-balance/pdf`,
-  //       {
-  //         params: {
-  //           customerId: userData.id,
-  //         },
-  //         headers: {
-  //           Authorization: `Basic ${credentials}`,
-  //         },
-  //       }
-  //     );
-
-  //     if (response.data && response.data.results && response.data.results[0]) {
-  //       const url = response.data.results[0].urlReport;
-  //       Linking.openURL(url);
-  //     } else {
-  //       Alert.alert("Erro", "Histórico de pagamentos não disponível.");
-  //     }
-  //   } catch (error) {
-  //     console.error("Erro ao buscar histórico de pagamentos:", error);
-  //     Alert.alert("Erro", "Não foi possível obter o histórico de pagamentos.");
-  //   } finally {
-  //     setLoadingHistory(false);
-  //   }
-  // };
-
-  const isPaid = installmentsData?.length > 0 && isTitlePaid(installmentsData[0]);
+ 
+  const isPaid =
+    installmentsData?.length > 0 && isTitlePaid(installmentsData[0]);
 
   return (
     <View style={styles.container}>
@@ -216,7 +220,9 @@ const DebitOptionsPage = () => {
         <View style={styles.circleIcon}>
           <Ionicons name="home-outline" size={40} color="white" />
         </View>
-        <Text style={styles.title}>{enterpriseName || "Nome do Empreendimento"}</Text>
+        <Text style={styles.title}>
+          {enterpriseName || "Nome do Empreendimento"}
+        </Text>
       </View>
 
       <View style={styles.buttonContainer}>
@@ -261,12 +267,12 @@ const DebitOptionsPage = () => {
           </TouchableOpacity>
 
           <TouchableOpacity
-          style={styles.buttonSmall}
-          onPress={handlePaymentsNavigation}
-        >
-          <Text style={styles.buttonText}>HISTÓRICO DE PAGAMENTOS</Text>
-        </TouchableOpacity>
-{/* 
+            style={styles.buttonSmall}
+            onPress={handlePaymentsNavigation}
+          >
+            <Text style={styles.buttonText}>HISTÓRICO DE PAGAMENTOS</Text>
+          </TouchableOpacity>
+          {/* 
           <TouchableOpacity
             style={styles.buttonSmall}
             onPress={handleReferFriendNavigation}
@@ -281,11 +287,11 @@ const DebitOptionsPage = () => {
         >
           <Text style={styles.buttonText}>HISTÓRICO DE PAGAMENTOS</Text>
         </TouchableOpacity> */}
-
       </View>
     </View>
   );
 };
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,

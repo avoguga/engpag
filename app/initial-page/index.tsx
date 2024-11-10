@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   Alert,
   BackHandler,
+  Platform, // Import Platform to detect the environment
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import axios from "axios";
@@ -53,31 +54,57 @@ const InitialPage = () => {
     }, [])
   );
 
+  // Load userData and installmentsData from localStorage on mount (Web only)
   useEffect(() => {
-    const loadUserDataFromStorage = async () => {
+    const loadDataFromStorage = () => {
+      if (Platform.OS !== "web") return; // Exit if not running on web
+
       try {
         const storedUserData = localStorage.getItem('userData');
         if (storedUserData) {
           const parsedUserData = JSON.parse(storedUserData);
           setUserData(parsedUserData);
         }
+
+        const storedInstallmentsData = localStorage.getItem('installmentsData');
+        if (storedInstallmentsData) {
+          const parsedInstallmentsData = JSON.parse(storedInstallmentsData);
+          setLocalInstallmentsData(parsedInstallmentsData);
+          setInstallmentsData(parsedInstallmentsData);
+        }
       } catch (error) {
-        console.error("Erro ao carregar dados do usuário do localStorage:", error);
+        console.error("Erro ao carregar dados do localStorage:", error);
       }
     };
 
-    loadUserDataFromStorage();
-  }, [setUserData]);
+    loadDataFromStorage();
+  }, [setUserData, setInstallmentsData]);
+
+  // Save userData to localStorage whenever it changes (Web only)
+  useEffect(() => {
+    if (Platform.OS !== "web" || !userData) return; // Exit if not web or userData is null/undefined
+
+    try {
+      localStorage.setItem('userData', JSON.stringify(userData));
+    } catch (error) {
+      console.error("Erro ao salvar userData no localStorage:", error);
+    }
+  }, [userData]);
+
+  // Save installmentsData to localStorage whenever it changes (Web only)
+  useEffect(() => {
+    if (Platform.OS !== "web" || !installmentsData || !Array.isArray(installmentsData)) return;
+
+    try {
+      localStorage.setItem('installmentsData', JSON.stringify(installmentsData));
+    } catch (error) {
+      console.error("Erro ao salvar installmentsData no localStorage:", error);
+    }
+  }, [installmentsData]);
 
   useEffect(() => {
     if (userData && (userData.cpf || userData.cnpj)) {
       fetchInstallments();
-    }
-  }, [userData]);
-
-  useEffect(() => {
-    if (userData) {
-      localStorage.setItem('userData', JSON.stringify(userData));
     }
   }, [userData]);
 
@@ -95,7 +122,7 @@ const InitialPage = () => {
 
       // Faz a requisição com o parâmetro dinâmico
       const response = await axios.get(
-        `http://localhost:3000/proxy/current-debit-balance`,
+        `https://api.sienge.com.br/engenharq/public/api/v1/current-debit-balance`,
         {
           params: { ...searchParam, correctAnnualInstallment: "N" },
           headers: { Authorization: `Basic ${credentials}` },
@@ -104,6 +131,16 @@ const InitialPage = () => {
 
       const fetchedData = response.data.results || [];
       setLocalInstallmentsData(fetchedData);
+      setInstallmentsData(fetchedData);
+
+      // Save installmentsData to localStorage (Web only)
+      if (Platform.OS === "web") {
+        try {
+          localStorage.setItem('installmentsData', JSON.stringify(fetchedData));
+        } catch (error) {
+          console.error("Erro ao salvar installmentsData no localStorage:", error);
+        }
+      }
 
       if (fetchedData.length > 0) {
         await fetchEnterpriseNames(fetchedData);
@@ -126,7 +163,7 @@ const InitialPage = () => {
         installments.map(async (item) => {
           try {
             const response = await axios.get(
-              `http://localhost:3000/proxy/accounts-receivable/receivable-bills/${item.billReceivableId}`,
+              `https://api.sienge.com.br/engenharq/public/api/v1/accounts-receivable/receivable-bills/${item.billReceivableId}`,
               {
                 params: { customerId: userData.id },
                 headers: { Authorization: `Basic ${credentials}` },
