@@ -36,6 +36,7 @@ const ParcelAntecipation = () => {
   const [confirmModalVisible, setConfirmModalVisible] = useState(false);
   const [newDueDate, setNewDueDate] = useState(null);
   const [showNewDueDatePicker, setShowNewDueDatePicker] = useState(false);
+  const [newDueDateInput, setNewDueDateInput] = useState(""); // Add this for web date input
 
   // Refs para inputs de data na web
   const startDateInputRef = useRef(null);
@@ -102,10 +103,13 @@ const ParcelAntecipation = () => {
           billReceivableId: selectedResult.billReceivableId,
           dueDate: dueDateUTC,
           formattedDueDate: formattedDueDate,
-          value: parseFloat(installment.currentBalance).toLocaleString("pt-BR", {
-            style: "currency",
-            currency: "BRL",
-          }),
+          value: parseFloat(installment.currentBalance).toLocaleString(
+            "pt-BR",
+            {
+              style: "currency",
+              currency: "BRL",
+            }
+          ),
           status: dueDateUTC < new Date() ? "vencido" : "pendente",
           installmentId: installment.installmentId,
           generatedBoleto: installment.generatedBoleto,
@@ -123,7 +127,9 @@ const ParcelAntecipation = () => {
   };
 
   const handleSelectInstallment = (item) => {
-    if (selectedInstallments.some((installment) => installment.id === item.id)) {
+    if (
+      selectedInstallments.some((installment) => installment.id === item.id)
+    ) {
       setSelectedInstallments(
         selectedInstallments.filter((installment) => installment.id !== item.id)
       );
@@ -189,7 +195,9 @@ const ParcelAntecipation = () => {
             ]}
             placeholder="DD/MM/AAAA"
             value={dateInput}
-            onChangeText={(text) => handleDateInputWithMask(text, setDate, setDateInput)}
+            onChangeText={(text) =>
+              handleDateInputWithMask(text, setDate, setDateInput)
+            }
             keyboardType="numeric"
             maxLength={10}
           />
@@ -203,7 +211,9 @@ const ParcelAntecipation = () => {
             ]}
             placeholder="DD/MM/AAAA"
             value={dateInput}
-            onChangeText={(text) => handleDateInputWithMask(text, setDate, setDateInput)}
+            onChangeText={(text) =>
+              handleDateInputWithMask(text, setDate, setDateInput)
+            }
             keyboardType="numeric"
             maxLength={10}
           />
@@ -223,7 +233,9 @@ const ParcelAntecipation = () => {
       style={[
         styles.card,
         item.status === "vencido" ? styles.overdueCard : styles.pendingCard,
-        selectedInstallments.some((installment) => installment.id === item.id) && styles.selectedCard,
+        selectedInstallments.some(
+          (installment) => installment.id === item.id
+        ) && styles.selectedCard,
       ]}
       onPress={() => handleSelectInstallment(item)}
     >
@@ -239,7 +251,9 @@ const ParcelAntecipation = () => {
       </View>
       <Text style={styles.cardTitle}>Parcela: {item.number}</Text>
       <Text style={styles.cardSubtitle}>Título: {item.billReceivableId}</Text>
-      <Text style={styles.cardSubtitle}>Vencimento: {item.formattedDueDate}</Text>
+      <Text style={styles.cardSubtitle}>
+        Vencimento: {item.formattedDueDate}
+      </Text>
       <Text style={styles.cardValue}>Valor: {item.value}</Text>
     </TouchableOpacity>
   );
@@ -249,25 +263,29 @@ const ParcelAntecipation = () => {
       Alert.alert("Erro", "Dados do cliente não encontrados.");
       return;
     }
-
-    if (!newDueDate) {
+  
+    // Verifica se a data foi preenchida no input (web) ou selecionada no picker (mobile)
+    if (Platform.OS === "web" && !newDueDateInput) {
+      Alert.alert("Atenção", "Por favor, preencha a nova data de vencimento.");
+      return;
+    } else if (Platform.OS !== "web" && !newDueDate) {
       Alert.alert("Atenção", "Por favor, selecione a nova data de vencimento.");
       return;
     }
-
+  
     const customerId = userData.id;
     const totalAmount = selectedInstallments.reduce(
       (sum, installment) => sum + parseFloat(installment.currentBalance),
       0
     );
     setLoading(true);
-
+  
     try {
       const username = "engenharq-mozart";
       const password = "i94B1q2HUXf7PP7oscuIBygquSRZ9lhb";
       const credentials = btoa(`${username}:${password}`);
       const billReceivableId = selectedInstallments[0].billReceivableId;
-
+  
       const response = await axios.get(
         `https://engpag.backend.gustavohenrique.dev/proxy/accounts-receivable/receivable-bills/${billReceivableId}`,
         {
@@ -275,7 +293,7 @@ const ParcelAntecipation = () => {
           headers: { Authorization: `Basic ${credentials}` },
         }
       );
-
+  
       const companyId = response.data.companyId;
       const companyInfo = {
         1: { name: "Engenharq", whatsappNumber: "558296890033" },
@@ -283,22 +301,51 @@ const ParcelAntecipation = () => {
         3: { name: "EngeLoc", whatsappNumber: "558296890202" },
         default: { name: "Desconhecida", whatsappNumber: "5585986080000" },
       };
-
-      const { name: companyName, whatsappNumber } = companyInfo[companyId] || companyInfo.default;
-      const installmentNumbers = selectedInstallments.map((installment) => installment.number).join(", ");
-      const document = userData.cpf ? `CPF ${userData.cpf}` : `CNPJ ${userData.cnpj}`;
-      const message = `Olá, meu nome é ${userData?.name}, meu ${document}, gostaria de negociar as parcelas: ${installmentNumbers} do título ${billReceivableId}. Valor total: ${totalAmount.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}. Desejo uma nova data de vencimento para ${newDueDate.toLocaleDateString("pt-BR")}.`;
-
-      const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`;
-      const supported = await Linking.canOpenURL(whatsappUrl);
-
-      if (supported) {
-        await Linking.openURL(whatsappUrl);
+  
+      const { name: companyName, whatsappNumber } =
+        companyInfo[companyId] || companyInfo.default;
+      const installmentNumbers = selectedInstallments
+        .map((installment) => installment.number)
+        .join(", ");
+      const document = userData.cpf
+        ? `CPF ${userData.cpf}`
+        : `CNPJ ${userData.cnpj}`;
+  
+      // Usar o valor do input na web e o newDueDate no mobile
+      const dueDateString = Platform.OS === "web" 
+        ? newDueDateInput 
+        : newDueDate.toLocaleDateString("pt-BR");
+  
+      const message = `Olá, meu nome é ${
+        userData?.name
+      }, meu ${document}, gostaria de negociar as parcelas: ${installmentNumbers} do título ${billReceivableId}. Valor total: ${totalAmount.toLocaleString(
+        "pt-BR",
+        { style: "currency", currency: "BRL" }
+      )}. Desejo uma nova data de vencimento para ${dueDateString}.`;
+  
+      if (Platform.OS === "web") {
+        const whatsappUrl = `https://web.whatsapp.com/send?phone=${whatsappNumber}&text=${encodeURIComponent(
+          message
+        )}`;
+        window.open(whatsappUrl, "_blank");
         setConfirmModalVisible(false);
         setSelectedInstallments([]);
-        setNewDueDate(null);
+        setNewDueDateInput("");
       } else {
-        Alert.alert("Erro", "Não foi possível abrir o WhatsApp.");
+        const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
+          message
+        )}`;
+        const supported = await Linking.canOpenURL(whatsappUrl);
+  
+        if (supported) {
+          await Linking.openURL(whatsappUrl);
+          setConfirmModalVisible(false);
+          setSelectedInstallments([]);
+          setNewDueDate(null);
+          setNewDueDateInput("");
+        } else {
+          Alert.alert("Erro", "Não foi possível abrir o WhatsApp.");
+        }
       }
     } catch (error) {
       console.error("Erro ao obter companyId:", error);
@@ -313,38 +360,40 @@ const ParcelAntecipation = () => {
     ...new Set(data.map((item) => item.number)),
   ];
 
-    // Funções de filtro (sem pesquisa por texto)
-    const filterByDate = (installments) => {
-      let filteredData = installments;
-  
-      // Excluir parcelas do mês vigente e meses que já passaram
-      const currentDate = new Date();
-      const nextMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1);
-  
-      filteredData = filteredData.filter((item) => item.dueDate >= nextMonth);
-  
-      if (startDate) {
-        filteredData = filteredData.filter((item) => item.dueDate >= startDate);
-      }
-  
-      if (endDate) {
-        filteredData = filteredData.filter((item) => item.dueDate <= endDate);
-      }
-  
-      return filteredData;
-    };
-  
-    const filterByParcelNumber = (installments) => {
-      if (selectedParcel && selectedParcel !== "Selecione a parcela") {
-        return installments.filter((item) => item.number === selectedParcel);
-      }
-      return installments;
-    };
+  // Funções de filtro (sem pesquisa por texto)
+  const filterByDate = (installments) => {
+    let filteredData = installments;
+
+    // Excluir parcelas do mês vigente e meses que já passaram
+    const currentDate = new Date();
+    const nextMonth = new Date(
+      currentDate.getFullYear(),
+      currentDate.getMonth() + 1,
+      1
+    );
+
+    filteredData = filteredData.filter((item) => item.dueDate >= nextMonth);
+
+    if (startDate) {
+      filteredData = filteredData.filter((item) => item.dueDate >= startDate);
+    }
+
+    if (endDate) {
+      filteredData = filteredData.filter((item) => item.dueDate <= endDate);
+    }
+
+    return filteredData;
+  };
+
+  const filterByParcelNumber = (installments) => {
+    if (selectedParcel && selectedParcel !== "Selecione a parcela") {
+      return installments.filter((item) => item.number === selectedParcel);
+    }
+    return installments;
+  };
 
   // Aplicar todos os filtros: parcela e data
   const filteredData = filterByDate(filterByParcelNumber(data));
-
-
 
   const resetFilters = () => {
     setSelectedParcel("Selecione a parcela");
@@ -352,6 +401,32 @@ const ParcelAntecipation = () => {
     setEndDate(null);
     setStartDateInput("");
     setEndDateInput("");
+  };
+
+  const handleModalDateInputWithMask = (text) => {
+    let formattedText = text.replace(/\D/g, "");
+
+    if (formattedText.length > 2) {
+      formattedText = formattedText.replace(/(\d{2})(\d)/, "$1/$2");
+    }
+    if (formattedText.length > 5) {
+      formattedText = formattedText.replace(/(\d{2})\/(\d{2})(\d)/, "$1/$2/$3");
+    }
+    if (formattedText.length > 10) {
+      formattedText = formattedText.slice(0, 10);
+    }
+
+    setNewDueDateInput(formattedText);
+
+    if (formattedText.length === 10) {
+      const [day, month, year] = formattedText.split("/");
+      const date = new Date(`${year}-${month}-${day}`);
+      if (!isNaN(date)) {
+        setNewDueDate(date);
+      } else {
+        Alert.alert("Erro", "Data inválida.");
+      }
+    }
   };
 
   return (
@@ -426,7 +501,9 @@ const ParcelAntecipation = () => {
               setStartDateInput(selectedDate.toLocaleDateString("pt-BR"));
             }
           }}
-          minimumDate={new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1)}
+          minimumDate={
+            new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1)
+          }
         />
       )}
 
@@ -442,7 +519,9 @@ const ParcelAntecipation = () => {
               setEndDateInput(selectedDate.toLocaleDateString("pt-BR"));
             }
           }}
-          minimumDate={new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1)}
+          minimumDate={
+            new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1)
+          }
         />
       )}
 
@@ -458,7 +537,9 @@ const ParcelAntecipation = () => {
               setNewDueDate(selectedDate);
             }
           }}
-          minimumDate={new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1)}
+          minimumDate={
+            new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1)
+          }
         />
       )}
 
@@ -466,7 +547,9 @@ const ParcelAntecipation = () => {
       {Platform.OS === "web" && showNewDueDatePicker && (
         <View style={styles.modalWebDatePicker}>
           <Ionicons name="calendar-outline" size={20} color="#E1272C" />
-          <TouchableOpacity onPress={() => openWebDatePicker(newDueDateInputRef)}>
+          <TouchableOpacity
+            onPress={() => openWebDatePicker(newDueDateInputRef)}
+          >
             <Ionicons name="calendar-outline" size={20} color="#E1272C" />
           </TouchableOpacity>
           {/* Input type="date" oculto */}
@@ -495,9 +578,7 @@ const ParcelAntecipation = () => {
           style={styles.list}
           contentContainerStyle={{ paddingBottom: 100 }}
           ListEmptyComponent={
-            <Text style={styles.noDataText}>
-              Nenhuma parcela encontrada.
-            </Text>
+            <Text style={styles.noDataText}>Nenhuma parcela encontrada.</Text>
           }
         />
       )}
@@ -506,7 +587,10 @@ const ParcelAntecipation = () => {
         style={styles.floatingButton}
         onPress={() => {
           if (selectedInstallments.length === 0) {
-            Alert.alert("Atenção", "Selecione ao menos uma parcela para antecipar.");
+            Alert.alert(
+              "Atenção",
+              "Selecione ao menos uma parcela para antecipar."
+            );
             return;
           }
           setConfirmModalVisible(true);
@@ -520,14 +604,12 @@ const ParcelAntecipation = () => {
           animationType="slide"
           transparent={true}
           visible={confirmModalVisible}
-          onRequestClose={() => {
-            setConfirmModalVisible(false);
-          }}
+          onRequestClose={() => setConfirmModalVisible(false)}
         >
           <View style={styles.modalOverlay}>
             <View style={styles.modalContainer}>
               <Text style={styles.modalTitle}>Confirmação de Parcelas</Text>
-              <ScrollView style={{ maxHeight: 400, width: '100%' }}>
+              <ScrollView style={{ maxHeight: 400, width: "100%" }}>
                 {selectedInstallments.map((installment, index) => (
                   <View key={index} style={styles.modalItem}>
                     <Text style={styles.modalLabel}>
@@ -550,39 +632,79 @@ const ParcelAntecipation = () => {
                     currency: "BRL",
                   })}
               </Text>
-              <TouchableOpacity
-                style={styles.datePickerButton}
-                onPress={() => setShowNewDueDatePicker(true)}
-              >
-                <Ionicons name="calendar-outline" size={20} color="#E1272C" />
-                <Text style={styles.dateText}>
-                  {newDueDate
-                    ? newDueDate.toLocaleDateString("pt-BR")
-                    : "Selecione a nova data de vencimento"}
-                </Text>
-              </TouchableOpacity>
-              {/* Date Picker para Web dentro do modal */}
-              {Platform.OS === "web" && showNewDueDatePicker && (
-                <View style={styles.modalWebDatePicker}>
-                  <Ionicons name="calendar-outline" size={20} color="#E1272C" />
-                  <TouchableOpacity onPress={() => openWebDatePicker(newDueDateInputRef)}>
-                    <Ionicons name="calendar-outline" size={20} color="#E1272C" />
-                  </TouchableOpacity>
-                  {/* Input type="date" oculto */}
-                  <input
-                    type="date"
-                    style={styles.hiddenDateInput}
-                    ref={newDueDateInputRef}
-                    onChange={(e) =>
-                      handleWebDateChange(
-                        e.target.value ? new Date(e.target.value) : null,
-                        setNewDueDate,
-                        () => {}
-                      )
-                    }
-                  />
+
+              {Platform.OS === "web" ? (
+                <View style={styles.dateInputModalContainer}>
+                  <View style={styles.modalDateInputWrapper}>
+                    <TextInput
+                      style={[
+                        styles.dateInputModal,
+                        newDueDateInput.length === 10
+                          ? styles.validInput
+                          : styles.invalidInput,
+                      ]}
+                      placeholder="DD/MM/AAAA"
+                      value={newDueDateInput}
+                      onChangeText={handleModalDateInputWithMask}
+                      keyboardType="numeric"
+                      maxLength={10}
+                    />
+                  </View>
+                </View>
+              ) : (
+                <View style={styles.dateInputModalContainer}>
+                  <View style={styles.modalDateInputWrapper}>
+                    <TextInput
+                      style={[
+                        styles.dateInputModal,
+                        newDueDateInput.length === 10
+                          ? styles.validInput
+                          : styles.invalidInput,
+                      ]}
+                      placeholder="DD/MM/AAAA"
+                      value={newDueDateInput}
+                      onChangeText={handleModalDateInputWithMask}
+                      keyboardType="numeric"
+                      maxLength={10}
+                    />
+                    <TouchableOpacity
+                      style={styles.modalCalendarButton}
+                      onPress={() => setShowNewDueDatePicker(true)}
+                    >
+                      <Ionicons
+                        name="calendar-outline"
+                        size={24}
+                        color="#E1272C"
+                      />
+                    </TouchableOpacity>
+                  </View>
                 </View>
               )}
+
+              {Platform.OS !== "web" && showNewDueDatePicker && (
+                <DateTimePicker
+                  value={newDueDate || new Date()}
+                  mode="date"
+                  display="default"
+                  onChange={(event, selectedDate) => {
+                    setShowNewDueDatePicker(false);
+                    if (selectedDate) {
+                      const formattedDate =
+                        selectedDate.toLocaleDateString("pt-BR");
+                      setNewDueDate(selectedDate);
+                      setNewDueDateInput(formattedDate);
+                    }
+                  }}
+                  minimumDate={
+                    new Date(
+                      new Date().getFullYear(),
+                      new Date().getMonth() + 1,
+                      1
+                    )
+                  }
+                />
+              )}
+
               <TouchableOpacity
                 style={styles.modalButton}
                 onPress={handleSendWhatsAppMessage}
@@ -593,6 +715,8 @@ const ParcelAntecipation = () => {
                 style={styles.modalCloseButton}
                 onPress={() => {
                   setConfirmModalVisible(false);
+                  setNewDueDateInput(""); // Reset input when closing modal
+                  setNewDueDate(null);
                 }}
               >
                 <Text style={styles.modalCloseButtonText}>Cancelar</Text>
@@ -610,6 +734,31 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#FAF6F6",
     paddingTop: Platform.OS === "web" ? 20 : 0, // Ajuste para web
+  },
+  dateInputModalContainer: {
+    width: "100%",
+    marginVertical: 15,
+  },
+  modalDateInputWrapper: {
+    flexDirection: "row",
+    alignItems: "center",
+    width: "100%",
+  },
+  dateInputModal: {
+    flex: 1,
+    height: 50,
+    borderWidth: 1,
+    borderColor: "#ddd",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    fontSize: 16,
+    backgroundColor: "#fff",
+  },
+  modalCalendarButton: {
+    padding: 10,
+    marginLeft: 8,
+    borderRadius: 8,
+    backgroundColor: "#F0F0F0",
   },
   title: {
     fontSize: 22,
@@ -680,6 +829,19 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingHorizontal: 8,
     fontSize: 16,
+    backgroundColor: "#fff",
+  },
+  dateInputModal: {
+    flex: 1,
+    height: 50,
+    width: 200,
+    borderWidth: 1,
+    borderColor: "#ddd",
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    fontSize: 16,
+    marginTop: 20,
+    marginBottom: 20,
     backgroundColor: "#fff",
   },
   validInput: {
@@ -817,6 +979,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 25,
     borderRadius: 8,
     marginBottom: 10,
+    marginTop: 10,
     alignSelf: "center",
   },
   modalButtonText: {

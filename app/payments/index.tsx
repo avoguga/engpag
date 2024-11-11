@@ -10,6 +10,7 @@ import {
   Linking,
   Modal,
   ScrollView,
+  Platform,
 } from "react-native";
 import axios from "axios";
 import { UserContext } from "../contexts/UserContext";
@@ -31,7 +32,6 @@ const PaymentHistory = () => {
   const [completedPayments, setCompletedPayments] = useState([]);
   const [filter, setFilter] = useState("A VENCER");
 
-  // Estados para o Modal
   const [selectedInstallment, setSelectedInstallment] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
 
@@ -144,32 +144,42 @@ const PaymentHistory = () => {
       }
 
       const payments = paidInstallments.map((installment) => {
-        let paymentDate = "Data indisponível";
-        if (
-          installment.receipts &&
-          installment.receipts.length > 0 &&
-          installment.receipts[0].receiptDate
-        ) {
-          paymentDate = formatDate(installment.receipts[0].receiptDate);
-        }
-
+        const receipt = installment.receipts && installment.receipts[0];
+        const paymentDate = receipt ? formatDate(receipt.receiptDate) : "Data indisponível";
         const dueDate = formatDate(installment.dueDate);
 
         return {
           id: installment.installmentId.toString(),
-          number: installment.installmentNumber,
+          installmentId: installment.installmentId,
+          installmentNumber: installment.installmentNumber,
           billReceivableId: selectedResult.billReceivableId,
-          dueDate,
+          dueDate: installment.dueDate,
           formattedDueDate: dueDate,
-          paymentDate,
+          paymentDate: receipt?.receiptDate,
           formattedPaymentDate: paymentDate,
-          value: installment.adjustedValue 
-            ? parseFloat(installment.adjustedValue ).toLocaleString("pt-BR", {
-                style: "currency",
-                currency: "BRL",
-              })
-            : "Valor indisponível",
+          value: parseFloat(installment.adjustedValue || 0).toLocaleString("pt-BR", {
+            style: "currency",
+            currency: "BRL",
+          }),
+          adjustedValue: installment.adjustedValue,
+          originalValue: installment.originalValue,
+          currentBalance: installment.currentBalance,
+          monetaryCorrectionValue: installment.monetaryCorrectionValue,
+          baseDateOfCorrection: installment.baseDateOfCorrection,
           conditionType: installment.conditionType,
+          indexerCode: installment.indexerCode,
+          indexerName: installment.indexerName,
+          indexerValueBaseDate: installment.indexerValueBaseDate,
+          indexerValueCalculationDate: receipt?.indexerValueCalculationDate,
+          generatedBoleto: installment.generatedBoleto,
+          receipt: receipt ? {
+            receiptId: receipt.receiptId,
+            receiptValue: receipt.receiptValue,
+            receiptNetValue: receipt.receiptNetValue,
+            monetaryCorrectionValue: receipt.monetaryCorrectionValue,
+            calculationDate: receipt.calculationDate,
+            indexerValueCalculationDate: receipt.indexerValueCalculationDate,
+          } : null
         };
       });
 
@@ -187,14 +197,14 @@ const PaymentHistory = () => {
       Alert.alert("Erro", "Dados do cliente não disponíveis.");
       return;
     }
-
+  
     setLoadingHistory(true);
-
+  
     try {
       const username = "engenharq-mozart";
       const password = "i94B1q2HUXf7PP7oscuIBygquSRZ9lhb";
       const credentials = btoa(`${username}:${password}`);
-
+  
       const response = await axios.get(
         `https://engpag.backend.gustavohenrique.dev/proxy/current-debit-balance/pdf`,
         {
@@ -206,10 +216,26 @@ const PaymentHistory = () => {
           },
         }
       );
-
+  
       if (response.data && response.data.results && response.data.results[0]) {
         const url = response.data.results[0].urlReport;
-        Linking.openURL(url);
+        
+        if (Platform.OS === 'web') {
+          const link = document.createElement('a');
+          link.href = url;
+          link.target = '_blank';
+          link.rel = 'noopener noreferrer';
+          
+          if (navigator.userAgent.indexOf('Safari') !== -1) {
+            link.setAttribute('download', `historico-pagamento-${userData.id}.pdf`);
+          }
+          
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        } else {
+          await Linking.openURL(url);
+        }
       } else {
         Alert.alert("Erro", "Histórico de pagamentos não disponível.");
       }
@@ -321,7 +347,6 @@ const PaymentHistory = () => {
         />
       )}
 
-      {/* Modal para Detalhes da Parcela */}
       {selectedInstallment && (
         <Modal
           animationType="slide"
@@ -344,6 +369,34 @@ const PaymentHistory = () => {
                   <Text style={styles.modalLabel}>Data de Vencimento:</Text>
                   <Text style={styles.modalValue}>{selectedInstallment.formattedDueDate}</Text>
                 </View>
+                {selectedInstallment.formattedPaymentDate && (
+                  <View style={styles.modalItem}>
+                    <Text style={styles.modalLabel}>Data de Pagamento:</Text>
+                    <Text style={styles.modalValue}>{selectedInstallment.formattedPaymentDate}</Text>
+                  </View>
+                )}
+                {selectedInstallment.receipt && (
+                  <>
+                    <View style={styles.modalItem}>
+                      <Text style={styles.modalLabel}>Valor do Recibo:</Text>
+                      <Text style={styles.modalValue}>
+                        {parseFloat(selectedInstallment.receipt.receiptValue).toLocaleString("pt-BR", {
+                          style: "currency",
+                          currency: "BRL",
+                        })}
+                      </Text>
+                    </View>
+                    <View style={styles.modalItem}>
+                      <Text style={styles.modalLabel}>Valor Líquido do Recibo:</Text>
+                      <Text style={styles.modalValue}>
+                        {parseFloat(selectedInstallment.receipt.receiptNetValue).toLocaleString("pt-BR", {
+                          style: "currency",
+                          currency: "BRL",
+                        })}
+                      </Text>
+                    </View>
+                  </>
+                )}
                 <View style={styles.modalItem}>
                   <Text style={styles.modalLabel}>Valor Ajustado:</Text>
                   <Text style={styles.modalValue}>
