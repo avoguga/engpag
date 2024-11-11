@@ -7,26 +7,30 @@ import {
   FlatList,
   TouchableOpacity,
   Alert,
+  TextInput,
+  Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { UserContext } from "../contexts/UserContext";
-import { router, useLocalSearchParams } from "expo-router";
+import { Picker } from "@react-native-picker/picker";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import axios from "axios";
-import { Picker } from "@react-native-picker/picker";
+import { UserContext } from "../contexts/UserContext";
+import { useLocalSearchParams } from "expo-router";
 
 const PaymentsCompleted = () => {
   const { userData } = useContext(UserContext);
-  const { billReceivableId } = useLocalSearchParams();
+  const { billReceivableId, enterpriseName } = useLocalSearchParams();
   const [completedPayments, setCompletedPayments] = useState([]);
   const [loading, setLoading] = useState(false);
 
   const [selectedParcel, setSelectedParcel] = useState("Número da Parcela");
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
+  const [startDateInput, setStartDateInput] = useState("");
+  const [endDateInput, setEndDateInput] = useState("");
   const [showStartDatePicker, setShowStartDatePicker] = useState(false);
   const [showEndDatePicker, setShowEndDatePicker] = useState(false);
-  const { enterpriseName } = useLocalSearchParams();
+  const [searchText, setSearchText] = useState(""); // Estado para pesquisa
 
   useEffect(() => {
     fetchCompletedPayments();
@@ -159,20 +163,52 @@ const PaymentsCompleted = () => {
     setSelectedParcel("Número da Parcela");
     setStartDate(null);
     setEndDate(null);
+    setStartDateInput("");
+    setEndDateInput("");
+    setSearchText("");
+  };
+
+  const handleDateInputWithMask = (text, setDate, setDateInput) => {
+    let formattedText = text.replace(/\D/g, "");
+
+    if (formattedText.length > 2) {
+      formattedText = formattedText.replace(/(\d{2})(\d)/, "$1/$2");
+    }
+    if (formattedText.length > 5) {
+      formattedText = formattedText.replace(/(\d{2})\/(\d{2})(\d)/, "$1/$2/$3");
+    }
+    if (formattedText.length > 10) {
+      formattedText = formattedText.slice(0, 10);
+    }
+
+    setDateInput(formattedText);
+
+    if (formattedText.length === 10) {
+      const [day, month, year] = formattedText.split("/");
+      const date = new Date(`${year}-${month}-${day}`);
+      if (!isNaN(date)) setDate(date);
+      else Alert.alert("Erro", "Data inválida.");
+    }
   };
 
   const renderItem = ({ item }) => (
-    <View style={styles.card}>
+    <TouchableOpacity
+      style={[
+        styles.card,
+        item.status === "vencido" ? styles.overdueCard : styles.pendingCard,
+        completedPayments.some((payment) => payment.id === item.id) && styles.selectedCard,
+      ]}
+      onPress={() => {}}
+    >
+      <Text style={styles.cardNotice}>
+        {item.generatedBoleto ? "Boleto disponível" : "Boleto indisponível"}
+      </Text>
       <Text style={styles.cardTitle}>Número da Parcela: {item.number}</Text>
       <Text style={styles.cardSubtitle}>
         Número do Título: {item.billReceivableId}
       </Text>
-      <Text style={styles.cardSubtitle}>
-        Vencimento: {item.formattedDueDate}
-      </Text>
-      <Text style={styles.cardSubtitle}>
-        Data de Pagamento: {item.formattedPaymentDate}
-      </Text>
+      <Text style={styles.cardSubtitle}>Vencimento: {item.formattedDueDate}</Text>
+      <Text style={styles.cardSubtitle}>Data de Pagamento: {item.formattedPaymentDate}</Text>
       <Text style={styles.cardValue}>Valor: {item.value}</Text>
       {/* Novos campos adicionados */}
       <Text style={styles.cardSubtitle}>
@@ -190,7 +226,7 @@ const PaymentsCompleted = () => {
       <Text style={styles.cardSubtitle}>
         Valor Original: {item.originalValue}
       </Text>
-    </View>
+    </TouchableOpacity>
   );
 
   const parcelNumbers = [
@@ -216,6 +252,19 @@ const PaymentsCompleted = () => {
       return false;
     }
 
+    // Filtrar por texto de pesquisa
+    if (
+      searchText &&
+      !(
+        item.number.includes(searchText) ||
+        item.billReceivableId.includes(searchText) ||
+        item.indexerName.toLowerCase().includes(searchText.toLowerCase()) ||
+        item.conditionType.toLowerCase().includes(searchText.toLowerCase())
+      )
+    ) {
+      return false;
+    }
+
     return true;
   });
 
@@ -228,8 +277,19 @@ const PaymentsCompleted = () => {
         <Text style={styles.actionButtonText}>PAGAMENTOS REALIZADOS</Text>
       </TouchableOpacity>
 
-      {/* Filtro por parcela */}
+      {/* Campo de Pesquisa */}
       <View style={styles.searchContainer}>
+        <Ionicons name="search-outline" size={20} color="#888" style={styles.searchIcon} />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Pesquisar por texto..."
+          value={searchText}
+          onChangeText={(text) => setSearchText(text)}
+        />
+      </View>
+
+      {/* Filtro por parcela */}
+      <View style={styles.pickerContainer}>
         <Picker
           selectedValue={selectedParcel}
           style={styles.picker}
@@ -238,7 +298,11 @@ const PaymentsCompleted = () => {
           {parcelNumbers.map((parcelNumber) => (
             <Picker.Item
               key={parcelNumber}
-              label={parcelNumber.toString()}
+              label={
+                parcelNumber === "Número da Parcela"
+                  ? parcelNumber
+                  : `Parcela ${parcelNumber}`
+              }
               value={parcelNumber}
             />
           ))}
@@ -247,25 +311,89 @@ const PaymentsCompleted = () => {
 
       {/* Filtro por intervalo de datas */}
       <View style={styles.dateFilterContainer}>
-        <TouchableOpacity
-          style={styles.datePicker}
-          onPress={() => setShowStartDatePicker(true)}
-        >
-          <Ionicons name="calendar-outline" size={20} color="#E1272C" />
-          <Text style={styles.dateText}>
-            {startDate ? startDate.toLocaleDateString("pt-BR") : "Data inicial"}
-          </Text>
-        </TouchableOpacity>
+        {Platform.OS !== "web" ? (
+          <>
+            <View style={styles.dateInputContainer}>
+              <TextInput
+                style={[
+                  styles.dateInput,
+                  startDateInput.length === 10
+                    ? styles.validInput
+                    : styles.invalidInput,
+                ]}
+                placeholder="DD/MM/AAAA"
+                value={startDateInput}
+                onChangeText={(text) =>
+                  handleDateInputWithMask(text, setStartDate, setStartDateInput)
+                }
+                keyboardType="numeric"
+                maxLength={10}
+              />
+              <TouchableOpacity
+                style={styles.calendarButton}
+                onPress={() => setShowStartDatePicker(true)}
+              >
+                <Ionicons name="calendar-outline" size={24} color="#E1272C" />
+              </TouchableOpacity>
+            </View>
 
-        <TouchableOpacity
-          style={styles.datePicker}
-          onPress={() => setShowEndDatePicker(true)}
-        >
-          <Ionicons name="calendar-outline" size={20} color="#E1272C" />
-          <Text style={styles.dateText}>
-            {endDate ? endDate.toLocaleDateString("pt-BR") : "Data final"}
-          </Text>
-        </TouchableOpacity>
+            <View style={styles.dateInputContainer}>
+              <TextInput
+                style={[
+                  styles.dateInput,
+                  endDateInput.length === 10
+                    ? styles.validInput
+                    : styles.invalidInput,
+                ]}
+                placeholder="DD/MM/AAAA"
+                value={endDateInput}
+                onChangeText={(text) =>
+                  handleDateInputWithMask(text, setEndDate, setEndDateInput)
+                }
+                keyboardType="numeric"
+                maxLength={10}
+              />
+              <TouchableOpacity
+                style={styles.calendarButton}
+                onPress={() => setShowEndDatePicker(true)}
+              >
+                <Ionicons name="calendar-outline" size={24} color="#E1272C" />
+              </TouchableOpacity>
+            </View>
+          </>
+        ) : (
+          // Renderizar inputs de data para web
+          <>
+            <View style={styles.webDatePicker}>
+              <Ionicons name="calendar-outline" size={20} color="#E1272C" />
+              <input
+                type="date"
+                style={styles.webInputDate}
+                value={startDate ? startDate.toISOString().split("T")[0] : ""}
+                onChange={(e) => {
+                  const selected = e.target.value
+                    ? new Date(e.target.value)
+                    : null;
+                  setStartDate(selected);
+                }}
+              />
+            </View>
+            <View style={styles.webDatePicker}>
+              <Ionicons name="calendar-outline" size={20} color="#E1272C" />
+              <input
+                type="date"
+                style={styles.webInputDate}
+                value={endDate ? endDate.toISOString().split("T")[0] : ""}
+                onChange={(e) => {
+                  const selected = e.target.value
+                    ? new Date(e.target.value)
+                    : null;
+                  setEndDate(selected);
+                }}
+              />
+            </View>
+          </>
+        )}
       </View>
 
       {/* Botão de Resetar Filtros */}
@@ -273,32 +401,41 @@ const PaymentsCompleted = () => {
         <Text style={styles.resetButtonText}>Resetar Filtros</Text>
       </TouchableOpacity>
 
-      {showStartDatePicker && (
+      {/* DateTimePickers para plataformas não web */}
+      {Platform.OS !== "web" && showStartDatePicker && (
         <DateTimePicker
           value={startDate || new Date()}
           mode="date"
           display="default"
           onChange={(event, selectedDate) => {
             setShowStartDatePicker(false);
-            if (selectedDate) setStartDate(selectedDate);
+            if (selectedDate) {
+              setStartDate(selectedDate);
+              setStartDateInput(selectedDate.toLocaleDateString("pt-BR"));
+            }
           }}
+          minimumDate={new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1)}
         />
       )}
 
-      {showEndDatePicker && (
+      {Platform.OS !== "web" && showEndDatePicker && (
         <DateTimePicker
           value={endDate || new Date()}
           mode="date"
           display="default"
           onChange={(event, selectedDate) => {
             setShowEndDatePicker(false);
-            if (selectedDate) setEndDate(selectedDate);
+            if (selectedDate) {
+              setEndDate(selectedDate);
+              setEndDateInput(selectedDate.toLocaleDateString("pt-BR"));
+            }
           }}
+          minimumDate={new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1)}
         />
       )}
 
       {loading ? (
-        <ActivityIndicator size="large" color="#E1272C" />
+        <ActivityIndicator size="large" color="#E1272C" style={{ marginTop: 20 }} />
       ) : (
         <FlatList
           data={filteredData}
@@ -319,37 +456,28 @@ const PaymentsCompleted = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FAF6F6",
-  },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    backgroundColor: "#E1272C",
-    paddingVertical: 15,
-    paddingHorizontal: 15,
-  },
-  headerTitle: {
-    flex: 1,
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "bold",
-    textAlign: "center",
+    padding: 16,
+    backgroundColor: "#F5F5F5",
   },
   title: {
-    fontSize: 20,
-    fontWeight: "bold",
+    fontSize: 22,
+    fontWeight: "700",
     textAlign: "center",
-    marginVertical: 16,
+    marginVertical: 10,
     color: "#333",
   },
   actionButton: {
     backgroundColor: "#E1272C",
     borderRadius: 8,
-    paddingVertical: 10,
+    paddingVertical: 12,
     alignItems: "center",
     marginBottom: 16,
     marginHorizontal: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
   actionButtonText: {
     color: "#fff",
@@ -358,6 +486,8 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
   },
   searchContainer: {
+    flexDirection: "row",
+    alignItems: "center",
     borderWidth: 1,
     borderColor: "#888",
     borderRadius: 8,
@@ -365,9 +495,30 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     paddingHorizontal: 12,
     marginHorizontal: 16,
+    height: 45,
+  },
+  searchIcon: {
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+    color: "#333",
+  },
+  pickerContainer: {
+    borderWidth: 1,
+    borderColor: "#888",
+    borderRadius: 8,
+    backgroundColor: "#fff",
+    marginBottom: 16,
+    marginHorizontal: 16,
+    height: 50,
+    justifyContent: "center",
+    paddingHorizontal: 12,
   },
   picker: {
     height: 50,
+    width: "100%",
     color: "#333",
   },
   dateFilterContainer: {
@@ -376,20 +527,33 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     marginHorizontal: 16,
   },
-  datePicker: {
+  dateInputContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#fff",
+    flex: 1,
+    marginRight: 8,
+  },
+  dateInput: {
+    flex: 1,
+    height: 50,
     borderWidth: 1,
     borderColor: "#ddd",
     borderRadius: 8,
-    padding: 12,
-    width: "48%",
-  },
-  dateText: {
+    paddingHorizontal: 12,
     fontSize: 16,
-    color: "#333",
+    backgroundColor: "#fff",
+  },
+  validInput: {
+    borderColor: "#28a745",
+  },
+  invalidInput: {
+    borderColor: "#dc3545",
+  },
+  calendarButton: {
     marginLeft: 8,
+    padding: 10,
+    borderRadius: 8,
+    backgroundColor: "#F0F0F0",
   },
   resetButton: {
     backgroundColor: "#E1272C",
@@ -398,6 +562,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 16,
     marginHorizontal: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
   resetButtonText: {
     color: "#fff",
@@ -410,17 +579,37 @@ const styles = StyleSheet.create({
   },
   card: {
     padding: 16,
-    backgroundColor: "#B9EBCE",
-    borderRadius: 8,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
     marginBottom: 12,
-    borderColor: "#333",
     borderWidth: 1,
+    borderColor: "#DDD",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  overdueCard: {
+    backgroundColor: "#FFD7D8",
+  },
+  pendingCard: {
+    backgroundColor: "#E4E4E4",
+  },
+  selectedCard: {
+    borderColor: "#E1272C",
+    borderWidth: 2,
+  },
+  cardNotice: {
+    fontSize: 14,
+    fontWeight: "bold",
+    color: "#E1272C",
+    marginBottom: 8,
   },
   cardTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: "bold",
     color: "#333",
-    marginBottom: 4,
   },
   cardSubtitle: {
     fontSize: 14,
@@ -436,7 +625,28 @@ const styles = StyleSheet.create({
   noDataText: {
     textAlign: "center",
     fontSize: 16,
-    color: "#333",
+    color: "#555",
+    marginTop: 20,
+  },
+  webDatePicker: {
+    display: "flex",
+    alignItems: "center",
+    flexDirection: "row",
+    borderWidth: 1,
+    borderColor: "#ccc",
+    padding: 10,
+    borderRadius: 8,
+    flex: 1,
+    marginRight: 8,
+    marginBottom: 10,
+  },
+  webInputDate: {
+    marginLeft: 8,
+    flex: 1,
+    border: "none",
+    outline: "none",
+    backgroundColor: "transparent",
+    fontSize: 16,
   },
 });
 

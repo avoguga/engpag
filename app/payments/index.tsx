@@ -8,6 +8,8 @@ import {
   TouchableOpacity,
   FlatList,
   Linking,
+  Modal,
+  ScrollView,
 } from "react-native";
 import axios from "axios";
 import { UserContext } from "../contexts/UserContext";
@@ -28,6 +30,10 @@ const PaymentHistory = () => {
   const [installments, setInstallments] = useState([]);
   const [completedPayments, setCompletedPayments] = useState([]);
   const [filter, setFilter] = useState("A VENCER");
+
+  // Estados para o Modal
+  const [selectedInstallment, setSelectedInstallment] = useState(null);
+  const [modalVisible, setModalVisible] = useState(false);
 
   useEffect(() => {
     fetchInstallments();
@@ -224,13 +230,13 @@ const PaymentHistory = () => {
 
     return installments.filter((installment) => {
       const dueDate = new Date(installment.dueDate);
-      if (filter === "VENCIDOS") return dueDate < today && !installment.paidDate;
-      if (filter === "A VENCER") return dueDate >= today && !installment.paidDate;
+      if (filter === "VENCIDOS") return dueDate < today && !installment.paymentDate;
+      if (filter === "A VENCER") return dueDate >= today && !installment.paymentDate;
     });
   };
 
   const renderInstallmentItem = ({ item }) => (
-    <View
+    <TouchableOpacity
       style={[
         styles.card,
         item.paymentDate
@@ -239,6 +245,10 @@ const PaymentHistory = () => {
           ? styles.overdueBorder
           : styles.dueBorder,
       ]}
+      onPress={() => {
+        setSelectedInstallment(item);
+        setModalVisible(true);
+      }}
     >
       <MaterialIcons
         name="attach-money"
@@ -265,7 +275,7 @@ const PaymentHistory = () => {
           </Text>
         )}
       </View>
-    </View>
+    </TouchableOpacity>
   );
 
   return (
@@ -309,6 +319,136 @@ const PaymentHistory = () => {
             </Text>
           }
         />
+      )}
+
+      {/* Modal para Detalhes da Parcela */}
+      {selectedInstallment && (
+        <Modal
+          animationType="slide"
+          transparent={true}
+          visible={modalVisible}
+          onRequestClose={() => {
+            setModalVisible(false);
+            setSelectedInstallment(null);
+          }}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContainer}>
+              <Text style={styles.modalTitle}>Detalhes da Parcela</Text>
+              <ScrollView style={{ width: "100%" }}>
+                <View style={styles.modalItem}>
+                  <Text style={styles.modalLabel}>Número da Parcela:</Text>
+                  <Text style={styles.modalValue}>{selectedInstallment.installmentNumber}</Text>
+                </View>
+                <View style={styles.modalItem}>
+                  <Text style={styles.modalLabel}>Data de Vencimento:</Text>
+                  <Text style={styles.modalValue}>{selectedInstallment.formattedDueDate}</Text>
+                </View>
+                <View style={styles.modalItem}>
+                  <Text style={styles.modalLabel}>Valor Atual:</Text>
+                  <Text style={styles.modalValue}>{selectedInstallment.currentBalance}</Text>
+                </View>
+                <View style={styles.modalItem}>
+                  <Text style={styles.modalLabel}>Valor Ajustado:</Text>
+                  <Text style={styles.modalValue}>
+                    {selectedInstallment.adjustedValue
+                      ? parseFloat(selectedInstallment.adjustedValue).toLocaleString("pt-BR", {
+                          style: "currency",
+                          currency: "BRL",
+                        })
+                      : "Valor indisponível"}
+                  </Text>
+                </View>
+                <View style={styles.modalItem}>
+                  <Text style={styles.modalLabel}>Valor Original:</Text>
+                  <Text style={styles.modalValue}>
+                    {selectedInstallment.originalValue
+                      ? parseFloat(selectedInstallment.originalValue).toLocaleString("pt-BR", {
+                          style: "currency",
+                          currency: "BRL",
+                        })
+                      : "Valor indisponível"}
+                  </Text>
+                </View>
+                <View style={styles.modalItem}>
+                  <Text style={styles.modalLabel}>Valor Adicional:</Text>
+                  <Text style={styles.modalValue}>
+                    {selectedInstallment.additionalValue
+                      ? parseFloat(selectedInstallment.additionalValue).toLocaleString("pt-BR", {
+                          style: "currency",
+                          currency: "BRL",
+                        })
+                      : "Valor indisponível"}
+                  </Text>
+                </View>
+                <View style={styles.modalItem}>
+                  <Text style={styles.modalLabel}>Correção Monetária:</Text>
+                  <Text style={styles.modalValue}>
+                    {selectedInstallment.monetaryCorrectionValue
+                      ? parseFloat(selectedInstallment.monetaryCorrectionValue).toLocaleString("pt-BR", {
+                          style: "currency",
+                          currency: "BRL",
+                        })
+                      : "Valor indisponível"}
+                  </Text>
+                </View>
+                <View style={styles.modalItem}>
+                  <Text style={styles.modalLabel}>Data Base da Correção:</Text>
+                  <Text style={styles.modalValue}>
+                    {selectedInstallment.baseDateOfCorrection
+                      ? formatDate(selectedInstallment.baseDateOfCorrection)
+                      : "Data indisponível"}
+                  </Text>
+                </View>
+                <View style={styles.modalItem}>
+                  <Text style={styles.modalLabel}>Tipo de Condição:</Text>
+                  <Text style={styles.modalValue}>{selectedInstallment.conditionType}</Text>
+                </View>
+                <View style={styles.modalItem}>
+                  <Text style={styles.modalLabel}>Código do Indexador:</Text>
+                  <Text style={styles.modalValue}>{selectedInstallment.indexerCode}</Text>
+                </View>
+                <View style={styles.modalItem}>
+                  <Text style={styles.modalLabel}>Nome do Indexador:</Text>
+                  <Text style={styles.modalValue}>{selectedInstallment.indexerName}</Text>
+                </View>
+                <View style={styles.modalItem}>
+                  <Text style={styles.modalLabel}>Valor Base do Indexador:</Text>
+                  <Text style={styles.modalValue}>
+                    {selectedInstallment.indexerValueBaseDate
+                      ? selectedInstallment.indexerValueBaseDate.toFixed(8)
+                      : "Valor indisponível"}
+                  </Text>
+                </View>
+                <View style={styles.modalItem}>
+                  <Text style={styles.modalLabel}>Valor de Cálculo do Indexador:</Text>
+                  <Text style={styles.modalValue}>
+                    {selectedInstallment.indexerValueCalculationDate
+                      ? selectedInstallment.indexerValueCalculationDate.toFixed(8)
+                      : "Valor indisponível"}
+                  </Text>
+                </View>
+                {!selectedInstallment.paymentDate && (
+                  <View style={styles.modalItem}>
+                    <Text style={styles.modalLabel}>Gerou Boleto:</Text>
+                    <Text style={styles.modalValue}>
+                      {selectedInstallment.generatedBoleto ? "Sim" : "Não"}
+                    </Text>
+                  </View>
+                )}
+              </ScrollView>
+              <TouchableOpacity
+                style={styles.closeButton}
+                onPress={() => {
+                  setModalVisible(false);
+                  setSelectedInstallment(null);
+                }}
+              >
+                <Text style={styles.closeButtonText}>Fechar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
       )}
     </View>
   );
@@ -402,21 +542,16 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#333",
   },
-  cardAmount: {
-    fontSize: 16,
-    color: "#E1272C",
-    marginTop: 5,
-  },
-  cardDueDate: {
-    fontSize: 14,
-    color: "#777",
-    marginTop: 5,
-  },
   cardConditionType: {
     fontSize: 14,
     color: "#555",
     marginTop: 5,
     fontStyle: "italic",
+  },
+  cardAmount: {
+    fontSize: 16,
+    color: "#E1272C",
+    marginTop: 5,
   },
   cardPaidDate: {
     fontSize: 14,
@@ -431,6 +566,53 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#888",
     marginTop: 20,
+  },
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalContainer: {
+    backgroundColor: "#fff",
+    width: "90%",
+    borderRadius: 10,
+    padding: 20,
+    alignItems: "center",
+    maxHeight: "80%",
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    marginBottom: 15,
+    color: "#E1272C",
+    textAlign: "center",
+  },
+  modalItem: {
+    marginBottom: 10,
+  },
+  modalLabel: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#333",
+  },
+  modalValue: {
+    fontSize: 16,
+    color: "#555",
+    marginTop: 2,
+  },
+  closeButton: {
+    backgroundColor: "#E1272C",
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    marginTop: 15,
+  },
+  closeButtonText: {
+    color: "#fff",
+    fontWeight: "bold",
+    fontSize: 16,
   },
 });
 

@@ -14,6 +14,7 @@ import { Ionicons } from "@expo/vector-icons";
 import axios from "axios";
 import { UserContext } from "../contexts/UserContext";
 import { useFocusEffect, useRouter } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage"; // Import AsyncStorage
 
 const formatDate = (dateString) => {
   if (!dateString || typeof dateString !== "string") return "N/A";
@@ -44,7 +45,11 @@ const InitialPage = () => {
     useContext(UserContext);
   const [installmentsData, setLocalInstallmentsData] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [loadingEnterprise, setLoadingEnterprise] = useState(false);
   const [error, setError] = useState("");
+  
+  // Estado para controle de carregamento da verificação de autenticação
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -54,10 +59,50 @@ const InitialPage = () => {
     }, [])
   );
 
-  // Load userData and installmentsData from localStorage on mount (Web only)
+  // Verificação de autenticação ao montar o componente
   useEffect(() => {
-    const loadDataFromStorage = () => {
-      if (Platform.OS !== "web") return; // Exit if not running on web
+    const checkAuthentication = async () => {
+      try {
+        if (Platform.OS === "web") {
+          // Para Web: verificar localStorage
+          const storedUserData = localStorage.getItem('userData');
+          if (!storedUserData) {
+            // Se userData não existir, redireciona para a rota de login
+            router.replace("/(home)");
+          } else {
+            // Se existir, atualiza o contexto do usuário
+            setUserData(JSON.parse(storedUserData));
+          }
+        } else {
+          // Para dispositivos móveis: verificar AsyncStorage
+          const storedUserData = await AsyncStorage.getItem("userData");
+          if (!storedUserData) {
+            // Se userData não existir, redireciona para a rota de login
+            router.replace("/(home)");
+          } else {
+            // Se existir, atualiza o contexto do usuário
+            setUserData(JSON.parse(storedUserData));
+          }
+        }
+      } catch (error) {
+        console.error("Erro ao verificar autenticação:", error);
+        Alert.alert("Erro", "Não foi possível verificar a autenticação.");
+        router.replace("/(home)");
+      } finally {
+        setIsAuthLoading(false);
+      }
+    };
+
+    checkAuthentication();
+  }, [router, setUserData]);
+
+  // Load userData and installmentsData from storage on mount
+  useEffect(() => {
+    const loadDataFromStorage = async () => {
+      if (Platform.OS !== "web") {
+        // Para dispositivos móveis, os dados já são carregados via AsyncStorage na verificação de autenticação
+        return;
+      }
 
       try {
         const storedUserData = localStorage.getItem('userData');
@@ -80,28 +125,42 @@ const InitialPage = () => {
     loadDataFromStorage();
   }, [setUserData, setInstallmentsData]);
 
-  // Save userData to localStorage whenever it changes (Web only)
+  // Save userData to storage whenever it changes
   useEffect(() => {
-    if (Platform.OS !== "web" || !userData) return; // Exit if not web or userData is null/undefined
-
-    try {
-      localStorage.setItem('userData', JSON.stringify(userData));
-    } catch (error) {
-      console.error("Erro ao salvar userData no localStorage:", error);
+    if (Platform.OS === "web") {
+      if (!userData) return;
+      try {
+        localStorage.setItem('userData', JSON.stringify(userData));
+      } catch (error) {
+        console.error("Erro ao salvar userData no localStorage:", error);
+      }
+    } else {
+      // Para dispositivos móveis: salvar no AsyncStorage
+      if (!userData) return;
+      AsyncStorage.setItem("userData", JSON.stringify(userData)).catch(error =>
+        console.error("Erro ao salvar userData no AsyncStorage:", error)
+      );
     }
   }, [userData]);
 
-  // Save installmentsData to localStorage whenever it changes (Web only)
+  // Save installmentsData to storage whenever it changes
   useEffect(() => {
-    if (Platform.OS !== "web" || !installmentsData || !Array.isArray(installmentsData)) return;
-
-    try {
-      localStorage.setItem('installmentsData', JSON.stringify(installmentsData));
-    } catch (error) {
-      console.error("Erro ao salvar installmentsData no localStorage:", error);
+    if (Platform.OS === "web" && Array.isArray(installmentsData)) {
+      try {
+        localStorage.setItem('installmentsData', JSON.stringify(installmentsData));
+      } catch (error) {
+        console.error("Erro ao salvar installmentsData no localStorage:", error);
+      }
+    } else {
+      // Para dispositivos móveis: salvar no AsyncStorage
+      if (!installmentsData || !Array.isArray(installmentsData)) return;
+      AsyncStorage.setItem("installmentsData", JSON.stringify(installmentsData)).catch(error =>
+        console.error("Erro ao salvar installmentsData no AsyncStorage:", error)
+      );
     }
   }, [installmentsData]);
 
+  // Buscar parcelas quando userData estiver disponível
   useEffect(() => {
     if (userData && (userData.cpf || userData.cnpj)) {
       fetchInstallments();
@@ -133,14 +192,7 @@ const InitialPage = () => {
       setLocalInstallmentsData(fetchedData);
       setInstallmentsData(fetchedData);
 
-      // Save installmentsData to localStorage (Web only)
-      if (Platform.OS === "web") {
-        try {
-          localStorage.setItem('installmentsData', JSON.stringify(fetchedData));
-        } catch (error) {
-          console.error("Erro ao salvar installmentsData no localStorage:", error);
-        }
-      }
+      // Save installmentsData to storage is handled by useEffect
 
       if (fetchedData.length > 0) {
         await fetchEnterpriseNames(fetchedData);
@@ -154,6 +206,7 @@ const InitialPage = () => {
   };
 
   const fetchEnterpriseNames = async (installments) => {
+    setLoadingEnterprise(true);
     try {
       const username = "engenharq-mozart";
       const password = "i94B1q2HUXf7PP7oscuIBygquSRZ9lhb";
@@ -202,6 +255,8 @@ const InitialPage = () => {
         "Erro",
         "Não foi possível buscar os nomes dos empreendimentos."
       );
+    } finally {
+      setLoadingEnterprise(false);
     }
   };
 
@@ -217,6 +272,15 @@ const InitialPage = () => {
     });
   };
 
+  if (isAuthLoading) {
+    // Enquanto verifica autenticação, exibe um indicador de carregamento
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#E1272C" />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
@@ -230,6 +294,7 @@ const InitialPage = () => {
 
         {loading && <ActivityIndicator size="large" color="#E1272C" />}
         {error !== "" && <Text style={styles.errorText}>{error}</Text>}
+        {loadingEnterprise && <ActivityIndicator size="small" color="#E1272C" />}
 
         {!loading &&
         Array.isArray(installmentsData) &&
@@ -427,6 +492,12 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     marginBottom: 20,
     textAlign: "center",
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#fff",
   },
 });
 
