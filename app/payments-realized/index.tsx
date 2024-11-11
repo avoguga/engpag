@@ -207,11 +207,9 @@ const PaymentsCompleted = () => {
 
   const renderDateInput = (
     inputType,
-    date,
     setDate,
     dateInput,
     setDateInput,
-    inputRef
   ) => (
     <View style={styles.dateInputContainer}>
       {Platform.OS === "web" ? (
@@ -226,25 +224,6 @@ const PaymentsCompleted = () => {
             onChangeText={(text) => handleDateInputWithMask(text, setDate, setDateInput)}
             keyboardType="numeric"
             maxLength={10}
-          />
-          <TouchableOpacity
-            style={styles.calendarButton}
-            onPress={() => openWebDatePicker(inputRef)}
-          >
-            <Ionicons name="calendar-outline" size={24} color="#E1272C" />
-          </TouchableOpacity>
-          {/* Input type="date" oculto */}
-          <input
-            type="date"
-            style={styles.hiddenDateInput}
-            ref={inputRef}
-            onChange={(e) =>
-              handleWebDateChange(
-                e.target.value ? new Date(e.target.value) : null,
-                setDate,
-                setDateInput
-              )
-            }
           />
         </>
       ) : (
