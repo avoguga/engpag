@@ -163,8 +163,8 @@ const PaymentHistory = () => {
           formattedDueDate: dueDate,
           paymentDate,
           formattedPaymentDate: paymentDate,
-          value: installment.originalValue
-            ? parseFloat(installment.originalValue).toLocaleString("pt-BR", {
+          value: installment.adjustedValue 
+            ? parseFloat(installment.adjustedValue ).toLocaleString("pt-BR", {
                 style: "currency",
                 currency: "BRL",
               })
@@ -343,10 +343,6 @@ const PaymentHistory = () => {
                 <View style={styles.modalItem}>
                   <Text style={styles.modalLabel}>Data de Vencimento:</Text>
                   <Text style={styles.modalValue}>{selectedInstallment.formattedDueDate}</Text>
-                </View>
-                <View style={styles.modalItem}>
-                  <Text style={styles.modalLabel}>Valor Atual:</Text>
-                  <Text style={styles.modalValue}>{selectedInstallment.currentBalance}</Text>
                 </View>
                 <View style={styles.modalItem}>
                   <Text style={styles.modalLabel}>Valor Ajustado:</Text>

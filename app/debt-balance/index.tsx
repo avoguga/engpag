@@ -96,7 +96,7 @@ const DebtBalanceScreen = () => {
   
         // Cálculo do Valor Total (soma de originalValue de todas as parcelas)
         const totalValue = allInstallments.reduce(
-          (sum, installment) => sum + (installment.originalValue || 0),
+          (sum, installment) => sum + (installment.adjustedValue  || 0),
           0
         );
         setValorTotal(totalValue);
@@ -107,14 +107,17 @@ const DebtBalanceScreen = () => {
             (installment) =>
               installment.conditionType.trim() === "Financiamento"
           )
-          .reduce((sum, installment) => sum + (installment.originalValue || 0), 0);
+          .reduce((sum, installment) => sum + (installment.adjustedValue  || 0), 0);
         setSaldoFinanciado(totalFinanciado);
   
         // Cálculo do Saldo Pago (soma de currentBalance das parcelas pagas)
         const totalPaid = (selectedResult.paidInstallments || []).reduce(
-          (sum, installment) => sum + (installment.currentBalance || 0),
+          (sum, installment) => sum + installment.receipts.reduce(
+            (receiptSum, receipt) => receiptSum + (receipt.receiptValue || 0), 0
+          ),
           0
         );
+        console.log(selectedResult.paidInstallments)
         setSaldoPago(totalPaid);
   
         // Cálculo do Saldo Devedor (soma de currentBalance das parcelas filtradas)

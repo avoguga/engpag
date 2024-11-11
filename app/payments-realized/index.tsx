@@ -135,16 +135,12 @@ const PaymentsCompleted = () => {
           formattedDueDate: formattedDueDate, // Data formatada para exibição
           paymentDate: paymentDate, // Data do pagamento
           formattedPaymentDate: formattedPaymentDate, // Data do pagamento formatada
-          value: parseFloat(installment.originalValue).toLocaleString("pt-BR", {
+          value: parseFloat(installment.adjustedValue ).toLocaleString("pt-BR", {
             style: "currency",
             currency: "BRL",
           }),
           indexerName: installment.indexerName || "N/A",
           conditionType: installment.conditionType || "N/A",
-          adjustedValue: parseFloat(installment.adjustedValue).toLocaleString("pt-BR", {
-            style: "currency",
-            currency: "BRL",
-          }),
           originalValue: parseFloat(installment.originalValue).toLocaleString("pt-BR", {
             style: "currency",
             currency: "BRL",
