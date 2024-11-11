@@ -15,7 +15,7 @@ const DebitOptionsPage = () => {
   const router = useRouter();
   const { userData, setUserData, installmentsData, setInstallmentsData } =
     useContext(UserContext);
-  const { enterpriseName } = useLocalSearchParams();
+  const { enterpriseName, billReceivableId } = useLocalSearchParams();
 
   // Load userData and installmentsData from localStorage on mount (Web only)
   useEffect(() => {
@@ -49,7 +49,6 @@ const DebitOptionsPage = () => {
     }
   }, [userData]);
 
-  // Save installmentsData to localStorage whenever it changes (Web only)
   useEffect(() => {
     if (Platform.OS === "web" && installmentsData) {
       try {
@@ -80,20 +79,13 @@ const DebitOptionsPage = () => {
       router.push({
         pathname: "/payments",
         params: {
-          billReceivableId: selectedResult.billReceivableId,
+          billReceivableId: billReceivableId,
           enterpriseName,
         },
       });
     } else {
       Alert.alert("Erro", "Título não encontrado.");
     }
-  };
-
-  const handleReferFriendNavigation = () => {
-    router.push({
-      pathname: "/refer-friend",
-      params: { enterpriseName },
-    });
   };
 
   const handleBoletoNavigation = () => {
@@ -111,7 +103,7 @@ const DebitOptionsPage = () => {
         ...(result.payableInstallments || []),
       ];
 
-      // Filtrar apenas as parcelas em aberto (sem data de pagamento)
+      //   apenas as parcelas em aberto (sem data de pagamento)
       const openInstallments = unpaidInstallments.filter(
         (installment) => !installment.paymentDate
       );
@@ -137,7 +129,7 @@ const DebitOptionsPage = () => {
       router.push({
         pathname: "/boleto-screen",
         params: {
-          billReceivableId: selectedResult.billReceivableId,
+          billReceivableId: billReceivableId,
           installmentId: lastInstallment.installmentId,
           enterpriseName,
         },
@@ -155,11 +147,13 @@ const DebitOptionsPage = () => {
 
     const selectedResult = installmentsData[0];
 
+    console.log(billReceivableId)
+
     if (selectedResult) {
       router.push({
         pathname: "/parcel-antecipation",
         params: {
-          billReceivableId: selectedResult.billReceivableId,
+          billReceivableId: billReceivableId,
           enterpriseName,
         },
       });
@@ -180,7 +174,7 @@ const DebitOptionsPage = () => {
       router.push({
         pathname: "/payments-realized",
         params: {
-          billReceivableId: selectedResult.billReceivableId,
+          billReceivableId: billReceivableId,
           enterpriseName,
         },
       });
@@ -201,7 +195,7 @@ const DebitOptionsPage = () => {
       router.push({
         pathname: "/debt-balance",
         params: {
-          billReceivableId: selectedResult.billReceivableId,
+          billReceivableId: billReceivableId,
           enterpriseName,
         },
       });
@@ -272,21 +266,9 @@ const DebitOptionsPage = () => {
           >
             <Text style={styles.buttonText}>HISTÓRICO DE PAGAMENTOS</Text>
           </TouchableOpacity>
-          {/* 
-          <TouchableOpacity
-            style={styles.buttonSmall}
-            onPress={handleReferFriendNavigation}
-          >
-            <Text style={styles.buttonText}>INDIQUE UM AMIGO</Text>
-          </TouchableOpacity> */}
+          
         </View>
 
-        {/* <TouchableOpacity
-          style={styles.buttonLarge}
-          onPress={handlePaymentsNavigation}
-        >
-          <Text style={styles.buttonText}>HISTÓRICO DE PAGAMENTOS</Text>
-        </TouchableOpacity> */}
       </View>
     </View>
   );

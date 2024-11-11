@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect, useContext, useRef } from "react";
 import {
   View,
   Text,
@@ -36,7 +36,11 @@ const ParcelAntecipation = () => {
   const [confirmModalVisible, setConfirmModalVisible] = useState(false);
   const [newDueDate, setNewDueDate] = useState(null);
   const [showNewDueDatePicker, setShowNewDueDatePicker] = useState(false);
-  const [searchText, setSearchText] = useState(""); // Novo estado para pesquisa
+
+  // Refs para inputs de data na web
+  const startDateInputRef = useRef(null);
+  const endDateInputRef = useRef(null);
+  const newDueDateInputRef = useRef(null); // Ref para o modal
 
   useEffect(() => {
     fetchInstallments();
@@ -146,67 +150,92 @@ const ParcelAntecipation = () => {
     if (formattedText.length === 10) {
       const [day, month, year] = formattedText.split("/");
       const date = new Date(`${year}-${month}-${day}`);
-      if (!isNaN(date)) setDate(date);
+      if (!isNaN(date)) {
+        setDate(date);
+      } else {
+        Alert.alert("Erro", "Data inválida.");
+      }
     }
   };
 
-  const handleConfirmSelection = () => {
-    if (selectedInstallments.length === 0) {
-      Alert.alert("Atenção", "Selecione ao menos uma parcela antes de continuar.");
-      return;
+  const handleWebDateChange = (selectedDate, setDate, setDateInput) => {
+    if (selectedDate) {
+      setDate(selectedDate);
+      setDateInput(selectedDate.toLocaleDateString("pt-BR"));
     }
-    setConfirmModalVisible(true);
   };
 
-  const filterByDate = (installments) => {
-    let filteredData = installments;
-
-    // Excluir parcelas do mês vigente e meses que já passaram
-    const currentDate = new Date();
-    const nextMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1);
-
-    filteredData = filteredData.filter((item) => item.dueDate >= nextMonth);
-
-    if (startDate) {
-      filteredData = filteredData.filter((item) => item.dueDate >= startDate);
+  const openWebDatePicker = (inputRef) => {
+    if (inputRef.current) {
+      inputRef.current.click();
     }
-
-    if (endDate) {
-      filteredData = filteredData.filter((item) => item.dueDate <= endDate);
-    }
-
-    return filteredData;
   };
 
-  const filterByParcelNumber = (installments) => {
-    if (selectedParcel && selectedParcel !== "Selecione a parcela") {
-      return installments.filter((item) => item.number === selectedParcel);
-    }
-    return installments;
-  };
-
-  const filterBySearchText = (installments) => {
-    if (!searchText) return installments;
-
-    const lowercasedSearch = searchText.toLowerCase();
-
-    return installments.filter((item) => {
-      return (
-        item.number.toString().includes(lowercasedSearch) ||
-        item.billReceivableId.toLowerCase().includes(lowercasedSearch) ||
-        (item.status && item.status.toLowerCase().includes(lowercasedSearch))
-      );
-    });
-  };
-
-  const resetFilters = () => {
-    setSelectedParcel("Selecione a parcela");
-    setStartDate(null);
-    setEndDate(null);
-    setStartDateInput("");
-    setEndDateInput("");
-    setSearchText("");
-  };
+  const renderDateInput = (
+    inputType,
+    date,
+    setDate,
+    dateInput,
+    setDateInput,
+    inputRef
+  ) => (
+    <View style={styles.dateInputContainer}>
+      {Platform.OS === "web" ? (
+        <>
+          <TextInput
+            style={[
+              styles.dateInput,
+              dateInput.length === 10 ? styles.validInput : styles.invalidInput,
+            ]}
+            placeholder="DD/MM/AAAA"
+            value={dateInput}
+            onChangeText={(text) => handleDateInputWithMask(text, setDate, setDateInput)}
+            keyboardType="numeric"
+            maxLength={10}
+          />
+          <TouchableOpacity
+            style={styles.calendarButton}
+            onPress={() => openWebDatePicker(inputRef)}
+          >
+            <Ionicons name="calendar-outline" size={24} color="#E1272C" />
+          </TouchableOpacity>
+          {/* Input type="date" oculto */}
+          <input
+            type="date"
+            style={styles.hiddenDateInput}
+            ref={inputRef}
+            onChange={(e) =>
+              handleWebDateChange(
+                e.target.value ? new Date(e.target.value) : null,
+                setDate,
+                setDateInput
+              )
+            }
+          />
+        </>
+      ) : (
+        <>
+          <TextInput
+            style={[
+              styles.dateInput,
+              dateInput.length === 10 ? styles.validInput : styles.invalidInput,
+            ]}
+            placeholder="DD/MM/AAAA"
+            value={dateInput}
+            onChangeText={(text) => handleDateInputWithMask(text, setDate, setDateInput)}
+            keyboardType="numeric"
+            maxLength={10}
+          />
+          <TouchableOpacity
+            style={styles.calendarButton}
+            onPress={() => setShowStartDatePicker(inputType === "start")}
+          >
+            <Ionicons name="calendar-outline" size={24} color="#E1272C" />
+          </TouchableOpacity>
+        </>
+      )}
+    </View>
+  );
 
   const renderItem = ({ item }) => (
     <TouchableOpacity
@@ -217,15 +246,20 @@ const ParcelAntecipation = () => {
       ]}
       onPress={() => handleSelectInstallment(item)}
     >
-      <Text style={styles.cardNotice}>
-        {item.generatedBoleto ? "Boleto disponível" : "Boleto indisponível"}
-      </Text>
-      <Text style={styles.cardTitle}>Número da Parcela {item.number}</Text>
-      <Text style={styles.cardSubtitle}>
-        Número do Título {item.billReceivableId}
-      </Text>
-      <Text style={styles.cardSubtitle}>Vencimento {item.formattedDueDate}</Text>
-      <Text style={styles.cardValue}>Valor {item.value}</Text>
+      <View style={styles.cardHeader}>
+        <Text style={styles.cardNotice}>
+          {item.generatedBoleto ? "Boleto Disponível" : "Boleto Indisponível"}
+        </Text>
+        <Ionicons
+          name={item.generatedBoleto ? "checkmark-circle" : "close-circle"}
+          size={20}
+          color={item.generatedBoleto ? "#28a745" : "#dc3545"}
+        />
+      </View>
+      <Text style={styles.cardTitle}>Parcela: {item.number}</Text>
+      <Text style={styles.cardSubtitle}>Título: {item.billReceivableId}</Text>
+      <Text style={styles.cardSubtitle}>Vencimento: {item.formattedDueDate}</Text>
+      <Text style={styles.cardValue}>Valor: {item.value}</Text>
     </TouchableOpacity>
   );
 
@@ -241,7 +275,10 @@ const ParcelAntecipation = () => {
     }
 
     const customerId = userData.id;
-    const totalAmount = selectedInstallments.reduce((sum, installment) => sum + parseFloat(installment.currentBalance), 0);
+    const totalAmount = selectedInstallments.reduce(
+      (sum, installment) => sum + parseFloat(installment.currentBalance),
+      0
+    );
     setLoading(true);
 
     try {
@@ -295,8 +332,46 @@ const ParcelAntecipation = () => {
     ...new Set(data.map((item) => item.number)),
   ];
 
-  // Aplicar todos os filtros: parcela, data e pesquisa
-  const filteredData = filterBySearchText(filterByDate(filterByParcelNumber(data)));
+    // Funções de filtro (sem pesquisa por texto)
+    const filterByDate = (installments) => {
+      let filteredData = installments;
+  
+      // Excluir parcelas do mês vigente e meses que já passaram
+      const currentDate = new Date();
+      const nextMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1);
+  
+      filteredData = filteredData.filter((item) => item.dueDate >= nextMonth);
+  
+      if (startDate) {
+        filteredData = filteredData.filter((item) => item.dueDate >= startDate);
+      }
+  
+      if (endDate) {
+        filteredData = filteredData.filter((item) => item.dueDate <= endDate);
+      }
+  
+      return filteredData;
+    };
+  
+    const filterByParcelNumber = (installments) => {
+      if (selectedParcel && selectedParcel !== "Selecione a parcela") {
+        return installments.filter((item) => item.number === selectedParcel);
+      }
+      return installments;
+    };
+
+  // Aplicar todos os filtros: parcela e data
+  const filteredData = filterByDate(filterByParcelNumber(data));
+
+
+
+  const resetFilters = () => {
+    setSelectedParcel("Selecione a parcela");
+    setStartDate(null);
+    setEndDate(null);
+    setStartDateInput("");
+    setEndDateInput("");
+  };
 
   return (
     <View style={styles.container}>
@@ -311,19 +386,8 @@ const ParcelAntecipation = () => {
         {selectedInstallments.length} parcela(s) selecionada(s)
       </Text>
 
-      {/* Campo de Pesquisa */}
-      <View style={styles.searchContainer}>
-        <Ionicons name="search-outline" size={20} color="#888" style={styles.searchIcon} />
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Pesquisar por texto..."
-          value={searchText}
-          onChangeText={(text) => setSearchText(text)}
-        />
-      </View>
-
       {/* Filtro por parcela */}
-      <View style={styles.searchContainer}>
+      <View style={styles.pickerContainer}>
         <Picker
           selectedValue={selectedParcel}
           style={styles.picker}
@@ -345,88 +409,21 @@ const ParcelAntecipation = () => {
 
       {/* Filtro por intervalo de datas */}
       <View style={styles.dateFilterContainer}>
-        {Platform.OS !== "web" ? (
-          <>
-            <View style={styles.dateInputContainer}>
-              <TextInput
-                style={[
-                  styles.dateInput,
-                  startDateInput.length === 10
-                    ? styles.validInput
-                    : styles.invalidInput,
-                ]}
-                placeholder="DD/MM/AAAA"
-                value={startDateInput}
-                onChangeText={(text) =>
-                  handleDateInputWithMask(text, setStartDate, setStartDateInput)
-                }
-                keyboardType="numeric"
-                maxLength={10}
-              />
-              <TouchableOpacity
-                style={styles.calendarButton}
-                onPress={() => setShowStartDatePicker(true)}
-              >
-                <Ionicons name="calendar-outline" size={24} color="#E1272C" />
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.dateInputContainer}>
-              <TextInput
-                style={[
-                  styles.dateInput,
-                  endDateInput.length === 10
-                    ? styles.validInput
-                    : styles.invalidInput,
-                ]}
-                placeholder="DD/MM/AAAA"
-                value={endDateInput}
-                onChangeText={(text) =>
-                  handleDateInputWithMask(text, setEndDate, setEndDateInput)
-                }
-                keyboardType="numeric"
-                maxLength={10}
-              />
-              <TouchableOpacity
-                style={styles.calendarButton}
-                onPress={() => setShowEndDatePicker(true)}
-              >
-                <Ionicons name="calendar-outline" size={24} color="#E1272C" />
-              </TouchableOpacity>
-            </View>
-          </>
-        ) : (
-          // Renderizar inputs de data para web
-          <>
-            <View style={styles.webDatePicker}>
-              <Ionicons name="calendar-outline" size={20} color="#E1272C" />
-              <input
-                type="date"
-                style={styles.webInputDate}
-                value={startDate ? startDate.toISOString().split("T")[0] : ""}
-                onChange={(e) => {
-                  const selected = e.target.value
-                    ? new Date(e.target.value)
-                    : null;
-                  setStartDate(selected);
-                }}
-              />
-            </View>
-            <View style={styles.webDatePicker}>
-              <Ionicons name="calendar-outline" size={20} color="#E1272C" />
-              <input
-                type="date"
-                style={styles.webInputDate}
-                value={endDate ? endDate.toISOString().split("T")[0] : ""}
-                onChange={(e) => {
-                  const selected = e.target.value
-                    ? new Date(e.target.value)
-                    : null;
-                  setEndDate(selected);
-                }}
-              />
-            </View>
-          </>
+        {renderDateInput(
+          "start",
+          startDate,
+          setStartDate,
+          startDateInput,
+          setStartDateInput,
+          startDateInputRef
+        )}
+        {renderDateInput(
+          "end",
+          endDate,
+          setEndDate,
+          endDateInput,
+          setEndDateInput,
+          endDateInputRef
         )}
       </View>
 
@@ -435,7 +432,7 @@ const ParcelAntecipation = () => {
         <Text style={styles.resetButtonText}>Limpar Filtros</Text>
       </TouchableOpacity>
 
-      {/* DateTimePickers para plataformas não web */}
+      {/* DateTimePickers para plataformas móveis */}
       {Platform.OS !== "web" && showStartDatePicker && (
         <DateTimePicker
           value={startDate || new Date()}
@@ -468,20 +465,43 @@ const ParcelAntecipation = () => {
         />
       )}
 
-      {/* DateTimePicker para nova data de vencimento no modal (para não-web) */}
+      {/* DateTimePicker para nova data de vencimento no modal */}
       {Platform.OS !== "web" && showNewDueDatePicker && (
         <DateTimePicker
           value={newDueDate || new Date()}
           mode="date"
           display="default"
-          minimumDate={new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1)}
           onChange={(event, selectedDate) => {
             setShowNewDueDatePicker(false);
             if (selectedDate) {
               setNewDueDate(selectedDate);
             }
           }}
+          minimumDate={new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1)}
         />
+      )}
+
+      {/* Date Picker para Web no Modal */}
+      {Platform.OS === "web" && showNewDueDatePicker && (
+        <View style={styles.modalWebDatePicker}>
+          <Ionicons name="calendar-outline" size={20} color="#E1272C" />
+          <TouchableOpacity onPress={() => openWebDatePicker(newDueDateInputRef)}>
+            <Ionicons name="calendar-outline" size={20} color="#E1272C" />
+          </TouchableOpacity>
+          {/* Input type="date" oculto */}
+          <input
+            type="date"
+            style={styles.hiddenDateInput}
+            ref={newDueDateInputRef}
+            onChange={(e) =>
+              handleWebDateChange(
+                e.target.value ? new Date(e.target.value) : null,
+                setNewDueDate,
+                () => {}
+              )
+            }
+          />
+        </View>
       )}
 
       {loading ? (
@@ -503,10 +523,17 @@ const ParcelAntecipation = () => {
 
       <TouchableOpacity
         style={styles.floatingButton}
-        onPress={handleConfirmSelection}
+        onPress={() => {
+          if (selectedInstallments.length === 0) {
+            Alert.alert("Atenção", "Selecione ao menos uma parcela para antecipar.");
+            return;
+          }
+          setConfirmModalVisible(true);
+        }}
       >
         <Ionicons name="cash-outline" size={24} color="white" />
       </TouchableOpacity>
+
       {confirmModalVisible && (
         <Modal
           animationType="slide"
@@ -553,20 +580,25 @@ const ParcelAntecipation = () => {
                     : "Selecione a nova data de vencimento"}
                 </Text>
               </TouchableOpacity>
-              {/* Date picker para web dentro do modal */}
-              {Platform.OS === "web" && (
-                <View style={styles.webDatePicker}>
+              {/* Date Picker para Web dentro do modal */}
+              {Platform.OS === "web" && showNewDueDatePicker && (
+                <View style={styles.modalWebDatePicker}>
                   <Ionicons name="calendar-outline" size={20} color="#E1272C" />
+                  <TouchableOpacity onPress={() => openWebDatePicker(newDueDateInputRef)}>
+                    <Ionicons name="calendar-outline" size={20} color="#E1272C" />
+                  </TouchableOpacity>
+                  {/* Input type="date" oculto */}
                   <input
                     type="date"
-                    style={styles.webInputDate}
-                    value={newDueDate ? newDueDate.toISOString().split("T")[0] : ""}
-                    onChange={(e) => {
-                      const selected = e.target.value
-                        ? new Date(e.target.value)
-                        : null;
-                      setNewDueDate(selected);
-                    }}
+                    style={styles.hiddenDateInput}
+                    ref={newDueDateInputRef}
+                    onChange={(e) =>
+                      handleWebDateChange(
+                        e.target.value ? new Date(e.target.value) : null,
+                        setNewDueDate,
+                        () => {}
+                      )
+                    }
                   />
                 </View>
               )}
@@ -593,54 +625,10 @@ const ParcelAntecipation = () => {
 };
 
 const styles = StyleSheet.create({
-  dateInputContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
-    marginRight: 8,
-  },
-  validInput: {
-    borderColor: "#28a745",
-  },
-  invalidInput: {
-    borderColor: "#dc3545",
-  },
-  dateInput: {
-    flex: 1,
-    height: 50,
-    borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    fontSize: 16,
-    backgroundColor: "#fff",
-  },
-  calendarButton: {
-    marginLeft: 8,
-    padding: 10,
-    borderRadius: 8,
-    backgroundColor: "#F0F0F0",
-  },
-
   container: {
     flex: 1,
     backgroundColor: "#FAF6F6",
     paddingTop: Platform.OS === "web" ? 20 : 0, // Ajuste para web
-  },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    backgroundColor: "#E1272C",
-    paddingVertical: 15,
-    paddingHorizontal: 15,
-  },
-  headerTitle: {
-    flex: 1,
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "bold",
-    textAlign: "center",
   },
   title: {
     fontSize: 22,
@@ -674,34 +662,20 @@ const styles = StyleSheet.create({
     textAlign: "center",
     color: "#333",
   },
-  searchContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginHorizontal: 16,
+  pickerContainer: {
+    borderWidth: 1,
+    borderColor: "#888",
+    borderRadius: 8,
+    backgroundColor: "#fff",
     marginBottom: 16,
-    backgroundColor: "#fff",
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: Platform.OS === "web" ? 0 : 5, // Ajuste para web
-    borderWidth: 1,
-    borderColor: "#ddd",
-  },
-  searchIcon: {
-    marginRight: 8,
-  },
-  searchInput: {
-    flex: 1,
-    height: 40,
-    borderColor: "#ccc",
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    backgroundColor: "#fff",
-    fontSize: 16,
+    marginHorizontal: 16,
+    height: 50,
+    justifyContent: "center",
+    paddingHorizontal: 12,
   },
   picker: {
     height: 50,
-    flex: 1,
+    width: "100%",
     color: "#333",
   },
   dateFilterContainer: {
@@ -710,31 +684,33 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginBottom: 16,
   },
-  datePicker: {
+  dateInputContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#fff",
+    flex: 1,
+    marginRight: 8,
+  },
+  dateInput: {
+    flex: 1,
+    height: 50,
     borderWidth: 1,
     borderColor: "#ddd",
     borderRadius: 8,
-    padding: 12,
-    width: "48%",
-  },
-  datePickerButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#fff",
-    borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 8,
-    padding: 12,
-    marginVertical: 16,
-    width: "100%",
-  },
-  dateText: {
+    paddingHorizontal: 12,
     fontSize: 16,
-    color: "#333",
+    backgroundColor: "#fff",
+  },
+  validInput: {
+    borderColor: "#28a745",
+  },
+  invalidInput: {
+    borderColor: "#dc3545",
+  },
+  calendarButton: {
     marginLeft: 8,
+    padding: 10,
+    borderRadius: 8,
+    backgroundColor: "#F0F0F0",
   },
   resetButton: {
     backgroundColor: "#E1272C",
@@ -760,28 +736,37 @@ const styles = StyleSheet.create({
   },
   card: {
     padding: 16,
-    borderRadius: 8,
+    borderRadius: 12,
     marginBottom: 12,
     backgroundColor: "#fff",
-    elevation: 2,
     borderWidth: 1,
     borderColor: "#ddd",
-  },
-  pendingCard: {
-    backgroundColor: "#E4E4E4",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   overdueCard: {
     backgroundColor: "#FFD7D8",
+  },
+  pendingCard: {
+    backgroundColor: "#E4E4E4",
   },
   selectedCard: {
     borderColor: "#E1272C",
     borderWidth: 2,
   },
+  cardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+  },
   cardNotice: {
     fontSize: 14,
     fontWeight: "bold",
     color: "#E1272C",
-    marginBottom: 8,
   },
   cardTitle: {
     fontSize: 16,
@@ -872,6 +857,24 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     alignItems: "center",
   },
+  hiddenDateInput: {
+    position: "absolute",
+    left: "-9999px",
+    opacity: 0,
+    pointerEvents: "none",
+  },
+  modalWebDatePicker: {
+    display: "flex",
+    alignItems: "center",
+    flexDirection: "row",
+    borderWidth: 1,
+    borderColor: "#ccc",
+    padding: 10,
+    borderRadius: 8,
+    flex: 1,
+    marginTop: 10,
+    width: "100%",
+  },
   webDatePicker: {
     display: "flex",
     alignItems: "center",
@@ -891,6 +894,22 @@ const styles = StyleSheet.create({
     outline: "none",
     backgroundColor: "transparent",
     fontSize: 16,
+  },
+  datePickerButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: "#ddd",
+    borderRadius: 8,
+    padding: 12,
+    marginTop: 10,
+    width: "100%",
+  },
+  dateText: {
+    fontSize: 16,
+    color: "#333",
+    marginLeft: 8,
   },
 });
 

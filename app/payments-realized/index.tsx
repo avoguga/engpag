@@ -1,4 +1,4 @@
-import React, { useState, useContext, useEffect } from "react";
+import React, { useState, useContext, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -30,7 +30,10 @@ const PaymentsCompleted = () => {
   const [endDateInput, setEndDateInput] = useState("");
   const [showStartDatePicker, setShowStartDatePicker] = useState(false);
   const [showEndDatePicker, setShowEndDatePicker] = useState(false);
-  const [searchText, setSearchText] = useState(""); // Estado para pesquisa
+
+  // Refs para inputs de data na web
+  const startDateInputRef = useRef(null);
+  const endDateInputRef = useRef(null);
 
   useEffect(() => {
     fetchCompletedPayments();
@@ -165,7 +168,6 @@ const PaymentsCompleted = () => {
     setEndDate(null);
     setStartDateInput("");
     setEndDateInput("");
-    setSearchText("");
   };
 
   const handleDateInputWithMask = (text, setDate, setDateInput) => {
@@ -186,47 +188,117 @@ const PaymentsCompleted = () => {
     if (formattedText.length === 10) {
       const [day, month, year] = formattedText.split("/");
       const date = new Date(`${year}-${month}-${day}`);
-      if (!isNaN(date)) setDate(date);
-      else Alert.alert("Erro", "Data inválida.");
+      if (!isNaN(date)) {
+        setDate(date);
+      } else {
+        Alert.alert("Erro", "Data inválida.");
+      }
     }
   };
 
+  const handleWebDateChange = (selectedDate, setDate, setDateInput) => {
+    if (selectedDate) {
+      setDate(selectedDate);
+      setDateInput(selectedDate.toLocaleDateString("pt-BR"));
+    }
+  };
+
+  const openWebDatePicker = (inputRef) => {
+    if (inputRef.current) {
+      inputRef.current.click();
+    }
+  };
+
+  const renderDateInput = (
+    inputType,
+    date,
+    setDate,
+    dateInput,
+    setDateInput,
+    inputRef
+  ) => (
+    <View style={styles.dateInputContainer}>
+      {Platform.OS === "web" ? (
+        <>
+          <TextInput
+            style={[
+              styles.dateInput,
+              dateInput.length === 10 ? styles.validInput : styles.invalidInput,
+            ]}
+            placeholder="DD/MM/AAAA"
+            value={dateInput}
+            onChangeText={(text) => handleDateInputWithMask(text, setDate, setDateInput)}
+            keyboardType="numeric"
+            maxLength={10}
+          />
+          <TouchableOpacity
+            style={styles.calendarButton}
+            onPress={() => openWebDatePicker(inputRef)}
+          >
+            <Ionicons name="calendar-outline" size={24} color="#E1272C" />
+          </TouchableOpacity>
+          {/* Input type="date" oculto */}
+          <input
+            type="date"
+            style={styles.hiddenDateInput}
+            ref={inputRef}
+            onChange={(e) =>
+              handleWebDateChange(
+                e.target.value ? new Date(e.target.value) : null,
+                setDate,
+                setDateInput
+              )
+            }
+          />
+        </>
+      ) : (
+        <>
+          <TextInput
+            style={[
+              styles.dateInput,
+              dateInput.length === 10 ? styles.validInput : styles.invalidInput,
+            ]}
+            placeholder="DD/MM/AAAA"
+            value={dateInput}
+            onChangeText={(text) => handleDateInputWithMask(text, setDate, setDateInput)}
+            keyboardType="numeric"
+            maxLength={10}
+          />
+          <TouchableOpacity
+            style={styles.calendarButton}
+            onPress={() => setShowStartDatePicker(inputType === "start")}
+          >
+            <Ionicons name="calendar-outline" size={24} color="#E1272C" />
+          </TouchableOpacity>
+        </>
+      )}
+    </View>
+  );
+
   const renderItem = ({ item }) => (
-    <TouchableOpacity
-      style={[
-        styles.card,
-        item.status === "vencido" ? styles.overdueCard : styles.pendingCard,
-        completedPayments.some((payment) => payment.id === item.id) && styles.selectedCard,
-      ]}
-      onPress={() => {}}
-    >
-      <Text style={styles.cardNotice}>
-        {item.generatedBoleto ? "Boleto disponível" : "Boleto indisponível"}
-      </Text>
-      <Text style={styles.cardTitle}>Número da Parcela: {item.number}</Text>
-      <Text style={styles.cardSubtitle}>
-        Número do Título: {item.billReceivableId}
-      </Text>
+    <View style={styles.card}>
+      <View style={styles.cardHeader}>
+        <Text style={styles.cardNotice}>
+          {item.receiptValue !== "Valor indisponível" ? "Pagamento Realizado" : "Pagamento Indisponível"}
+        </Text>
+        <Ionicons
+          name={item.receiptValue !== "Valor indisponível" ? "checkmark-circle" : "close-circle"}
+          size={20}
+          color={item.receiptValue !== "Valor indisponível" ? "#28a745" : "#dc3545"}
+        />
+      </View>
+      <Text style={styles.cardTitle}>Parcela: {item.number}</Text>
+      <Text style={styles.cardSubtitle}>Título: {item.billReceivableId}</Text>
       <Text style={styles.cardSubtitle}>Vencimento: {item.formattedDueDate}</Text>
-      <Text style={styles.cardSubtitle}>Data de Pagamento: {item.formattedPaymentDate}</Text>
+      <Text style={styles.cardSubtitle}>Pagamento: {item.formattedPaymentDate}</Text>
       <Text style={styles.cardValue}>Valor: {item.value}</Text>
       {/* Novos campos adicionados */}
-      <Text style={styles.cardSubtitle}>
-        Indexador: {item.indexerName}
-      </Text>
-      <Text style={styles.cardSubtitle}>
-        Tipo de Condição: {item.conditionType}
-      </Text>
-      <Text style={styles.cardSubtitle}>
-        Valor do Recibo: {item.receiptValue}
-      </Text>
-      <Text style={styles.cardSubtitle}>
-        Valor Ajustado: {item.adjustedValue}
-      </Text>
-      <Text style={styles.cardSubtitle}>
-        Valor Original: {item.originalValue}
-      </Text>
-    </TouchableOpacity>
+      <Text style={styles.cardSubtitle}>Indexador: {item.indexerName}</Text>
+      <Text style={styles.cardSubtitle}>Tipo de Condição: {item.conditionType}</Text>
+      <Text style={styles.cardSubtitle}>Valor do Recibo: {item.receiptValue}</Text>
+      <Text style={styles.cardSubtitle}>Valor Ajustado: {item.adjustedValue}</Text>
+      <Text style={styles.cardSubtitle}>Valor Original: {item.originalValue}</Text>
+    </View>
   );
 
   const parcelNumbers = [
@@ -252,19 +324,6 @@ const PaymentsCompleted = () => {
       return false;
     }
 
-    // Filtrar por texto de pesquisa
-    if (
-      searchText &&
-      !(
-        item.number.includes(searchText) ||
-        item.billReceivableId.includes(searchText) ||
-        item.indexerName.toLowerCase().includes(searchText.toLowerCase()) ||
-        item.conditionType.toLowerCase().includes(searchText.toLowerCase())
-      )
-    ) {
-      return false;
-    }
-
     return true;
   });
 
@@ -276,17 +335,6 @@ const PaymentsCompleted = () => {
       <TouchableOpacity style={styles.actionButton}>
         <Text style={styles.actionButtonText}>PAGAMENTOS REALIZADOS</Text>
       </TouchableOpacity>
-
-      {/* Campo de Pesquisa */}
-      <View style={styles.searchContainer}>
-        <Ionicons name="search-outline" size={20} color="#888" style={styles.searchIcon} />
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Pesquisar por texto..."
-          value={searchText}
-          onChangeText={(text) => setSearchText(text)}
-        />
-      </View>
 
       {/* Filtro por parcela */}
       <View style={styles.pickerContainer}>
@@ -311,88 +359,21 @@ const PaymentsCompleted = () => {
 
       {/* Filtro por intervalo de datas */}
       <View style={styles.dateFilterContainer}>
-        {Platform.OS !== "web" ? (
-          <>
-            <View style={styles.dateInputContainer}>
-              <TextInput
-                style={[
-                  styles.dateInput,
-                  startDateInput.length === 10
-                    ? styles.validInput
-                    : styles.invalidInput,
-                ]}
-                placeholder="DD/MM/AAAA"
-                value={startDateInput}
-                onChangeText={(text) =>
-                  handleDateInputWithMask(text, setStartDate, setStartDateInput)
-                }
-                keyboardType="numeric"
-                maxLength={10}
-              />
-              <TouchableOpacity
-                style={styles.calendarButton}
-                onPress={() => setShowStartDatePicker(true)}
-              >
-                <Ionicons name="calendar-outline" size={24} color="#E1272C" />
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.dateInputContainer}>
-              <TextInput
-                style={[
-                  styles.dateInput,
-                  endDateInput.length === 10
-                    ? styles.validInput
-                    : styles.invalidInput,
-                ]}
-                placeholder="DD/MM/AAAA"
-                value={endDateInput}
-                onChangeText={(text) =>
-                  handleDateInputWithMask(text, setEndDate, setEndDateInput)
-                }
-                keyboardType="numeric"
-                maxLength={10}
-              />
-              <TouchableOpacity
-                style={styles.calendarButton}
-                onPress={() => setShowEndDatePicker(true)}
-              >
-                <Ionicons name="calendar-outline" size={24} color="#E1272C" />
-              </TouchableOpacity>
-            </View>
-          </>
-        ) : (
-          // Renderizar inputs de data para web
-          <>
-            <View style={styles.webDatePicker}>
-              <Ionicons name="calendar-outline" size={20} color="#E1272C" />
-              <input
-                type="date"
-                style={styles.webInputDate}
-                value={startDate ? startDate.toISOString().split("T")[0] : ""}
-                onChange={(e) => {
-                  const selected = e.target.value
-                    ? new Date(e.target.value)
-                    : null;
-                  setStartDate(selected);
-                }}
-              />
-            </View>
-            <View style={styles.webDatePicker}>
-              <Ionicons name="calendar-outline" size={20} color="#E1272C" />
-              <input
-                type="date"
-                style={styles.webInputDate}
-                value={endDate ? endDate.toISOString().split("T")[0] : ""}
-                onChange={(e) => {
-                  const selected = e.target.value
-                    ? new Date(e.target.value)
-                    : null;
-                  setEndDate(selected);
-                }}
-              />
-            </View>
-          </>
+        {renderDateInput(
+          "start",
+          startDate,
+          setStartDate,
+          startDateInput,
+          setStartDateInput,
+          startDateInputRef
+        )}
+        {renderDateInput(
+          "end",
+          endDate,
+          setEndDate,
+          endDateInput,
+          setEndDateInput,
+          endDateInputRef
         )}
       </View>
 
@@ -401,7 +382,7 @@ const PaymentsCompleted = () => {
         <Text style={styles.resetButtonText}>Resetar Filtros</Text>
       </TouchableOpacity>
 
-      {/* DateTimePickers para plataformas não web */}
+      {/* DateTimePickers para plataformas móveis */}
       {Platform.OS !== "web" && showStartDatePicker && (
         <DateTimePicker
           value={startDate || new Date()}
@@ -484,26 +465,6 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     fontSize: 16,
     textTransform: "uppercase",
-  },
-  searchContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#888",
-    borderRadius: 8,
-    backgroundColor: "#fff",
-    marginBottom: 16,
-    paddingHorizontal: 12,
-    marginHorizontal: 16,
-    height: 45,
-  },
-  searchIcon: {
-    marginRight: 8,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 16,
-    color: "#333",
   },
   pickerContainer: {
     borderWidth: 1,
@@ -590,21 +551,16 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
-  overdueCard: {
-    backgroundColor: "#FFD7D8",
-  },
-  pendingCard: {
-    backgroundColor: "#E4E4E4",
-  },
-  selectedCard: {
-    borderColor: "#E1272C",
-    borderWidth: 2,
+  cardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
   },
   cardNotice: {
     fontSize: 14,
     fontWeight: "bold",
     color: "#E1272C",
-    marginBottom: 8,
   },
   cardTitle: {
     fontSize: 16,
@@ -628,25 +584,11 @@ const styles = StyleSheet.create({
     color: "#555",
     marginTop: 20,
   },
-  webDatePicker: {
-    display: "flex",
-    alignItems: "center",
-    flexDirection: "row",
-    borderWidth: 1,
-    borderColor: "#ccc",
-    padding: 10,
-    borderRadius: 8,
-    flex: 1,
-    marginRight: 8,
-    marginBottom: 10,
-  },
-  webInputDate: {
-    marginLeft: 8,
-    flex: 1,
-    border: "none",
-    outline: "none",
-    backgroundColor: "transparent",
-    fontSize: 16,
+  hiddenDateInput: {
+    position: "absolute",
+    left: -9999,
+    opacity: 0,
+    pointerEvents: "none",
   },
 });
 
