@@ -674,10 +674,11 @@ const styles = StyleSheet.create({
   dateInput: {
     flex: 1,
     height: 50,
+    width: 30,
     borderWidth: 1,
     borderColor: "#ddd",
     borderRadius: 8,
-    paddingHorizontal: 12,
+    paddingHorizontal: 8,
     fontSize: 16,
     backgroundColor: "#fff",
   },
