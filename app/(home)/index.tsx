@@ -229,6 +229,10 @@ const Index = () => {
           <Text style={styles.forgotPasswordText}>Esqueceu a senha?</Text>
         </TouchableOpacity>
 
+
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+
         <TouchableOpacity style={styles.accessButton} onPress={fetchUserData}>
           {loading ? (
             <ActivityIndicator
@@ -241,7 +245,6 @@ const Index = () => {
           )}
         </TouchableOpacity>
 
-        {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
         <Image source={require("./homelogo.png")} style={styles.logo} />
       </ScrollView>
@@ -342,7 +345,6 @@ const styles = StyleSheet.create({
     color: "#E1272C",
     fontSize: 14,
     alignSelf: "flex-end",
-    marginTop: -15,
     marginBottom: 20,
   },
   accessButton: {
@@ -365,6 +367,7 @@ const styles = StyleSheet.create({
     color: "#E1272C",
     fontWeight: "bold",
     marginTop: 20,
+    marginBottom: 20
   },
   logo: {
     width: 155,
