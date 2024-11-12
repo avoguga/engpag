@@ -324,7 +324,7 @@ const ParcelAntecipation = () => {
       )}. Desejo uma nova data de vencimento para ${dueDateString}.`;
   
       if (Platform.OS === "web") {
-        const whatsappUrl = `https://web.whatsapp.com/send?phone=${whatsappNumber}&text=${encodeURIComponent(
+        const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
           message
         )}`;
         window.open(whatsappUrl, "_blank");
@@ -434,7 +434,16 @@ const ParcelAntecipation = () => {
       <Text style={styles.title}>
         {enterpriseName || "Nome do Empreendimento"}
       </Text>
-      <TouchableOpacity style={styles.actionButton}>
+      <TouchableOpacity style={styles.actionButton}   onPress={() => {
+          if (selectedInstallments.length === 0) {
+            Alert.alert(
+              "Atenção",
+              "Selecione ao menos uma parcela para antecipar."
+            );
+            return;
+          }
+          setConfirmModalVisible(true);
+        }}>
         <Text style={styles.actionButtonText}>Antecipar Parcelas</Text>
       </TouchableOpacity>
 
