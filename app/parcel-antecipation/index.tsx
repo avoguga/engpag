@@ -140,29 +140,76 @@ const ParcelAntecipation = () => {
 
   const handleDateInputWithMask = (text, setDate, setDateInput) => {
     let formattedText = text.replace(/\D/g, "");
-
+  
+    // Limitar o dia a 31 e o mês a 12 durante a digitação
+    if (formattedText.length >= 1) {
+      const day = formattedText.substring(0, 2);
+      if (parseInt(day, 10) > 31) {
+        formattedText = "31";
+      }
+    }
+  
+    if (formattedText.length >= 3) {
+      const month = formattedText.substring(2, 4);
+      if (parseInt(month, 10) > 12) {
+        formattedText = formattedText.substring(0, 2) + "12";
+      }
+    }
+  
     if (formattedText.length > 2) {
       formattedText = formattedText.replace(/(\d{2})(\d)/, "$1/$2");
     }
     if (formattedText.length > 5) {
-      formattedText = formattedText.replace(/(\d{2})\/(\d{2})(\d)/, "$1/$2/$3");
+      formattedText = formattedText.replace(
+        /(\d{2})\/(\d{2})(\d)/,
+        "$1/$2/$3"
+      );
     }
     if (formattedText.length > 10) {
       formattedText = formattedText.slice(0, 10);
     }
-
+  
     setDateInput(formattedText);
-
+  
     if (formattedText.length === 10) {
-      const [day, month, year] = formattedText.split("/");
-      const date = new Date(`${year}-${month}-${day}`);
-      if (!isNaN(date)) {
-        setDate(date);
+      const [dayStr, monthStr, yearStr] = formattedText.split("/");
+      const day = parseInt(dayStr, 10);
+      const month = parseInt(monthStr, 10);
+      const year = parseInt(yearStr, 10);
+  
+      // Verificar se os valores de dia, mês e ano são válidos
+      const isValidDate =
+        day > 0 &&
+        day <= 31 &&
+        month > 0 &&
+        month <= 12 &&
+        year >= 1900 &&
+        year <= 2100;
+  
+      if (isValidDate) {
+        const date = new Date(year, month - 1, day);
+        // Verificar se a data é válida (por exemplo, não permitir 31 de fevereiro)
+        if (
+          date &&
+          date.getFullYear() === year &&
+          date.getMonth() === month - 1 &&
+          date.getDate() === day
+        ) {
+          setDate(date);
+        } else {
+          Alert.alert("Erro", "Data inválida.");
+          setDate(null);
+        }
       } else {
         Alert.alert("Erro", "Data inválida.");
+        setDate(null);
       }
+    } else {
+      setDate(null);
     }
   };
+  
+  
 
   const handleWebDateChange = (selectedDate, setDate, setDateInput) => {
     if (selectedDate) {
@@ -263,7 +310,7 @@ const ParcelAntecipation = () => {
       Alert.alert("Erro", "Dados do cliente não encontrados.");
       return;
     }
-  
+
     // Verifica se a data foi preenchida no input (web) ou selecionada no picker (mobile)
     if (Platform.OS === "web" && !newDueDateInput) {
       Alert.alert("Atenção", "Por favor, preencha a nova data de vencimento.");
@@ -272,20 +319,20 @@ const ParcelAntecipation = () => {
       Alert.alert("Atenção", "Por favor, selecione a nova data de vencimento.");
       return;
     }
-  
+
     const customerId = userData.id;
     const totalAmount = selectedInstallments.reduce(
       (sum, installment) => sum + parseFloat(installment.currentBalance),
       0
     );
     setLoading(true);
-  
+
     try {
       const username = "engenharq-mozart";
       const password = "i94B1q2HUXf7PP7oscuIBygquSRZ9lhb";
       const credentials = btoa(`${username}:${password}`);
       const billReceivableId = selectedInstallments[0].billReceivableId;
-  
+
       const response = await axios.get(
         `https://engpag.backend.gustavohenrique.dev/proxy/accounts-receivable/receivable-bills/${billReceivableId}`,
         {
@@ -293,7 +340,7 @@ const ParcelAntecipation = () => {
           headers: { Authorization: `Basic ${credentials}` },
         }
       );
-  
+
       const companyId = response.data.companyId;
       const companyInfo = {
         1: { name: "Engenharq", whatsappNumber: "558296890033" },
@@ -301,7 +348,7 @@ const ParcelAntecipation = () => {
         3: { name: "EngeLoc", whatsappNumber: "558296890202" },
         default: { name: "Desconhecida", whatsappNumber: "5585986080000" },
       };
-  
+
       const { name: companyName, whatsappNumber } =
         companyInfo[companyId] || companyInfo.default;
       const installmentNumbers = selectedInstallments
@@ -310,19 +357,20 @@ const ParcelAntecipation = () => {
       const document = userData.cpf
         ? `CPF ${userData.cpf}`
         : `CNPJ ${userData.cnpj}`;
-  
+
       // Usar o valor do input na web e o newDueDate no mobile
-      const dueDateString = Platform.OS === "web" 
-        ? newDueDateInput 
-        : newDueDate.toLocaleDateString("pt-BR");
-  
+      const dueDateString =
+        Platform.OS === "web"
+          ? newDueDateInput
+          : newDueDate.toLocaleDateString("pt-BR");
+
       const message = `Olá, meu nome é ${
         userData?.name
       }, meu ${document}, gostaria de negociar as parcelas: ${installmentNumbers} do título ${billReceivableId}. Valor total: ${totalAmount.toLocaleString(
         "pt-BR",
         { style: "currency", currency: "BRL" }
       )}. Desejo uma nova data de vencimento para ${dueDateString}.`;
-  
+
       if (Platform.OS === "web") {
         const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
           message
@@ -336,7 +384,7 @@ const ParcelAntecipation = () => {
           message
         )}`;
         const supported = await Linking.canOpenURL(whatsappUrl);
-  
+
         if (supported) {
           await Linking.openURL(whatsappUrl);
           setConfirmModalVisible(false);
@@ -405,45 +453,102 @@ const ParcelAntecipation = () => {
 
   const handleModalDateInputWithMask = (text) => {
     let formattedText = text.replace(/\D/g, "");
-
+  
+    // Limitar o dia a 31 e o mês a 12 durante a digitação
+    if (formattedText.length >= 1) {
+      const day = formattedText.substring(0, 2);
+      if (parseInt(day, 10) > 31) {
+        formattedText = "31";
+      }
+    }
+  
+    if (formattedText.length >= 3) {
+      const month = formattedText.substring(2, 4);
+      if (parseInt(month, 10) > 12) {
+        formattedText =
+          formattedText.substring(0, 2) + "12" + formattedText.substring(4);
+      }
+    }
+  
     if (formattedText.length > 2) {
       formattedText = formattedText.replace(/(\d{2})(\d)/, "$1/$2");
     }
     if (formattedText.length > 5) {
-      formattedText = formattedText.replace(/(\d{2})\/(\d{2})(\d)/, "$1/$2/$3");
+      formattedText = formattedText.replace(
+        /(\d{2})\/(\d{2})(\d)/,
+        "$1/$2/$3"
+      );
     }
     if (formattedText.length > 10) {
       formattedText = formattedText.slice(0, 10);
     }
-
+  
     setNewDueDateInput(formattedText);
-
+  
     if (formattedText.length === 10) {
-      const [day, month, year] = formattedText.split("/");
-      const date = new Date(`${year}-${month}-${day}`);
-      if (!isNaN(date)) {
-        setNewDueDate(date);
+      const [dayStr, monthStr, yearStr] = formattedText.split("/");
+      const day = parseInt(dayStr, 10);
+      const month = parseInt(monthStr, 10);
+      const year = parseInt(yearStr, 10);
+  
+      // Verificar se os valores de dia, mês e ano são válidos
+      const isValidDate =
+        day > 0 &&
+        day <= 31 &&
+        month > 0 &&
+        month <= 12 &&
+        year >= 1900 &&
+        year <= 2100;
+  
+      if (isValidDate) {
+        const date = new Date(year, month - 1, day);
+        // Verificar se a data é válida (por exemplo, não permitir 31 de fevereiro)
+        if (
+          date &&
+          date.getFullYear() === year &&
+          date.getMonth() === month - 1 &&
+          date.getDate() === day
+        ) {
+          setNewDueDate(date);
+        } else {
+          Alert.alert("Erro", "Data inválida.");
+          setNewDueDate(null);
+        }
       } else {
         Alert.alert("Erro", "Data inválida.");
+        setNewDueDate(null);
       }
+    } else {
+      setNewDueDate(null);
     }
   };
+  
+  
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>
         {enterpriseName || "Nome do Empreendimento"}
       </Text>
-      <TouchableOpacity style={styles.actionButton}   onPress={() => {
+      <TouchableOpacity
+        style={styles.actionButton}
+        onPress={() => {
           if (selectedInstallments.length === 0) {
-            Alert.alert(
-              "Atenção",
-              "Selecione ao menos uma parcela para antecipar."
-            );
+            if (Platform.OS === "web") {
+              alert(
+                "Por favor, clique em uma parcela para selecioná-la antes de continuar."
+              );
+            } else {
+              Alert.alert(
+                "Atenção",
+                "Por favor, clique em uma parcela para selecioná-la antes de continuar."
+              );
+            }
             return;
           }
           setConfirmModalVisible(true);
-        }}>
+        }}
+      >
         <Text style={styles.actionButtonText}>Antecipar Parcelas</Text>
       </TouchableOpacity>
 
@@ -496,6 +601,13 @@ const ParcelAntecipation = () => {
       <TouchableOpacity style={styles.resetButton} onPress={resetFilters}>
         <Text style={styles.resetButtonText}>Limpar Filtros</Text>
       </TouchableOpacity>
+
+      {/* Adicionar instrução para o usuário */}
+      {selectedInstallments.length === 0 ? (
+        <Text style={styles.instructionText}>
+          Toque em uma parcela para selecioná-la.
+        </Text>
+      ) : null}
 
       {/* DateTimePickers para plataformas móveis */}
       {Platform.OS !== "web" && showStartDatePicker && (
@@ -596,10 +708,16 @@ const ParcelAntecipation = () => {
         style={styles.floatingButton}
         onPress={() => {
           if (selectedInstallments.length === 0) {
-            Alert.alert(
-              "Atenção",
-              "Selecione ao menos uma parcela para antecipar."
-            );
+            if (Platform.OS === "web") {
+              alert(
+                "Por favor, clique em uma parcela para selecioná-la antes de continuar."
+              );
+            } else {
+              Alert.alert(
+                "Atenção",
+                "Por favor, clique em uma parcela para selecioná-la antes de continuar."
+              );
+            }
             return;
           }
           setConfirmModalVisible(true);
@@ -816,6 +934,12 @@ const styles = StyleSheet.create({
     height: 50,
     width: "100%",
     color: "#333",
+    ...Platform.select({
+      web: {
+        outlineWidth: 0,
+        borderWidth: 0,
+      },
+    }),
   },
   dateFilterContainer: {
     flexDirection: "row",
@@ -899,6 +1023,12 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 2,
+  },
+  instructionText: {
+    fontSize: 16,
+    color: "#333",
+    textAlign: "center",
+    marginBottom: 8,
   },
   overdueCard: {
     backgroundColor: "#FFD7D8",
