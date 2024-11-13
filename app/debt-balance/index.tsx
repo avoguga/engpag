@@ -15,34 +15,31 @@ import { useLocalSearchParams } from "expo-router";
 
 const DebtBalanceScreen = () => {
   const { userData } = useContext(UserContext);
-  
+
   // Estados para armazenar os valores calculados
   const [valorTotal, setValorTotal] = useState(null);
   const [saldoFinanciado, setSaldoFinanciado] = useState(null);
   const [saldoPago, setSaldoPago] = useState(null);
   const [saldoDevedor, setSaldoDevedor] = useState(null);
-  
+  const [totalTerm, setTotalTerm] = useState(null);
   const [remainingTerm, setRemainingTerm] = useState(null);
   const [nextPaymentDate, setNextPaymentDate] = useState(null);
   const [nextPaymentAmount, setNextPaymentAmount] = useState(null);
-  
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   const { enterpriseName, billReceivableId } = useLocalSearchParams();
 
   // Definir conditionTypes que devem ser excluídos do saldo devedor
-  const excludeConditionTypes = [
-    "Cartão de crédito",
-    "Financiamento",
-  ];
+  const excludeConditionTypes = ["Cartão de crédito", "Financiamento"];
 
   useEffect(() => {
     if (userData && (userData.cpf || userData.cnpj) && billReceivableId) {
       fetchData();
     }
   }, [userData, billReceivableId]);
-  
+
   const fetchData = async () => {
     setLoading(true);
     setError("");
@@ -50,12 +47,12 @@ const DebtBalanceScreen = () => {
       const username = "engenharq-mozart";
       const password = "i94B1q2HUXf7PP7oscuIBygquSRZ9lhb";
       const credentials = btoa(`${username}:${password}`);
-  
+
       // Define o parâmetro de busca dinamicamente para CPF ou CNPJ
       const searchParam = userData.cpf
         ? { cpf: userData.cpf, correctAnnualInstallment: "N" }
         : { cnpj: userData.cnpj, correctAnnualInstallment: "N" };
-  
+
       // Chamada à API para obter detalhes do contrato e próximas parcelas
       const response = await axios.get(
         "https://engpag.backend.gustavohenrique.dev/proxy/current-debit-balance",
@@ -66,76 +63,84 @@ const DebtBalanceScreen = () => {
           },
         }
       );
-  
+
       const results = response.data.results || [];
-  
+
       // Filtrar o resultado pelo billReceivableId
       const selectedResult = results.find(
         (result) => result.billReceivableId === parseInt(billReceivableId, 10)
       );
-  
+
       if (selectedResult) {
         const allInstallments = [
           ...(selectedResult.dueInstallments || []),
           ...(selectedResult.payableInstallments || []),
           ...(selectedResult.paidInstallments || []),
         ];
-  
+
         const outstandingInstallments = [
           ...(selectedResult.dueInstallments || []),
           ...(selectedResult.payableInstallments || []),
         ];
-  
+
         setRemainingTerm(outstandingInstallments.length);
-  
+
+        // Calcular o prazo total do contrato
+        const totalTerm = allInstallments.length;
+        setTotalTerm(totalTerm);
+
         // Filtrar parcelas que NÃO devem ser contadas no saldo devedor
         const filteredDevedorInstallments = outstandingInstallments.filter(
           (installment) =>
             !excludeConditionTypes.includes(installment.conditionType.trim())
         );
-  
-        // Cálculo do Valor Total (soma de originalValue de todas as parcelas)
+
+        // Cálculo do Valor Total (soma de adjustedValue de todas as parcelas)
         const totalValue = allInstallments.reduce(
-          (sum, installment) => sum + (installment.adjustedValue  || 0),
+          (sum, installment) => sum + (installment.adjustedValue || 0),
           0
         );
         setValorTotal(totalValue);
-  
-        // Cálculo do Saldo Financiado (soma de originalValue das parcelas com conditionType "Financiamento")
+
+        // Cálculo do Saldo Financiado (soma de adjustedValue das parcelas com conditionType "Financiamento")
         const totalFinanciado = allInstallments
           .filter(
-            (installment) =>
-              installment.conditionType.trim() === "Financiamento"
+            (installment) => installment.conditionType.trim() === "Financiamento"
           )
-          .reduce((sum, installment) => sum + (installment.adjustedValue  || 0), 0);
+          .reduce(
+            (sum, installment) => sum + (installment.adjustedValue || 0),
+            0
+          );
         setSaldoFinanciado(totalFinanciado);
-  
-        // Cálculo do Saldo Pago (soma de currentBalance das parcelas pagas)
+
+        // Cálculo do Saldo Pago (soma de receipts.receiptValue das parcelas pagas)
         const totalPaid = (selectedResult.paidInstallments || []).reduce(
-          (sum, installment) => sum + installment.receipts.reduce(
-            (receiptSum, receipt) => receiptSum + (receipt.receiptValue || 0), 0
-          ),
+          (sum, installment) =>
+            sum +
+            installment.receipts.reduce(
+              (receiptSum, receipt) => receiptSum + (receipt.receiptValue || 0),
+              0
+            ),
           0
         );
-        console.log(selectedResult.paidInstallments)
         setSaldoPago(totalPaid);
-  
+
         // Cálculo do Saldo Devedor (soma de currentBalance das parcelas filtradas)
         const totalDebt = filteredDevedorInstallments.reduce(
           (sum, installment) => sum + (installment.currentBalance || 0),
           0
         );
         setSaldoDevedor(totalDebt);
-  
+
         // Seleção do próximo pagamento (considerando apenas parcelas filtradas)
         const today = new Date();
         const upcomingInstallments = filteredDevedorInstallments.filter(
           (installment) => new Date(installment.dueDate) >= today
         );
-  
+
         if (upcomingInstallments.length > 0) {
           const nextInstallment = upcomingInstallments.reduce((prev, current) =>
-            new Date(prev.dueDate) > new Date(current.dueDate) ? current : prev
+            new Date(prev.dueDate) < new Date(current.dueDate) ? prev : current
           );
           setNextPaymentDate(nextInstallment.dueDate);
           setNextPaymentAmount(nextInstallment.currentBalance);
@@ -143,7 +148,6 @@ const DebtBalanceScreen = () => {
           setNextPaymentDate(null);
           setNextPaymentAmount(null);
         }
-  
       } else {
         setError("Nenhum contrato encontrado para o ID fornecido.");
       }
@@ -154,7 +158,6 @@ const DebtBalanceScreen = () => {
       setLoading(false);
     }
   };
-  
 
   // Função para formatar valores monetários com pontuação de milhar
   const formatCurrency = (value) => {
@@ -167,9 +170,9 @@ const DebtBalanceScreen = () => {
 
   // Função para formatar datas
   const formatDate = (dateString) => {
-    const date = new Date(dateString + 'T00:00:00Z'); 
-    const day = date.getUTCDate().toString().padStart(2, '0');
-    const month = (date.getUTCMonth() + 1).toString().padStart(2, '0');
+    const date = new Date(dateString + "T00:00:00Z");
+    const day = date.getUTCDate().toString().padStart(2, "0");
+    const month = (date.getUTCMonth() + 1).toString().padStart(2, "0");
     const year = date.getUTCFullYear();
     return `${day}/${month}/${year}`;
   };
@@ -199,74 +202,69 @@ const DebtBalanceScreen = () => {
       {/* Título */}
       <Text style={styles.title}>{enterpriseName || "Nome do Empreendimento"}</Text>
 
-      {/* Saldo Devedor Button */}
-      <TouchableOpacity style={styles.debtButton}>
-        <Text style={styles.debtButtonText}>SALDO DEVEDOR</Text>
-      </TouchableOpacity>
-
-      {/* Informações Financeiras */}
-      <View style={styles.financialInfoContainer}>
-        {/* Valor Total */}
-        <View style={styles.financialRow}>
-          <Text style={styles.financialLabel}>Valor Total</Text>
-          <Text style={styles.financialValue}>
-            {valorTotal !== null ? formatCurrency(valorTotal) : "R$ 0,00"}
-          </Text>
-        </View>
-
-        {/* Saldo Financiado */}
-        <View style={styles.financialRow}>
-          <Text style={styles.financialLabel}>Saldo Financiado</Text>
-          <Text style={styles.financialValue}>
-            {saldoFinanciado !== null ? formatCurrency(saldoFinanciado) : "R$ 0,00"}
-          </Text>
-        </View>
-
-        {/* Saldo Pago */}
-        <View style={styles.financialRow}>
-          <Text style={styles.financialLabel}>Saldo Pago</Text>
-          <Text style={styles.financialValue}>
-            {saldoPago !== null ? formatCurrency(saldoPago) : "R$ 0,00"}
-          </Text>
-        </View>
-
-        {/* Saldo Devedor */}
-        <View style={styles.financialRow}>
-          <Text style={styles.financialLabel}>Saldo Devedor</Text>
-          <Text style={styles.financialValue}>
-            {saldoDevedor !== null ? formatCurrency(saldoDevedor) : "R$ 0,00"}
-          </Text>
-        </View>
+      {/* Saldo Devedor */}
+      <View style={styles.debtContainer}>
+        <Text style={styles.debtLabel}>Saldo Devedor</Text>
+        <Text style={styles.debtAmount}>
+          {saldoDevedor !== null ? formatCurrency(saldoDevedor) : "R$ 0,00"}
+        </Text>
       </View>
 
+      {/* Próximo Vencimento */}
       {nextPaymentDate && nextPaymentAmount ? (
         <View style={styles.nextPaymentContainer}>
-          <Text style={styles.sectionTitle}>PRÓXIMO VENCIMENTO</Text>
+          <Text style={styles.sectionTitle}>Próximo Vencimento</Text>
           <View style={styles.paymentRow}>
-            <Text style={styles.paymentDate}>{formatDate(nextPaymentDate)}</Text>
-            <Text style={styles.paymentAmount}>
-              {formatCurrency(nextPaymentAmount)}
-            </Text>
-           
+            <View style={styles.paymentInfo}>
+              <Text style={styles.paymentLabel}>Data</Text>
+              <Text style={styles.paymentValue}>{formatDate(nextPaymentDate)}</Text>
+            </View>
+            <View style={styles.paymentInfo}>
+              <Text style={styles.paymentLabel}>Valor</Text>
+              <Text style={styles.paymentValue}>
+                {formatCurrency(nextPaymentAmount)}
+              </Text>
+            </View>
           </View>
         </View>
       ) : null}
 
-      {/* Detalhes do Contrato */}
-      <View style={styles.contractDetailsContainer}>
-        <Text style={styles.sectionTitle}>DETALHES DO CONTRATO</Text>
-        <View style={styles.contractRow}>
-          <Text style={styles.contractLabel}>Valor Financiado</Text>
-          <Text style={styles.contractValue}>
-            {saldoFinanciado !== null
-              ? formatCurrency(saldoFinanciado)
-              : "R$ 0,00"}
+      {/* Informações Financeiras */}
+      <View style={styles.financialInfoContainer}>
+        <Text style={styles.sectionTitle}>Detalhes Financeiros</Text>
+        <View style={styles.financialRow}>
+          <Text style={styles.financialLabel}>Valor do Contrato</Text>
+          <Text style={styles.financialValue}>
+            {valorTotal !== null ? formatCurrency(valorTotal) : "R$ 0,00"}
           </Text>
         </View>
+        <View style={styles.financialRow}>
+          <Text style={styles.financialLabel}>Valor Financiado</Text>
+          <Text style={styles.financialValue}>
+            {saldoFinanciado !== null ? formatCurrency(saldoFinanciado) : "R$ 0,00"}
+          </Text>
+        </View>
+        <View style={styles.financialRow}>
+          <Text style={styles.financialLabel}>Valor Pago</Text>
+          <Text style={styles.financialValue}>
+            {saldoPago !== null ? formatCurrency(saldoPago) : "R$ 0,00"}
+          </Text>
+        </View>
+      </View>
+
+      {/* Detalhes do Contrato */}
+      <View style={styles.contractDetailsContainer}>
+        <Text style={styles.sectionTitle}>Detalhes do Contrato</Text>
         <View style={styles.contractRow}>
           <Text style={styles.contractLabel}>Prazo Contratado</Text>
           <Text style={styles.contractValue}>
-            {remainingTerm !== null ? `${remainingTerm} Meses` : "0 Meses"}
+            {totalTerm !== null ? `${totalTerm} meses` : "0 meses"}
+          </Text>
+        </View>
+        <View style={styles.contractRow}>
+          <Text style={styles.contractLabel}>Prazo Restante</Text>
+          <Text style={styles.contractValue}>
+            {remainingTerm !== null ? `${remainingTerm} meses` : "0 meses"}
           </Text>
         </View>
       </View>
@@ -321,26 +319,66 @@ const styles = StyleSheet.create({
     marginTop: 10,
     marginBottom: 20,
   },
-  debtButton: {
-    backgroundColor: "#E1272C",
+  debtContainer: {
+    backgroundColor: "#fff",
+    padding: 20,
     borderRadius: 8,
-    paddingVertical: 10,
     alignItems: "center",
-    marginBottom: 16,
+    marginBottom: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 3,
   },
-  debtButtonText: {
-    color: "#fff",
+  debtLabel: {
+    fontSize: 18,
+    color: "#333",
     fontWeight: "bold",
+    marginBottom: 10,
+  },
+  debtAmount: {
+    fontSize: 24,
+    color: "#E1272C",
+    fontWeight: "bold",
+  },
+  nextPaymentContainer: {
+    marginBottom: 20,
+  },
+  sectionTitle: {
     fontSize: 16,
-    textTransform: "uppercase",
+    fontWeight: "bold",
+    color: "#333",
+    marginBottom: 8,
+  },
+  paymentRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    backgroundColor: "#fff",
+    padding: 16,
+    borderRadius: 8,
+    elevation: 3,
+  },
+  paymentInfo: {
+    flex: 1,
+    alignItems: "center",
+  },
+  paymentLabel: {
+    fontSize: 14,
+    color: "#555",
+    marginBottom: 4,
+  },
+  paymentValue: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#333",
   },
   financialInfoContainer: {
-    borderWidth: 1,
-    borderColor: "#E1272C",
+    backgroundColor: "#fff",
     borderRadius: 8,
     padding: 16,
-    backgroundColor: "#fff",
-    marginBottom: 10,
+    marginBottom: 20,
+    elevation: 3,
   },
   financialRow: {
     flexDirection: "row",
@@ -357,68 +395,10 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#333",
   },
-  balanceInfo: {
-    fontSize: 12,
-    color: "#555",
-    textAlign: "center",
-    margin: 10,
-  },
-  nextPaymentContainer: {
-    marginBottom: 20,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#333",
-    marginBottom: 8,
-  },
-  paymentRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#fff",
-    padding: 12,
-    borderRadius: 8,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    elevation: 3,
-  },
-  paymentDate: {
-    backgroundColor: "#E1272C",
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "bold",
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 4,
-    marginRight: 16,
-  },
-  paymentAmount: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: "#333",
-    flex: 1,
-  },
-  boletoButton: {
-    backgroundColor: "#E1272C",
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 4,
-  },
-  boletoButtonText: {
-    color: "#fff",
-    fontSize: 14,
-    fontWeight: "bold",
-  },
   contractDetailsContainer: {
     padding: 16,
     backgroundColor: "#fff",
     borderRadius: 8,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
     elevation: 3,
     marginBottom: 20,
   },

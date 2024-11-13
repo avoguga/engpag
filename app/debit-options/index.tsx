@@ -67,146 +67,114 @@ const DebitOptionsPage = () => {
     return unpaidInstallments.length === 0;
   };
 
+  // Encontra o item em installmentsData que corresponde ao billReceivableId atual
+  const selectedResult = installmentsData?.find(
+    (result) => result.billReceivableId === parseInt(billReceivableId, 10)
+  );
+
   const handlePaymentsNavigation = () => {
-    if (!installmentsData || installmentsData.length === 0) {
+    if (!selectedResult) {
       Alert.alert("Erro", "Dados de parcelas não disponíveis.");
       return;
     }
 
-    const selectedResult = installmentsData[0]; // Seleciona o primeiro item como exemplo; pode ser ajustado conforme a lógica do projeto
-
-    if (selectedResult) {
-      router.push({
-        pathname: "/payments",
-        params: {
-          billReceivableId: billReceivableId,
-          enterpriseName,
-        },
-      });
-    } else {
-      Alert.alert("Erro", "Título não encontrado.");
-    }
+    router.push({
+      pathname: "/payments",
+      params: {
+        billReceivableId: billReceivableId,
+        enterpriseName,
+      },
+    });
   };
 
   const handleBoletoNavigation = () => {
-    if (!installmentsData || installmentsData.length === 0) {
+    if (!selectedResult) {
       Alert.alert("Erro", "Dados de parcelas não disponíveis.");
       return;
     }
 
     let lastInstallment = null;
-    let selectedResult = null;
 
-    installmentsData.forEach((result) => {
-      const unpaidInstallments = [
-        ...(result.dueInstallments || []),
-        ...(result.payableInstallments || []),
-      ];
+    const unpaidInstallments = [
+      ...(selectedResult.dueInstallments || []),
+      ...(selectedResult.payableInstallments || []),
+    ];
 
-      //   apenas as parcelas em aberto (sem data de pagamento)
-      const openInstallments = unpaidInstallments.filter(
-        (installment) => !installment.paymentDate
+    // Apenas as parcelas em aberto (sem data de pagamento)
+    const openInstallments = unpaidInstallments.filter(
+      (installment) => !installment.paymentDate
+    );
+
+    if (openInstallments.length > 0) {
+      openInstallments.sort(
+        (a, b) => new Date(b.dueDate) - new Date(a.dueDate)
       );
 
-      if (openInstallments.length > 0) {
-        openInstallments.sort(
-          (a, b) => new Date(b.dueDate) - new Date(a.dueDate)
-        );
+      lastInstallment = openInstallments[0];
 
-        const latestInstallment = openInstallments[0];
-
-        if (
-          !lastInstallment ||
-          new Date(latestInstallment.dueDate) > new Date(lastInstallment.dueDate)
-        ) {
-          lastInstallment = latestInstallment;
-          selectedResult = result;
-        }
+      if (lastInstallment) {
+        router.push({
+          pathname: "/boleto-screen",
+          params: {
+            billReceivableId: billReceivableId,
+            installmentId: lastInstallment.installmentId,
+            enterpriseName,
+          },
+        });
+      } else {
+        Alert.alert("Erro", "Não há parcelas em aberto.");
       }
-    });
-
-    if (lastInstallment && selectedResult) {
-      router.push({
-        pathname: "/boleto-screen",
-        params: {
-          billReceivableId: billReceivableId,
-          installmentId: lastInstallment.installmentId,
-          enterpriseName,
-        },
-      });
     } else {
       Alert.alert("Erro", "Não há parcelas em aberto.");
     }
   };
 
   const handleParcelAntecipationNavigation = () => {
-    if (!installmentsData || installmentsData.length === 0) {
+    if (!selectedResult) {
       Alert.alert("Erro", "Dados de parcelas não disponíveis.");
       return;
     }
 
-    const selectedResult = installmentsData[0];
-
-    console.log(billReceivableId)
-
-    if (selectedResult) {
-      router.push({
-        pathname: "/parcel-antecipation",
-        params: {
-          billReceivableId: billReceivableId,
-          enterpriseName,
-        },
-      });
-    } else {
-      Alert.alert("Erro", "Título não encontrado.");
-    }
+    router.push({
+      pathname: "/parcel-antecipation",
+      params: {
+        billReceivableId: billReceivableId,
+        enterpriseName,
+      },
+    });
   };
 
   const handlePaymentsRealizedNavigation = () => {
-    if (!installmentsData || installmentsData.length === 0) {
+    if (!selectedResult) {
       Alert.alert("Erro", "Dados de pagamentos não disponíveis.");
       return;
     }
 
-    const selectedResult = installmentsData[0];
-
-    if (selectedResult) {
-      router.push({
-        pathname: "/payments-realized",
-        params: {
-          billReceivableId: billReceivableId,
-          enterpriseName,
-        },
-      });
-    } else {
-      Alert.alert("Erro", "Título não encontrado.");
-    }
+    router.push({
+      pathname: "/payments-realized",
+      params: {
+        billReceivableId: billReceivableId,
+        enterpriseName,
+      },
+    });
   };
 
   const handleDebtBalance = () => {
-    if (!installmentsData || installmentsData.length === 0) {
+    if (!selectedResult) {
       Alert.alert("Erro", "Dados de saldo devedor não disponíveis.");
       return;
     }
 
-    const selectedResult = installmentsData[0];
-
-    if (selectedResult) {
-      router.push({
-        pathname: "/debt-balance",
-        params: {
-          billReceivableId: billReceivableId,
-          enterpriseName,
-        },
-      });
-    } else {
-      Alert.alert("Erro", "Título não encontrado.");
-    }
+    router.push({
+      pathname: "/debt-balance",
+      params: {
+        billReceivableId: billReceivableId,
+        enterpriseName,
+      },
+    });
   };
 
- 
-  const isPaid =
-    installmentsData?.length > 0 && isTitlePaid(installmentsData[0]);
+  const isPaid = selectedResult ? isTitlePaid(selectedResult) : false;
 
   return (
     <View style={styles.container}>
@@ -266,9 +234,7 @@ const DebitOptionsPage = () => {
           >
             <Text style={styles.buttonText}>HISTÓRICO DE PAGAMENTOS</Text>
           </TouchableOpacity>
-          
         </View>
-
       </View>
     </View>
   );

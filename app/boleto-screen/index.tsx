@@ -25,7 +25,7 @@ const BoletoScreen = () => {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isSupportModalVisible, setIsSupportModalVisible] = useState(false);
   const [hasOverdueInstallment, setHasOverdueInstallment] = useState(false);
-  const { enterpriseName } = useLocalSearchParams();
+  const { enterpriseName, billReceivableId } = useLocalSearchParams();
   const [sendingEmail, setSendingEmail] = useState(false);
 
   useEffect(() => {
@@ -33,13 +33,13 @@ const BoletoScreen = () => {
   }, [userData]);
 
   const formatDate = (dateString) => {
-    const date = new Date(dateString + 'T00:00:00Z'); 
-    const day = date.getUTCDate().toString().padStart(2, '0');
-    const month = (date.getUTCMonth() + 1).toString().padStart(2, '0');
+    const date = new Date(dateString + "T00:00:00Z");
+    const day = date.getUTCDate().toString().padStart(2, "0");
+    const month = (date.getUTCMonth() + 1).toString().padStart(2, "0");
     const year = date.getUTCFullYear();
     return `${day}/${month}/${year}`;
   };
-  
+
   const fetchAvailableInstallment = async () => {
     if (!userData || (!userData.cpf && !userData.cnpj)) {
       Alert.alert("Erro", "Dados do cliente não encontrados.");
@@ -48,8 +48,12 @@ const BoletoScreen = () => {
 
     setLoading(true);
     try {
-      const credentials = btoa("engenharq-mozart:i94B1q2HUXf7PP7oscuIBygquSRZ9lhb");
-      const searchParam = userData.cpf ? { cpf: userData.cpf, correctAnnualInstallment: "N" } : { cnpj: userData.cnpj, correctAnnualInstallment: "N" };
+      const credentials = btoa(
+        "engenharq-mozart:i94B1q2HUXf7PP7oscuIBygquSRZ9lhb"
+      );
+      const searchParam = userData.cpf
+        ? { cpf: userData.cpf, correctAnnualInstallment: "N" }
+        : { cnpj: userData.cnpj, correctAnnualInstallment: "N" };
       const response = await axios.get(
         "https://engpag.backend.gustavohenrique.dev/proxy/current-debit-balance",
         {
@@ -84,12 +88,16 @@ const BoletoScreen = () => {
       });
 
       if (availableInstallments.length > 0) {
-        availableInstallments.sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
+        availableInstallments.sort(
+          (a, b) => new Date(a.dueDate) - new Date(b.dueDate)
+        );
         const installment = availableInstallments[0];
         let status = "Pendente";
         const today = new Date();
         const dueDate = new Date(installment.dueDate);
-        const daysOverdue = Math.floor((today - dueDate) / (1000 * 60 * 60 * 24));
+        const daysOverdue = Math.floor(
+          (today - dueDate) / (1000 * 60 * 60 * 24)
+        );
 
         if (installment.paidDate) {
           status = "Pago";
@@ -117,7 +125,11 @@ const BoletoScreen = () => {
           ]
         );
       } else {
-        Alert.alert("Nenhum Boleto Disponível", "Nenhum boleto está disponível no momento.", [{ text: "OK" }]);
+        Alert.alert(
+          "Nenhum Boleto Disponível",
+          "Nenhum boleto está disponível no momento.",
+          [{ text: "OK" }]
+        );
       }
     } catch (error) {
       console.error("Erro ao buscar detalhes da parcela:", error);
@@ -136,7 +148,9 @@ const BoletoScreen = () => {
     setLoading(true);
 
     try {
-      const credentials = btoa("engenharq-mozart:i94B1q2HUXf7PP7oscuIBygquSRZ9lhb");
+      const credentials = btoa(
+        "engenharq-mozart:i94B1q2HUXf7PP7oscuIBygquSRZ9lhb"
+      );
 
       let companyId = null;
 
@@ -160,11 +174,16 @@ const BoletoScreen = () => {
         default: { name: "Desconhecida", whatsappNumber: "5585986080000" },
       };
 
-      const { whatsappNumber } = (companyId && companyInfo[companyId]) || companyInfo.default;
+      const { whatsappNumber } =
+        (companyId && companyInfo[companyId]) || companyInfo.default;
 
-      const message = `Olá, meu nome é ${userData.name}, portador do ${userData.cpf ? `CPF ${userData.cpf}` : `CNPJ ${userData.cnpj}`}. Gostaria de solicitar assistência para liberar o pagamento do meu boleto referente ao empreendimento ${enterpriseName}.`;
+      const message = `Olá, meu nome é ${userData.name}, portador do ${
+        userData.cpf ? `CPF ${userData.cpf}` : `CNPJ ${userData.cnpj}`
+      }. Gostaria de solicitar assistência para liberar o pagamento do meu boleto referente ao empreendimento ${enterpriseName}.`;
 
-      const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`;
+      const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
+        message
+      )}`;
 
       const supported = await Linking.canOpenURL(whatsappUrl);
       if (supported) {
@@ -186,7 +205,11 @@ const BoletoScreen = () => {
       return;
     }
 
-    if (!installmentDetails || !installmentDetails.billReceivableId || !installmentDetails.installmentId) {
+    if (
+      !installmentDetails ||
+      !installmentDetails.billReceivableId ||
+      !installmentDetails.installmentId
+    ) {
       Alert.alert("Erro", "Informações da parcela não disponíveis.");
       return;
     }
@@ -221,7 +244,9 @@ const BoletoScreen = () => {
     setLoading(true);
 
     try {
-      const credentials = btoa("engenharq-mozart:i94B1q2HUXf7PP7oscuIBygquSRZ9lhb");
+      const credentials = btoa(
+        "engenharq-mozart:i94B1q2HUXf7PP7oscuIBygquSRZ9lhb"
+      );
 
       const response = await axios.get(
         "https://engpag.backend.gustavohenrique.dev/proxy/payment-slip-notification",
@@ -240,6 +265,21 @@ const BoletoScreen = () => {
         setBoletoLink(response.data.results[0].urlReport);
         setDigitableNumber(response.data.results[0].digitableNumber);
         setIsModalVisible(true);
+
+        // **Enviar requisição para agendar o lembrete do boleto**
+        try {
+          await axios.post(
+            "https://engpag.backend.gustavohenrique.dev/schedule-boleto",
+            {
+              email: userData.email,
+              vencimento: installmentDetails.dueDate,
+              userName: userData.name,
+            }
+          );
+          console.log("Lembrete do boleto agendado com sucesso.");
+        } catch (error) {
+          console.error("Erro ao agendar o lembrete do boleto:", error);
+        }
       } else {
         Alert.alert("Erro", "Falha ao gerar o link do boleto.");
       }
@@ -252,8 +292,16 @@ const BoletoScreen = () => {
   };
 
   const requestBoletoEmail = async () => {
-    if (!userData || !installmentDetails || !installmentDetails.billReceivableId || !installmentDetails.installmentId) {
-      Alert.alert("Erro", "Dados do usuário ou informações da parcela não encontrados.");
+    if (
+      !userData ||
+      !installmentDetails ||
+      !installmentDetails.billReceivableId ||
+      !installmentDetails.installmentId
+    ) {
+      Alert.alert(
+        "Erro",
+        "Dados do usuário ou informações da parcela não encontrados."
+      );
       return;
     }
 
@@ -276,7 +324,9 @@ const BoletoScreen = () => {
             setSendingEmail(true);
 
             try {
-              const credentials = btoa("engenharq-mozart:i94B1q2HUXf7PP7oscuIBygquSRZ9lhb");
+              const credentials = btoa(
+                "engenharq-mozart:i94B1q2HUXf7PP7oscuIBygquSRZ9lhb"
+              );
               const responseBoleto = await axios.get(
                 "https://engpag.backend.gustavohenrique.dev/proxy/payment-slip-notification",
                 {
@@ -290,7 +340,10 @@ const BoletoScreen = () => {
                 }
               );
 
-              if (responseBoleto.data.results && responseBoleto.data.results[0]) {
+              if (
+                responseBoleto.data.results &&
+                responseBoleto.data.results[0]
+              ) {
                 const boletoUrl = responseBoleto.data.results[0].urlReport;
 
                 const responseEmail = await axios.post(
@@ -302,8 +355,26 @@ const BoletoScreen = () => {
                   }
                 );
 
+                // **Enviar requisição para agendar o lembrete do boleto**
+                try {
+                  await axios.post(
+                    "https://engpag.backend.gustavohenrique.dev/schedule-boleto",
+                    {
+                      email: userData.email,
+                      vencimento: installmentDetails.dueDate,
+                      userName: userData.name,
+                    }
+                  );
+                  console.log("Lembrete do boleto agendado com sucesso.");
+                } catch (error) {
+                  console.error("Erro ao agendar o lembrete do boleto:", error);
+                }
+
                 if (responseEmail.status === 200) {
-                  Alert.alert("Sucesso", "E-mail com o boleto enviado com sucesso!");
+                  Alert.alert(
+                    "Sucesso",
+                    "E-mail com o boleto enviado com sucesso!"
+                  );
                 } else {
                   Alert.alert("Erro", "Falha ao enviar o e-mail com o boleto.");
                 }
@@ -312,7 +383,10 @@ const BoletoScreen = () => {
               }
             } catch (error) {
               console.error("Erro ao enviar o e-mail:", error);
-              Alert.alert("Erro", "Não foi possível enviar o e-mail com o boleto.");
+              Alert.alert(
+                "Erro",
+                "Não foi possível enviar o e-mail com o boleto."
+              );
             } finally {
               setSendingEmail(false);
             }
@@ -381,7 +455,10 @@ const BoletoScreen = () => {
                     </Text>
                   </View>
                   <Text style={styles.availabilityText}>
-                    Boleto {installmentDetails.generatedBoleto ? "Disponível" : "Indisponível"}
+                    Boleto{" "}
+                    {installmentDetails.generatedBoleto
+                      ? "Disponível"
+                      : "Indisponível"}
                   </Text>
                 </View>
 
@@ -530,7 +607,8 @@ const BoletoScreen = () => {
             <View style={styles.supportModalContainer}>
               <Text style={styles.supportModalTitle}>Suporte</Text>
               <Text style={styles.supportModalText}>
-                Este boleto não está disponível. Por favor, entre em contato com o suporte via WhatsApp para liberar o pagamento.
+                Este boleto não está disponível. Por favor, entre em contato com
+                o suporte via WhatsApp para liberar o pagamento.
               </Text>
               <View style={styles.supportModalButtons}>
                 <TouchableOpacity
@@ -541,7 +619,9 @@ const BoletoScreen = () => {
                   }}
                 >
                   <Ionicons name="logo-whatsapp" size={20} color="white" />
-                  <Text style={styles.supportButtonText}>Falar com Suporte</Text>
+                  <Text style={styles.supportButtonText}>
+                    Falar com Suporte
+                  </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.cancelSupportButton}
