@@ -1,4 +1,4 @@
-import React, { useEffect, useContext, useState } from "react";
+import React, { useEffect, useContext, useState, useRef } from "react";
 import {
   View,
   Text,
@@ -8,26 +8,28 @@ import {
   TouchableOpacity,
   Alert,
   BackHandler,
-  Platform, // Import Platform to detect the environment
+  Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import axios from "axios";
 import { UserContext } from "../contexts/UserContext";
 import { useFocusEffect, useRouter } from "expo-router";
-import AsyncStorage from "@react-native-async-storage/async-storage"; // Import AsyncStorage
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const formatDate = (dateString) => {
   if (!dateString || typeof dateString !== "string") return "N/A";
 
-  const [year, month, day] = dateString.split('-');
+  const [year, month, day] = dateString.split("-");
   if (!year || !month || !day) return "N/A";
 
-  const date = new Date(Date.UTC(parseInt(year), parseInt(month) - 1, parseInt(day)));
+  const date = new Date(
+    Date.UTC(parseInt(year), parseInt(month) - 1, parseInt(day))
+  );
 
   if (isNaN(date.getTime())) return "N/A";
 
-  const formattedDay = date.getUTCDate().toString().padStart(2, '0');
-  const formattedMonth = (date.getUTCMonth() + 1).toString().padStart(2, '0');
+  const formattedDay = date.getUTCDate().toString().padStart(2, "0");
+  const formattedMonth = (date.getUTCMonth() + 1).toString().padStart(2, "0");
   const formattedYear = date.getUTCFullYear();
 
   return `${formattedDay}/${formattedMonth}/${formattedYear}`;
@@ -35,58 +37,70 @@ const formatDate = (dateString) => {
 
 const formatCurrency = (value) => {
   return value && !isNaN(value)
-    ? `R$ ${parseFloat(value).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`
+    ? `R$ ${parseFloat(value).toLocaleString("pt-BR", {
+        minimumFractionDigits: 2,
+      })}`
     : "N/A";
+};
+
+const showAlert = (title, message) => {
+  if (Platform.OS === "web") {
+    window.alert(`${title}\n\n${message}`);
+  } else {
+    Alert.alert(title, message);
+  }
 };
 
 const InitialPage = () => {
   const router = useRouter();
-  const { userData, setUserData, setInstallmentsData, enterpriseNames, setEnterpriseNames } =
-    useContext(UserContext);
+  const {
+    userData,
+    setUserData,
+    setInstallmentsData,
+    enterpriseNames,
+    setEnterpriseNames,
+  } = useContext(UserContext);
   const [installmentsData, setLocalInstallmentsData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [loadingEnterprise, setLoadingEnterprise] = useState(false);
   const [error, setError] = useState("");
-  
-  // Estado para controle de carregamento da verificação de autenticação
   const [isAuthLoading, setIsAuthLoading] = useState(true);
+
+  // Ref para rastrear se o alerta já foi mostrado
+  const alertShownRef = useRef(false);
 
   useFocusEffect(
     React.useCallback(() => {
       const backAction = () => true;
-      const backHandler = BackHandler.addEventListener("hardwareBackPress", backAction);
+      const backHandler = BackHandler.addEventListener(
+        "hardwareBackPress",
+        backAction
+      );
       return () => backHandler.remove();
     }, [])
   );
 
-  // Verificação de autenticação ao montar o componente
   useEffect(() => {
     const checkAuthentication = async () => {
       try {
         if (Platform.OS === "web") {
-          // Para Web: verificar localStorage
-          const storedUserData = localStorage.getItem('userData');
+          const storedUserData = localStorage.getItem("userData");
           if (!storedUserData) {
-            // Se userData não existir, redireciona para a rota de login
             router.replace("/(home)");
           } else {
-            // Se existir, atualiza o contexto do usuário
             setUserData(JSON.parse(storedUserData));
           }
         } else {
-          // Para dispositivos móveis: verificar AsyncStorage
           const storedUserData = await AsyncStorage.getItem("userData");
           if (!storedUserData) {
-            // Se userData não existir, redireciona para a rota de login
             router.replace("/(home)");
           } else {
-            // Se existir, atualiza o contexto do usuário
             setUserData(JSON.parse(storedUserData));
           }
         }
       } catch (error) {
         console.error("Erro ao verificar autenticação:", error);
-        Alert.alert("Erro", "Não foi possível verificar a autenticação.");
+        showAlert("Erro", "Não foi possível verificar a autenticação.");
         router.replace("/(home)");
       } finally {
         setIsAuthLoading(false);
@@ -96,22 +110,20 @@ const InitialPage = () => {
     checkAuthentication();
   }, [router, setUserData]);
 
-  // Load userData and installmentsData from storage on mount
   useEffect(() => {
     const loadDataFromStorage = async () => {
       if (Platform.OS !== "web") {
-        // Para dispositivos móveis, os dados já são carregados via AsyncStorage na verificação de autenticação
         return;
       }
 
       try {
-        const storedUserData = localStorage.getItem('userData');
+        const storedUserData = localStorage.getItem("userData");
         if (storedUserData) {
           const parsedUserData = JSON.parse(storedUserData);
           setUserData(parsedUserData);
         }
 
-        const storedInstallmentsData = localStorage.getItem('installmentsData');
+        const storedInstallmentsData = localStorage.getItem("installmentsData");
         if (storedInstallmentsData) {
           const parsedInstallmentsData = JSON.parse(storedInstallmentsData);
           setLocalInstallmentsData(parsedInstallmentsData);
@@ -125,42 +137,47 @@ const InitialPage = () => {
     loadDataFromStorage();
   }, [setUserData, setInstallmentsData]);
 
-  // Save userData to storage whenever it changes
   useEffect(() => {
     if (Platform.OS === "web") {
       if (!userData) return;
       try {
-        localStorage.setItem('userData', JSON.stringify(userData));
+        localStorage.setItem("userData", JSON.stringify(userData));
       } catch (error) {
         console.error("Erro ao salvar userData no localStorage:", error);
       }
     } else {
-      // Para dispositivos móveis: salvar no AsyncStorage
       if (!userData) return;
-      AsyncStorage.setItem("userData", JSON.stringify(userData)).catch(error =>
-        console.error("Erro ao salvar userData no AsyncStorage:", error)
+      AsyncStorage.setItem("userData", JSON.stringify(userData)).catch(
+        (error) =>
+          console.error("Erro ao salvar userData no AsyncStorage:", error)
       );
     }
   }, [userData]);
 
-  // Save installmentsData to storage whenever it changes
   useEffect(() => {
     if (Platform.OS === "web" && Array.isArray(installmentsData)) {
       try {
-        localStorage.setItem('installmentsData', JSON.stringify(installmentsData));
+        localStorage.setItem(
+          "installmentsData",
+          JSON.stringify(installmentsData)
+        );
       } catch (error) {
-        console.error("Erro ao salvar installmentsData no localStorage:", error);
+        console.error(
+          "Erro ao salvar installmentsData no localStorage:",
+          error
+        );
       }
     } else {
-      // Para dispositivos móveis: salvar no AsyncStorage
       if (!installmentsData || !Array.isArray(installmentsData)) return;
-      AsyncStorage.setItem("installmentsData", JSON.stringify(installmentsData)).catch(error =>
+      AsyncStorage.setItem(
+        "installmentsData",
+        JSON.stringify(installmentsData)
+      ).catch((error) =>
         console.error("Erro ao salvar installmentsData no AsyncStorage:", error)
       );
     }
   }, [installmentsData]);
 
-  // Buscar parcelas quando userData estiver disponível
   useEffect(() => {
     if (userData && (userData.cpf || userData.cnpj)) {
       fetchInstallments();
@@ -176,10 +193,10 @@ const InitialPage = () => {
       const password = "i94B1q2HUXf7PP7oscuIBygquSRZ9lhb";
       const credentials = btoa(`${username}:${password}`);
 
-      // Define o parâmetro de busca de acordo com a presença de CPF ou CNPJ
-      const searchParam = userData.cpf ? { cpf: userData.cpf } : { cnpj: userData.cnpj };
+      const searchParam = userData.cpf
+        ? { cpf: userData.cpf }
+        : { cnpj: userData.cnpj };
 
-      // Faz a requisição com o parâmetro dinâmico
       const response = await axios.get(
         `https://engpag.backend.gustavohenrique.dev/proxy/current-debit-balance`,
         {
@@ -192,7 +209,22 @@ const InitialPage = () => {
       setLocalInstallmentsData(fetchedData);
       setInstallmentsData(fetchedData);
 
-      // Save installmentsData to storage is handled by useEffect
+      // Verifica se existem boletos vencidos
+      let hasOverdueBills = false;
+      fetchedData.forEach((item) => {
+        if (item.dueInstallments && item.dueInstallments.length > 0) {
+          hasOverdueBills = true;
+        }
+      });
+
+      // Exibe o alerta apenas se ainda não tiver sido mostrado
+      if (hasOverdueBills && !alertShownRef.current) {
+        alertShownRef.current = true; // Marca que o alerta foi mostrado
+        showAlert(
+          "Boletos Vencidos",
+          "Você possui boletos vencidos. Por favor, regularize suas pendências."
+        );
+      }
 
       if (fetchedData.length > 0) {
         await fetchEnterpriseNames(fetchedData);
@@ -251,7 +283,7 @@ const InitialPage = () => {
       setEnterpriseNames(names);
     } catch (error) {
       console.error("Erro ao buscar nomes dos empreendimentos:", error);
-      Alert.alert(
+      showAlert(
         "Erro",
         "Não foi possível buscar os nomes dos empreendimentos."
       );
@@ -273,7 +305,6 @@ const InitialPage = () => {
   };
 
   if (isAuthLoading) {
-    // Enquanto verifica autenticação, exibe um indicador de carregamento
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#E1272C" />
@@ -294,88 +325,121 @@ const InitialPage = () => {
 
         {loading && <ActivityIndicator size="large" color="#E1272C" />}
         {error !== "" && <Text style={styles.errorText}>{error}</Text>}
-        {loadingEnterprise && <ActivityIndicator size="small" color="#E1272C" />}
+        {loadingEnterprise && (
+          <ActivityIndicator size="small" color="#E1272C" />
+        )}
 
         {!loading &&
         Array.isArray(installmentsData) &&
-        installmentsData.length > 0
-          ? installmentsData.map((item, index) => {
-              const enterpriseInfo = enterpriseNames[index] || {};
-              const allDueInstallments = [
-                ...(item.dueInstallments || []),
-                ...(item.payableInstallments || []),
-              ];
+        installmentsData.length > 0 ? (
+          installmentsData.map((item, index) => {
+            const enterpriseInfo = enterpriseNames[index] || {};
+            const allDueInstallments = [
+              ...(item.dueInstallments || []),
+              ...(item.payableInstallments || []),
+            ];
 
-              const futureInstallments = allDueInstallments.filter(
-                (installment) => new Date(installment.dueDate) >= new Date()
-              );
+            const futureInstallments = allDueInstallments.filter(
+              (installment) => new Date(installment.dueDate) >= new Date()
+            );
 
-              futureInstallments.sort(
-                (a, b) =>
-                  new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()
-              );
+            futureInstallments.sort(
+              (a, b) =>
+                new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()
+            );
 
-              const nextInstallment = futureInstallments[0];
-              const nextInstallmentAmount = nextInstallment
-                ? nextInstallment.currentBalance
-                : null;
+            const nextInstallment = futureInstallments[0];
+            const nextInstallmentAmount = nextInstallment
+              ? nextInstallment.currentBalance
+              : null;
 
-              const hasUnpaidInstallments = allDueInstallments.length > 0;
-              const status = hasUnpaidInstallments ? "Em aberto" : "Quitado";
+            const hasUnpaidInstallments = allDueInstallments.length > 0;
+            const status = hasUnpaidInstallments ? "Em aberto" : "Quitado";
 
-              return (
-                <TouchableOpacity
-                  key={item.billReceivableId}
-                  style={styles.card}
-                  onPress={() => handleCardPress(item, index)}
-                >
-                  <View style={styles.cardIcon}>
-                    <Ionicons name="home-outline" size={28} color="#E1272C" />
+            return (
+              <TouchableOpacity
+                key={item.billReceivableId}
+                style={styles.card}
+                onPress={() => handleCardPress(item, index)}
+              >
+                <View style={styles.cardIcon}>
+                  <Ionicons name="home-outline" size={28} color="#E1272C" />
+                </View>
+                <View style={styles.cardContent}>
+                  <Text style={styles.cardTitle}>
+                    {enterpriseInfo.enterpriseName}
+                  </Text>
+                  <View style={styles.infoRow}>
+                    <Text style={styles.infoLabel}>Unidade:</Text>
+                    <Text style={styles.infoValue}>
+                      {enterpriseInfo.unityName}
+                    </Text>
                   </View>
-                  <View style={styles.cardContent}>
-                    <Text style={styles.cardTitle}>{enterpriseInfo.enterpriseName}</Text>
-                    <View style={styles.infoRow}>
-                      <Text style={styles.infoLabel}>Unidade:</Text>
-                      <Text style={styles.infoValue}>{enterpriseInfo.unityName}</Text>
-                    </View>
-                    <View style={styles.infoRow}>
-                      <Text style={styles.infoLabel}>Documento:</Text>
-                      <Text style={styles.infoValue}>{enterpriseInfo.documentId}</Text>
-                    </View>
-                    <View style={styles.infoRow}>
-                      <Text style={styles.infoLabel}>Número:</Text>
-                      <Text style={styles.infoValue}>{enterpriseInfo.documentNumber}</Text>
-                    </View>
-                    <View style={styles.infoRow}>
-                      <Text style={styles.infoLabel}>Código:</Text>
-                      <Text style={styles.infoValue}>{enterpriseInfo.enterpriseCode}</Text>
-                    </View>
-                    <View style={styles.infoRow}>
-                      <Text style={styles.infoLabel}>Valor do Empreendimento:</Text>
-                      <Text style={styles.infoValue}>{formatCurrency(enterpriseInfo.receivableBillValue)}</Text>
-                    </View>
-                    <View style={styles.cardRow}>
-                      <Text style={styles.infoLabel}>Valor da próxima parcela:</Text>
-                      <Text style={styles.cardValue}>{formatCurrency(nextInstallmentAmount)}</Text>
-                    </View>
-                    <View style={styles.cardRow}>
-                      <Text style={styles.infoLabel}>Status:</Text>
-                      <Text style={hasUnpaidInstallments ? styles.statusOpen : styles.statusClosed}>{status}</Text>
-                    </View>
-                    <Text style={styles.cardIssueDate}>Data de Emissão: {formatDate(enterpriseInfo.issueDate)}</Text>
+                  <View style={styles.infoRow}>
+                    <Text style={styles.infoLabel}>Documento:</Text>
+                    <Text style={styles.infoValue}>
+                      {enterpriseInfo.documentId}
+                    </Text>
                   </View>
-                </TouchableOpacity>
-              );
-            })
-          : !loading && (
-              <Text style={styles.noInstallmentsText}>
-                Nenhum empreendimento encontrado.
-              </Text>
-            )}
+                  <View style={styles.infoRow}>
+                    <Text style={styles.infoLabel}>Número:</Text>
+                    <Text style={styles.infoValue}>
+                      {enterpriseInfo.documentNumber}
+                    </Text>
+                  </View>
+                  <View style={styles.infoRow}>
+                    <Text style={styles.infoLabel}>Código:</Text>
+                    <Text style={styles.infoValue}>
+                      {enterpriseInfo.enterpriseCode}
+                    </Text>
+                  </View>
+                  <View style={styles.infoRow}>
+                    <Text style={styles.infoLabel}>
+                      Valor do Empreendimento:
+                    </Text>
+                    <Text style={styles.infoValue}>
+                      {formatCurrency(enterpriseInfo.receivableBillValue)}
+                    </Text>
+                  </View>
+                  <View style={styles.cardRow}>
+                    <Text style={styles.infoLabel}>
+                      Valor da próxima parcela:
+                    </Text>
+                    <Text style={styles.cardValue}>
+                      {formatCurrency(nextInstallmentAmount)}
+                    </Text>
+                  </View>
+                  <View style={styles.cardRow}>
+                    <Text style={styles.infoLabel}>Status:</Text>
+                    <Text
+                      style={
+                        hasUnpaidInstallments
+                          ? styles.statusOpen
+                          : styles.statusClosed
+                      }
+                    >
+                      {status}
+                    </Text>
+                  </View>
+                  <Text style={styles.cardIssueDate}>
+                    Data de Emissão: {formatDate(enterpriseInfo.issueDate)}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            );
+          })
+        ) : (
+          !loading && (
+            <Text style={styles.noInstallmentsText}>
+              Nenhum empreendimento encontrado.
+            </Text>
+          )
+        )}
       </ScrollView>
     </View>
   );
 };
+
 
 const styles = StyleSheet.create({
   container: {
