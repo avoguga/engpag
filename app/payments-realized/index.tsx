@@ -54,7 +54,7 @@ const PaymentsCompleted = () => {
 
     try {
       const username = "engenharq-mozart";
-      const password = "i94B1q2HUXf7PP7oscuIBygquSRZ9lhb";
+      const password = "sua_senha"; // Substitua 'sua_senha' pela senha correta
       const credentials = btoa(`${username}:${password}`);
 
       const searchParam = userData.cpf
@@ -166,8 +166,24 @@ const PaymentsCompleted = () => {
     setEndDateInput("");
   };
 
+  // Função atualizada para melhorar a máscara de entrada de data
   const handleDateInputWithMask = (text, setDate, setDateInput) => {
     let formattedText = text.replace(/\D/g, "");
+
+    // Limitar o dia a 31 e o mês a 12 durante a digitação
+    if (formattedText.length >= 1) {
+      const day = formattedText.substring(0, 2);
+      if (parseInt(day, 10) > 31) {
+        formattedText = "31";
+      }
+    }
+
+    if (formattedText.length >= 3) {
+      const month = formattedText.substring(2, 4);
+      if (parseInt(month, 10) > 12) {
+        formattedText = formattedText.substring(0, 2) + "12" + formattedText.substring(4);
+      }
+    }
 
     if (formattedText.length > 2) {
       formattedText = formattedText.replace(/(\d{2})(\d)/, "$1/$2");
@@ -182,13 +198,40 @@ const PaymentsCompleted = () => {
     setDateInput(formattedText);
 
     if (formattedText.length === 10) {
-      const [day, month, year] = formattedText.split("/");
-      const date = new Date(`${year}-${month}-${day}`);
-      if (!isNaN(date)) {
-        setDate(date);
+      const [dayStr, monthStr, yearStr] = formattedText.split("/");
+      const day = parseInt(dayStr, 10);
+      const month = parseInt(monthStr, 10);
+      const year = parseInt(yearStr, 10);
+
+      // Verificar se os valores de dia, mês e ano são válidos
+      const isValidDate =
+        day > 0 &&
+        day <= 31 &&
+        month > 0 &&
+        month <= 12 &&
+        year >= 1900 &&
+        year <= 2100;
+
+      if (isValidDate) {
+        const date = new Date(year, month - 1, day);
+        // Verificar se a data é válida (por exemplo, não permitir 31 de fevereiro)
+        if (
+          date &&
+          date.getFullYear() === year &&
+          date.getMonth() === month - 1 &&
+          date.getDate() === day
+        ) {
+          setDate(date);
+        } else {
+          Alert.alert("Erro", "Data inválida.");
+          setDate(null);
+        }
       } else {
         Alert.alert("Erro", "Data inválida.");
+        setDate(null);
       }
+    } else {
+      setDate(null);
     }
   };
 
@@ -205,11 +248,14 @@ const PaymentsCompleted = () => {
     }
   };
 
+  // Função renderDateInput atualizada para corrigir o showEndDatePicker
   const renderDateInput = (
     inputType,
+    date,
     setDate,
     dateInput,
     setDateInput,
+    inputRef
   ) => (
     <View style={styles.dateInputContainer}>
       {Platform.OS === "web" ? (
@@ -221,7 +267,9 @@ const PaymentsCompleted = () => {
             ]}
             placeholder="DD/MM/AAAA"
             value={dateInput}
-            onChangeText={(text) => handleDateInputWithMask(text, setDate, setDateInput)}
+            onChangeText={(text) =>
+              handleDateInputWithMask(text, setDate, setDateInput)
+            }
             keyboardType="numeric"
             maxLength={10}
           />
@@ -235,13 +283,21 @@ const PaymentsCompleted = () => {
             ]}
             placeholder="DD/MM/AAAA"
             value={dateInput}
-            onChangeText={(text) => handleDateInputWithMask(text, setDate, setDateInput)}
+            onChangeText={(text) =>
+              handleDateInputWithMask(text, setDate, setDateInput)
+            }
             keyboardType="numeric"
             maxLength={10}
           />
           <TouchableOpacity
             style={styles.calendarButton}
-            onPress={() => setShowStartDatePicker(inputType === "start")}
+            onPress={() => {
+              if (inputType === "start") {
+                setShowStartDatePicker(true);
+              } else if (inputType === "end") {
+                setShowEndDatePicker(true);
+              }
+            }}
           >
             <Ionicons name="calendar-outline" size={24} color="#E1272C" />
           </TouchableOpacity>
@@ -271,7 +327,6 @@ const PaymentsCompleted = () => {
       <Text style={styles.cardSubtitle}>Indexador: {item.indexerName}</Text>
       <Text style={styles.cardSubtitle}>Tipo de Condição: {item.conditionType}</Text>
       <Text style={styles.cardSubtitle}>Valor do Recibo: {item.receiptValue}</Text>
-      <Text style={styles.cardSubtitle}>Valor Ajustado: {item.adjustedValue}</Text>
       <Text style={styles.cardSubtitle}>Valor Original: {item.originalValue}</Text>
     </View>
   );
@@ -354,25 +409,24 @@ const PaymentsCompleted = () => {
 
       {/* Botão de Resetar Filtros */}
       <TouchableOpacity style={styles.resetButton} onPress={resetFilters}>
-        <Text style={styles.resetButtonText}>Resetar Filtros</Text>
+        <Text style={styles.resetButtonText}>Limpar Filtros</Text>
       </TouchableOpacity>
 
       {/* DateTimePickers para plataformas móveis */}
       {Platform.OS !== "web" && showStartDatePicker && (
-        <DateTimePicker
-          value={startDate || new Date()}
-          mode="date"
-          display="default"
-          onChange={(event, selectedDate) => {
-            setShowStartDatePicker(false);
-            if (selectedDate) {
-              setStartDate(selectedDate);
-              setStartDateInput(selectedDate.toLocaleDateString("pt-BR"));
-            }
-          }}
-          minimumDate={new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1)}
-        />
-      )}
+    <DateTimePicker
+      value={startDate || new Date()}
+      mode="date"
+      display="default"
+      onChange={(event, selectedDate) => {
+        setShowStartDatePicker(false);
+        if (selectedDate) {
+          setStartDate(selectedDate);
+          setStartDateInput(selectedDate.toLocaleDateString("pt-BR"));
+        }
+      }}
+    />
+  )}
 
       {Platform.OS !== "web" && showEndDatePicker && (
         <DateTimePicker
@@ -386,7 +440,6 @@ const PaymentsCompleted = () => {
               setEndDateInput(selectedDate.toLocaleDateString("pt-BR"));
             }
           }}
-          minimumDate={new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1)}
         />
       )}
 
@@ -408,6 +461,7 @@ const PaymentsCompleted = () => {
     </View>
   );
 };
+
 
 const styles = StyleSheet.create({
   container: {
@@ -477,7 +531,7 @@ const styles = StyleSheet.create({
     borderColor: "#ddd",
     borderRadius: 8,
     paddingHorizontal: 8,
-    fontSize: 16,
+    fontSize: 13,
     backgroundColor: "#fff",
   },
   validInput: {

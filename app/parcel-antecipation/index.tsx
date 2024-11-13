@@ -266,7 +266,13 @@ const ParcelAntecipation = () => {
           />
           <TouchableOpacity
             style={styles.calendarButton}
-            onPress={() => setShowStartDatePicker(inputType === "start")}
+            onPress={() => {
+              if (inputType === "start") {
+                setShowStartDatePicker(true);
+              } else if (inputType === "end") {
+                setShowEndDatePicker(true);
+              }
+            }}
           >
             <Ionicons name="calendar-outline" size={24} color="#E1272C" />
           </TouchableOpacity>
@@ -274,6 +280,7 @@ const ParcelAntecipation = () => {
       )}
     </View>
   );
+  
 
   const renderItem = ({ item }) => (
     <TouchableOpacity
@@ -871,16 +878,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     width: "100%",
   },
-  dateInputModal: {
-    flex: 1,
-    height: 50,
-    borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    fontSize: 16,
-    backgroundColor: "#fff",
-  },
+
   modalCalendarButton: {
     padding: 10,
     marginLeft: 8,
@@ -961,7 +959,7 @@ const styles = StyleSheet.create({
     borderColor: "#ddd",
     borderRadius: 8,
     paddingHorizontal: 8,
-    fontSize: 16,
+    fontSize: 14,
     backgroundColor: "#fff",
   },
   dateInputModal: {
