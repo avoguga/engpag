@@ -36,12 +36,12 @@ const ParcelAntecipation = () => {
   const [confirmModalVisible, setConfirmModalVisible] = useState(false);
   const [newDueDate, setNewDueDate] = useState(null);
   const [showNewDueDatePicker, setShowNewDueDatePicker] = useState(false);
-  const [newDueDateInput, setNewDueDateInput] = useState(""); // Add this for web date input
+  const [newDueDateInput, setNewDueDateInput] = useState("");
+  const [hasOverdueInstallments, setHasOverdueInstallments] = useState(false);
 
-  // Refs para inputs de data na web
   const startDateInputRef = useRef(null);
   const endDateInputRef = useRef(null);
-  const newDueDateInputRef = useRef(null); // Ref para o modal
+  const newDueDateInputRef = useRef(null);
 
   useEffect(() => {
     fetchInstallments();
@@ -96,6 +96,7 @@ const ParcelAntecipation = () => {
         const [year, month, day] = installment.dueDate.split("-");
         const dueDateUTC = new Date(Date.UTC(year, month - 1, day));
         const formattedDueDate = `${day}/${month}/${year}`;
+        const isOverdue = dueDateUTC < new Date();
 
         return {
           id: installment.installmentId.toString(),
@@ -110,12 +111,17 @@ const ParcelAntecipation = () => {
               currency: "BRL",
             }
           ),
-          status: dueDateUTC < new Date() ? "vencido" : "pendente",
+          // status: dueDateUTC < new Date() ? "vencido" : "pendente",
+          status: isOverdue ? "vencido" : "pendente",
           installmentId: installment.installmentId,
           generatedBoleto: installment.generatedBoleto,
           currentBalance: installment.currentBalance,
+          conditionType: installment.conditionType,
         };
       });
+
+      const hasOverdue = installments.some((item) => item.status === "vencido");
+      setHasOverdueInstallments(hasOverdue);
 
       setData(installments);
     } catch (error) {
@@ -306,6 +312,9 @@ const ParcelAntecipation = () => {
       <Text style={styles.cardSubtitle}>
         Vencimento: {item.formattedDueDate}
       </Text>
+      <Text style={styles.cardSubtitle}>
+        Condição de pagamento: {item.conditionType}
+      </Text>
       <Text style={styles.cardValue}>Valor: {item.value}</Text>
     </TouchableOpacity>
   );
@@ -316,7 +325,6 @@ const ParcelAntecipation = () => {
       return;
     }
 
-    // Verifica se a data foi preenchida no input (web) ou selecionada no picker (mobile)
     if (Platform.OS === "web" && !newDueDateInput) {
       Alert.alert("Atenção", "Por favor, preencha a nova data de vencimento.");
       return;
@@ -356,25 +364,29 @@ const ParcelAntecipation = () => {
 
       const { name: companyName, whatsappNumber } =
         companyInfo[companyId] || companyInfo.default;
+
       const installmentNumbers = selectedInstallments
         .map((installment) => installment.number)
         .join(", ");
-      const document = userData.cpf
-        ? `CPF ${userData.cpf}`
-        : `CNPJ ${userData.cnpj}`;
 
-      // Usar o valor do input na web e o newDueDate no mobile
+      const document = userData.cpf
+        ? userData.cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4")
+        : userData.cnpj;
+
       const dueDateString =
         Platform.OS === "web"
           ? newDueDateInput
           : newDueDate.toLocaleDateString("pt-BR");
 
-      const message = `Olá, meu nome é ${
+      const message = `Solicitação de Antecipação de Parcelas - Título ${billReceivableId}\n\nOlá, meu nome é ${
         userData?.name
-      }, meu ${document}, gostaria de negociar as parcelas: ${installmentNumbers} do título ${billReceivableId}. Valor total: ${totalAmount.toLocaleString(
+      }, portador(a) do CPF nº ${document}, e gostaria de solicitar a antecipação das parcelas ${installmentNumbers} totalizando o valor de ${totalAmount.toLocaleString(
         "pt-BR",
-        { style: "currency", currency: "BRL" }
-      )}. Desejo uma nova data de vencimento para ${dueDateString}.`;
+        {
+          style: "currency",
+          currency: "BRL",
+        }
+      )}. Com uma nova data de vencimento para ${dueDateString}.`;
 
       if (Platform.OS === "web") {
         const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
@@ -459,7 +471,7 @@ const ParcelAntecipation = () => {
   const handleModalDateInputWithMask = (text) => {
     let formattedText = text.replace(/\D/g, "");
 
-    // Limitar o dia a 31 e o mês a 12 durante a digitação
+    // Formatação da data (mantém como está)
     if (formattedText.length >= 1) {
       const day = formattedText.substring(0, 2);
       if (parseInt(day, 10) > 31) {
@@ -504,21 +516,31 @@ const ParcelAntecipation = () => {
 
       if (isValidDate) {
         const date = new Date(year, month - 1, day);
-        // Verificar se a data é válida (por exemplo, não permitir 31 de fevereiro)
+        const today = new Date();
+
+        // Verifica se a data é válida e está dentro do mês atual
         if (
           date &&
           date.getFullYear() === year &&
           date.getMonth() === month - 1 &&
-          date.getDate() === day
+          date.getDate() === day &&
+          date.getMonth() === today.getMonth() &&
+          date.getFullYear() === today.getFullYear() &&
+          date >= today // Não permite datas passadas
         ) {
           setNewDueDate(date);
         } else {
-          Alert.alert("Erro", "Data inválida.");
+          Alert.alert(
+            "Erro",
+            "A data de antecipação deve estar dentro do mês atual."
+          );
           setNewDueDate(null);
+          setNewDueDateInput("");
         }
       } else {
         Alert.alert("Erro", "Data inválida.");
         setNewDueDate(null);
+        setNewDueDateInput("");
       }
     } else {
       setNewDueDate(null);
@@ -533,6 +555,12 @@ const ParcelAntecipation = () => {
       <Text style={styles.selectedCountText}>
         {selectedInstallments.length} parcela(s) selecionada(s)
       </Text>
+
+      {hasOverdueInstallments && (
+        <Text style={styles.warningText}>
+          Não é possível solicitar antecipação com parcelas em atraso.
+        </Text>
+      )}
 
       {/* Filtro por parcela */}
       <View style={styles.pickerContainer}>
@@ -645,12 +673,30 @@ const ParcelAntecipation = () => {
           onChange={(event, selectedDate) => {
             setShowNewDueDatePicker(false);
             if (selectedDate) {
-              setNewDueDate(selectedDate);
+              // Verifica se a data selecionada está no mês atual
+              const today = new Date();
+              if (
+                selectedDate.getMonth() === today.getMonth() &&
+                selectedDate.getFullYear() === today.getFullYear() &&
+                selectedDate >= today
+              ) {
+                const formattedDate = selectedDate.toLocaleDateString("pt-BR");
+                setNewDueDate(selectedDate);
+                setNewDueDateInput(formattedDate);
+              } else {
+                Alert.alert(
+                  "Erro",
+                  "A data de antecipação deve estar dentro do mês atual."
+                );
+                setNewDueDate(null);
+                setNewDueDateInput("");
+              }
             }
           }}
-          minimumDate={
-            new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1)
-          }
+          minimumDate={new Date()} // Data atual
+          maximumDate={
+            new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0)
+          } // Último dia do mês atual
         />
       )}
 
@@ -695,8 +741,25 @@ const ParcelAntecipation = () => {
       )}
 
       <TouchableOpacity
-        style={styles.floatingButton}
+        style={[
+          styles.floatingButton,
+          hasOverdueInstallments && styles.disabledButton,
+        ]}
         onPress={() => {
+          if (hasOverdueInstallments) {
+            if (Platform.OS === "web") {
+              alert(
+                "Não é possível solicitar antecipação com parcelas em atraso."
+              );
+            } else {
+              Alert.alert(
+                "Atenção",
+                "Não é possível solicitar antecipação com parcelas em atraso."
+              );
+            }
+            return;
+          }
+
           if (selectedInstallments.length === 0) {
             if (Platform.OS === "web") {
               alert(
@@ -750,8 +813,15 @@ const ParcelAntecipation = () => {
                   })}
               </Text>
 
+              <Text style={styles.indiqueCond}>
+                Informe a data para antecipação do pagamento
+              </Text>
+
               {Platform.OS === "web" ? (
                 <View style={styles.dateInputModalContainer}>
+                  <Text style={styles.dateInstructionText}>
+                    A data de antecipação deve estar dentro do mês atual!
+                  </Text>
                   <View style={styles.modalDateInputWrapper}>
                     <TextInput
                       style={[
@@ -1011,6 +1081,18 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginBottom: 8,
   },
+  disabledButton: {
+    backgroundColor: "#cccccc",
+    opacity: 0.7,
+  },
+  warningText: {
+    color: "#E1272C",
+    fontSize: 14,
+    textAlign: "center",
+    marginHorizontal: 16,
+    marginBottom: 8,
+    fontWeight: "bold",
+  },
   overdueCard: {
     backgroundColor: "#FFD7D8",
   },
@@ -1047,6 +1129,14 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#E1272C",
     marginTop: 8,
+  },
+  dateInstructionText: {
+    fontSize: 16,
+    color: "#ff0707",
+    textAlign: "center",
+    marginBottom: 10,
+    fontStyle: "italic",
+    fontWeight: 'bold'
   },
   floatingButton: {
     backgroundColor: "#E1272C",
@@ -1175,6 +1265,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#333",
     marginLeft: 8,
+  },
+  indiqueCond: {
+    fontSize: 18,
+    color: "#333",
+    fontWeight: "bold",
+    textAlign: "center",
   },
 });
 
