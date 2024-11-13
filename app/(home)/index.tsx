@@ -1,5 +1,4 @@
-// Index.js
-import React, { useState, useContext, useEffect } from "react";
+import React, { useState, useContext, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -21,10 +20,11 @@ import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const Index = () => {
-  const [inputValue, setInputValue] = useState(""); // Armazena CPF ou CNPJ
+  const [inputValue, setInputValue] = useState(""); // CPF ou CNPJ formatado
   const [password, setPassword] = useState(""); // Armazena a senha
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [inputError, setInputError] = useState("");
+  const [passwordError, setPasswordError] = useState("");
   const router = useRouter();
 
   const { setUserData } = useContext(UserContext);
@@ -32,6 +32,8 @@ const Index = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const [cpfRecovery, setCpfRecovery] = useState("");
   const [loadingRecovery, setLoadingRecovery] = useState(false);
+
+  const passwordInputRef = useRef(null);
 
   useEffect(() => {
     const checkLoginStatus = async () => {
@@ -57,39 +59,142 @@ const Index = () => {
     checkLoginStatus();
   }, []);
 
+  const formatCpfCnpj = (value) => {
+    const numericValue = value.replace(/\D/g, '');
+    if (numericValue.length <= 11) {
+      // Máscara CPF: XXX.XXX.XXX-XX
+      let cpf = numericValue.replace(/(\d{3})(\d)/, '$1.$2');
+      cpf = cpf.replace(/(\d{3})(\d)/, '$1.$2');
+      cpf = cpf.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+      return cpf;
+    } else {
+      // Máscara CNPJ: XX.XXX.XXX/XXXX-XX
+      let cnpj = numericValue.replace(/^(\d{2})(\d)/, '$1.$2');
+      cnpj = cnpj.replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3');
+      cnpj = cnpj.replace(/\.(\d{3})(\d)/, '.$1/$2');
+      cnpj = cnpj.replace(/(\d{4})(\d)/, '$1-$2');
+      return cnpj;
+    }
+  };
+
+  const isValidCpf = (cpf) => {
+    cpf = cpf.replace(/\D/g, '');
+    if (cpf.length !== 11) {
+      return false;
+    }
+    if (/^(\d)\1+$/.test(cpf)) {
+      return false;
+    }
+    let sum = 0;
+    let rest;
+    for (let i = 1; i <= 9; i++) {
+      sum = sum + parseInt(cpf.substring(i - 1, i)) * (11 - i);
+    }
+    rest = (sum * 10) % 11;
+    if (rest === 10 || rest === 11) {
+      rest = 0;
+    }
+    if (rest !== parseInt(cpf.substring(9, 10))) {
+      return false;
+    }
+    sum = 0;
+    for (let i = 1; i <= 10; i++) {
+      sum = sum + parseInt(cpf.substring(i - 1, i)) * (12 - i);
+    }
+    rest = (sum * 10) % 11;
+    if (rest === 10 || rest === 11) {
+      rest = 0;
+    }
+    if (rest !== parseInt(cpf.substring(10, 11))) {
+      return false;
+    }
+    return true;
+  };
+
+  const isValidCnpj = (cnpj) => {
+    cnpj = cnpj.replace(/\D/g, '');
+    if (cnpj.length !== 14) {
+      return false;
+    }
+    if (/^(\d)\1+$/.test(cnpj)) {
+      return false;
+    }
+    let length = cnpj.length - 2;
+    let numbers = cnpj.substring(0, length);
+    let digits = cnpj.substring(length);
+    let sum = 0;
+    let pos = length - 7;
+    for (let i = length; i >= 1; i--) {
+      sum += numbers.charAt(length - i) * pos--;
+      if (pos < 2) {
+        pos = 9;
+      }
+    }
+    let result = sum % 11 < 2 ? 0 : 11 - (sum % 11);
+    if (result !== parseInt(digits.charAt(0))) {
+      return false;
+    }
+    length = length + 1;
+    numbers = cnpj.substring(0, length);
+    sum = 0;
+    pos = length - 7;
+    for (let i = length; i >= 1; i--) {
+      sum += numbers.charAt(length - i) * pos--;
+      if (pos < 2) {
+        pos = 9;
+      }
+    }
+    result = sum % 11 < 2 ? 0 : 11 - (sum % 11);
+    if (result !== parseInt(digits.charAt(1))) {
+      return false;
+    }
+    return true;
+  };
+
   const fetchUserData = async () => {
     if (!inputValue || !password) {
-      setError("Por favor, insira um CPF/CNPJ e a senha.");
+      Alert.alert("Erro", "Por favor, insira um CPF/CNPJ e a senha.");
       return;
     }
 
     setLoading(true);
-    setError("");
+    setInputError("");
+    setPasswordError("");
 
     try {
       const username = "engenharq-mozart";
-      const apiPassword = "i94B1q2HUXf7PP7oscuIBygquSRZ9lhb";
+      const apiPassword = "sua_senha"; // Substitua 'sua_senha' pela senha correta
       const credentials = btoa(`${username}:${apiPassword}`);
 
-      const sanitizedInput = inputValue.replace(/\D/g, "");
+      const sanitizedInput = inputValue.replace(/\D/g, '');
 
       // Verifica se o valor é CPF (11 dígitos) ou CNPJ (14 dígitos)
       const isCpf = sanitizedInput.length === 11;
       const isCnpj = sanitizedInput.length === 14;
 
       if (!isCpf && !isCnpj) {
-        setError("CPF ou CNPJ inválido.");
+        setInputError("CPF ou CNPJ inválido.");
+        setLoading(false);
+        return;
+      }
+
+      if (isCpf && !isValidCpf(sanitizedInput)) {
+        setInputError("CPF inválido.");
+        setLoading(false);
+        return;
+      }
+
+      if (isCnpj && !isValidCnpj(sanitizedInput)) {
+        setInputError("CNPJ inválido.");
         setLoading(false);
         return;
       }
 
       // Define a senha como os primeiros 6 dígitos para CPF e últimos 6 dígitos para CNPJ
-      const expectedPassword = isCpf
-        ? sanitizedInput.slice(0, 6)
-        : sanitizedInput.slice(0, 6);
+      const expectedPassword = sanitizedInput.slice(0, 6);
 
       if (password !== expectedPassword) {
-        setError("Senha incorreta.");
+        setPasswordError("Senha incorreta.");
         setLoading(false);
         return;
       }
@@ -119,10 +224,10 @@ const Index = () => {
 
         router.replace("/initial-page");
       } else {
-        setError("Cliente não encontrado.");
+        setInputError("Cliente não encontrado.");
       }
     } catch (err) {
-      setError("Falha ao buscar dados do cliente.");
+      Alert.alert("Erro", "Falha ao buscar dados do cliente.");
       console.error(err);
     } finally {
       setLoading(false);
@@ -143,10 +248,16 @@ const Index = () => {
 
     try {
       const username = "engenharq-mozart";
-      const apiPassword = "i94B1q2HUXf7PP7oscuIBygquSRZ9lhb";
+      const apiPassword = "sua_senha"; // Substitua 'sua_senha' pela senha correta
       const credentials = btoa(`${username}:${apiPassword}`);
 
-      const sanitizedCpf = cpfRecovery.replace(/\D/g, "");
+      const sanitizedCpf = cpfRecovery.replace(/\D/g, '');
+
+      if (!isValidCpf(sanitizedCpf)) {
+        Alert.alert("Erro", "CPF inválido.");
+        setLoadingRecovery(false);
+        return;
+      }
 
       const response = await axios.get(
         `https://engpag.backend.gustavohenrique.dev/proxy/customers?cpf=${sanitizedCpf}&limit=100&offset=0`,
@@ -182,7 +293,7 @@ const Index = () => {
       setLoadingRecovery(false);
     }
   };
-  
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -202,11 +313,39 @@ const Index = () => {
             style={styles.input}
             placeholder="CPF ou CNPJ"
             value={inputValue}
-            onChangeText={setInputValue}
+            onChangeText={(text) => {
+              const formatted = formatCpfCnpj(text);
+              setInputValue(formatted);
+              setInputError('');
+
+              const sanitizedInput = formatted.replace(/\D/g, '');
+              if (sanitizedInput.length === 11) {
+                if (isValidCpf(sanitizedInput)) {
+                  setInputError('');
+                } else {
+                  setInputError('CPF inválido');
+                }
+              } else if (sanitizedInput.length === 14) {
+                if (isValidCnpj(sanitizedInput)) {
+                  setInputError('');
+                } else {
+                  setInputError('CNPJ inválido');
+                }
+              } else {
+                setInputError('CPF ou CNPJ incompleto');
+              }
+            }}
             keyboardType="numeric"
             placeholderTextColor="#aaa"
+            returnKeyType="next"
+            onSubmitEditing={() => {
+              passwordInputRef.current.focus();
+            }}
+            accessible={true}
+            accessibilityLabel="Digite seu CPF ou CNPJ"
           />
         </View>
+        {inputError ? <Text style={styles.errorText}>{inputError}</Text> : null}
 
         <View style={styles.inputContainer}>
           <Ionicons
@@ -217,34 +356,43 @@ const Index = () => {
           />
           <TextInput
             style={styles.input}
-            placeholder="SENHA"
+            placeholder="Senha"
             value={password}
-            onChangeText={setPassword}
+            onChangeText={(text) => {
+              setPassword(text);
+              setPasswordError('');
+            }}
             secureTextEntry
             placeholderTextColor="#aaa"
+            ref={passwordInputRef}
+            returnKeyType="done"
+            onSubmitEditing={fetchUserData}
+            accessible={true}
+            accessibilityLabel="Digite sua senha"
           />
         </View>
+        {passwordError ? <Text style={styles.errorText}>{passwordError}</Text> : null}
 
         <TouchableOpacity onPress={handleForgotPassword}>
           <Text style={styles.forgotPasswordText}>Esqueceu a senha?</Text>
         </TouchableOpacity>
 
-
-        {error ? <Text style={styles.errorText}>{error}</Text> : null}
-
-
-        <TouchableOpacity style={styles.accessButton} onPress={fetchUserData}>
+        <TouchableOpacity
+          style={styles.accessButton}
+          onPress={fetchUserData}
+          accessible={true}
+          accessibilityLabel="Acessar o aplicativo"
+        >
           {loading ? (
             <ActivityIndicator
               size="large"
-              color="#007bff"
+              color="#fff"
               style={styles.loading}
             />
           ) : (
             <Text style={styles.accessButtonText}>ACESSAR</Text>
           )}
         </TouchableOpacity>
-
 
         <Image source={require("./homelogo.png")} style={styles.logo} />
       </ScrollView>
@@ -283,7 +431,7 @@ const Index = () => {
                 {loadingRecovery ? (
                   <ActivityIndicator
                     size="large"
-                    color="#007bff"
+                    color="#fff"
                     style={styles.loading}
                   />
                 ) : (
@@ -305,9 +453,7 @@ const Index = () => {
   );
 };
 
-
 const styles = StyleSheet.create({
-  // ... [Your existing styles here] ...
   container: {
     flex: 1,
     backgroundColor: "#FFF8F8",
@@ -321,7 +467,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 60,
     fontWeight: "bold",
-    marginBottom: 90,
+    marginBottom: 60,
     color: "#333",
   },
   inputContainer: {
@@ -329,7 +475,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderBottomWidth: 1,
     borderColor: "#E1272C",
-    marginBottom: 20,
+    marginBottom: 10,
     width: "100%",
   },
   icon: {
@@ -338,23 +484,24 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     height: 50,
-    fontSize: 16,
+    fontSize: 18,
     color: "#333",
   },
   forgotPasswordText: {
     color: "#E1272C",
     fontSize: 14,
-    alignSelf: "flex-end",
+    alignSelf: "center",
     marginBottom: 20,
+    marginTop: 10,
   },
   accessButton: {
-    backgroundColor: "#5B5B5B",
+    backgroundColor: "#E1272C",
     width: "60%",
     paddingVertical: 15,
     justifyContent: "center",
     alignItems: "center",
     borderRadius: 5,
-    marginTop: 70,
+    marginTop: 40,
     marginBottom: 30,
   },
   accessButtonText: {
@@ -366,8 +513,9 @@ const styles = StyleSheet.create({
   errorText: {
     color: "#E1272C",
     fontWeight: "bold",
-    marginTop: 20,
-    marginBottom: 20
+    marginBottom: 10,
+    alignSelf: "flex-start",
+    paddingLeft: 40,
   },
   logo: {
     width: 155,
@@ -403,7 +551,7 @@ const styles = StyleSheet.create({
     width: "100%",
   },
   modalButton: {
-    backgroundColor: "#5B5B5B",
+    backgroundColor: "#E1272C",
     width: "60%",
     paddingVertical: 15,
     justifyContent: "center",
