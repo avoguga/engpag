@@ -145,7 +145,9 @@ const PaymentHistory = () => {
 
       const payments = paidInstallments.map((installment) => {
         const receipt = installment.receipts && installment.receipts[0];
-        const paymentDate = receipt ? formatDate(receipt.receiptDate) : "Data indisponível";
+        const paymentDate = receipt
+          ? formatDate(receipt.receiptDate)
+          : "Data indisponível";
         const dueDate = formatDate(installment.dueDate);
 
         return {
@@ -157,10 +159,13 @@ const PaymentHistory = () => {
           formattedDueDate: dueDate,
           paymentDate: receipt?.receiptDate,
           formattedPaymentDate: paymentDate,
-          value: parseFloat(installment.adjustedValue || 0).toLocaleString("pt-BR", {
-            style: "currency",
-            currency: "BRL",
-          }),
+          value: parseFloat(installment.adjustedValue || 0).toLocaleString(
+            "pt-BR",
+            {
+              style: "currency",
+              currency: "BRL",
+            }
+          ),
           adjustedValue: installment.adjustedValue,
           originalValue: installment.originalValue,
           currentBalance: installment.currentBalance,
@@ -172,14 +177,17 @@ const PaymentHistory = () => {
           indexerValueBaseDate: installment.indexerValueBaseDate,
           indexerValueCalculationDate: receipt?.indexerValueCalculationDate,
           generatedBoleto: installment.generatedBoleto,
-          receipt: receipt ? {
-            receiptId: receipt.receiptId,
-            receiptValue: receipt.receiptValue,
-            receiptNetValue: receipt.receiptNetValue,
-            monetaryCorrectionValue: receipt.monetaryCorrectionValue,
-            calculationDate: receipt.calculationDate,
-            indexerValueCalculationDate: receipt.indexerValueCalculationDate,
-          } : null
+          receipt: receipt
+            ? {
+                receiptId: receipt.receiptId,
+                receiptValue: receipt.receiptValue,
+                receiptNetValue: receipt.receiptNetValue,
+                monetaryCorrectionValue: receipt.monetaryCorrectionValue,
+                calculationDate: receipt.calculationDate,
+                indexerValueCalculationDate:
+                  receipt.indexerValueCalculationDate,
+              }
+            : null,
         };
       });
 
@@ -192,19 +200,21 @@ const PaymentHistory = () => {
     }
   };
 
+  console.log("oi", selectedInstallment);
+
   const handlePaymentHistoryNavigation = async () => {
     if (!userData || !userData.id) {
       Alert.alert("Erro", "Dados do cliente não disponíveis.");
       return;
     }
-  
+
     setLoadingHistory(true);
-  
+
     try {
       const username = "engenharq-mozart";
       const password = "i94B1q2HUXf7PP7oscuIBygquSRZ9lhb";
       const credentials = btoa(`${username}:${password}`);
-  
+
       const response = await axios.get(
         `https://engpag.backend.gustavohenrique.dev/proxy/current-debit-balance/pdf`,
         {
@@ -216,20 +226,23 @@ const PaymentHistory = () => {
           },
         }
       );
-  
+
       if (response.data && response.data.results && response.data.results[0]) {
         const url = response.data.results[0].urlReport;
-        
-        if (Platform.OS === 'web') {
-          const link = document.createElement('a');
+
+        if (Platform.OS === "web") {
+          const link = document.createElement("a");
           link.href = url;
-          link.target = '_blank';
-          link.rel = 'noopener noreferrer';
-          
-          if (navigator.userAgent.indexOf('Safari') !== -1) {
-            link.setAttribute('download', `historico-pagamento-${userData.id}.pdf`);
+          link.target = "_blank";
+          link.rel = "noopener noreferrer";
+
+          if (navigator.userAgent.indexOf("Safari") !== -1) {
+            link.setAttribute(
+              "download",
+              `historico-pagamento-${userData.id}.pdf`
+            );
           }
-          
+
           document.body.appendChild(link);
           link.click();
           document.body.removeChild(link);
@@ -256,8 +269,29 @@ const PaymentHistory = () => {
 
     return installments.filter((installment) => {
       const dueDate = new Date(installment.dueDate);
-      if (filter === "VENCIDOS") return dueDate < today && !installment.paymentDate;
-      if (filter === "A VENCER") return dueDate >= today && !installment.paymentDate;
+      if (filter === "VENCIDOS")
+        return dueDate < today && !installment.paymentDate;
+      if (filter === "A VENCER")
+        return dueDate >= today && !installment.paymentDate;
+    });
+  };
+
+  const getAmount = (item) => {
+    if (item.receipt?.receiptNetValue) {
+      return formatCurrency(item.receipt.receiptNetValue);
+    }
+
+    if (item.currentBalance) {
+      return item.currentBalance;
+    }
+
+    return formatCurrency(0);
+  };
+
+  const formatCurrency = (value) => {
+    return parseFloat(value).toLocaleString("pt-BR", {
+      style: "currency",
+      currency: "BRL",
     });
   };
 
@@ -292,7 +326,7 @@ const PaymentHistory = () => {
         </Text>
         <Text style={styles.cardAmount}>
           <Text style={styles.label}>Valor: </Text>
-          {item.value || item.currentBalance}
+          {getAmount(item)}
         </Text>
         {item.paymentDate && (
           <Text style={styles.cardPaidDate}>
@@ -322,17 +356,42 @@ const PaymentHistory = () => {
       </TouchableOpacity>
       <View style={styles.filterContainer}>
         <TouchableOpacity onPress={() => setFilter("VENCIDOS")}>
-          <Text style={[styles.filterText, filter === "VENCIDOS" && styles.activeFilter]}>Vencidos</Text>
+          <Text
+            style={[
+              styles.filterText,
+              filter === "VENCIDOS" && styles.activeFilter,
+            ]}
+          >
+            Vencidos
+          </Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={() => setFilter("A VENCER")}>
-          <Text style={[styles.filterText, filter === "A VENCER" && styles.activeFilter]}>A Vencer</Text>
+          <Text
+            style={[
+              styles.filterText,
+              filter === "A VENCER" && styles.activeFilter,
+            ]}
+          >
+            A Vencer
+          </Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={() => setFilter("PAGOS")}>
-          <Text style={[styles.filterText, filter === "PAGOS" && styles.activeFilter]}>Pagos</Text>
+          <Text
+            style={[
+              styles.filterText,
+              filter === "PAGOS" && styles.activeFilter,
+            ]}
+          >
+            Pagos
+          </Text>
         </TouchableOpacity>
       </View>
       {loading ? (
-        <ActivityIndicator size="large" color="#E1272C" style={{ marginTop: 20 }} />
+        <ActivityIndicator
+          size="large"
+          color="#E1272C"
+          style={{ marginTop: 20 }}
+        />
       ) : (
         <FlatList
           data={getFilteredInstallments()}
@@ -363,16 +422,22 @@ const PaymentHistory = () => {
               <ScrollView style={{ width: "100%" }}>
                 <View style={styles.modalItem}>
                   <Text style={styles.modalLabel}>Número da Parcela:</Text>
-                  <Text style={styles.modalValue}>{selectedInstallment.installmentNumber}</Text>
+                  <Text style={styles.modalValue}>
+                    {selectedInstallment.installmentNumber}
+                  </Text>
                 </View>
                 <View style={styles.modalItem}>
                   <Text style={styles.modalLabel}>Data de Vencimento:</Text>
-                  <Text style={styles.modalValue}>{selectedInstallment.formattedDueDate}</Text>
+                  <Text style={styles.modalValue}>
+                    {selectedInstallment.formattedDueDate}
+                  </Text>
                 </View>
                 {selectedInstallment.formattedPaymentDate && (
                   <View style={styles.modalItem}>
                     <Text style={styles.modalLabel}>Data de Pagamento:</Text>
-                    <Text style={styles.modalValue}>{selectedInstallment.formattedPaymentDate}</Text>
+                    <Text style={styles.modalValue}>
+                      {selectedInstallment.formattedPaymentDate}
+                    </Text>
                   </View>
                 )}
                 {selectedInstallment.receipt && (
@@ -380,16 +445,22 @@ const PaymentHistory = () => {
                     <View style={styles.modalItem}>
                       <Text style={styles.modalLabel}>Valor do Recibo:</Text>
                       <Text style={styles.modalValue}>
-                        {parseFloat(selectedInstallment.receipt.receiptValue).toLocaleString("pt-BR", {
+                        {parseFloat(
+                          selectedInstallment.receipt.receiptValue
+                        ).toLocaleString("pt-BR", {
                           style: "currency",
                           currency: "BRL",
                         })}
                       </Text>
                     </View>
                     <View style={styles.modalItem}>
-                      <Text style={styles.modalLabel}>Valor Líquido do Recibo:</Text>
+                      <Text style={styles.modalLabel}>
+                        Valor Líquido do Recibo:
+                      </Text>
                       <Text style={styles.modalValue}>
-                        {parseFloat(selectedInstallment.receipt.receiptNetValue).toLocaleString("pt-BR", {
+                        {parseFloat(
+                          selectedInstallment.receipt.receiptNetValue
+                        ).toLocaleString("pt-BR", {
                           style: "currency",
                           currency: "BRL",
                         })}
@@ -397,22 +468,14 @@ const PaymentHistory = () => {
                     </View>
                   </>
                 )}
-                <View style={styles.modalItem}>
-                  <Text style={styles.modalLabel}>Valor Ajustado:</Text>
-                  <Text style={styles.modalValue}>
-                    {selectedInstallment.adjustedValue
-                      ? parseFloat(selectedInstallment.adjustedValue).toLocaleString("pt-BR", {
-                          style: "currency",
-                          currency: "BRL",
-                        })
-                      : "Valor indisponível"}
-                  </Text>
-                </View>
+
                 <View style={styles.modalItem}>
                   <Text style={styles.modalLabel}>Valor Original:</Text>
                   <Text style={styles.modalValue}>
                     {selectedInstallment.originalValue
-                      ? parseFloat(selectedInstallment.originalValue).toLocaleString("pt-BR", {
+                      ? parseFloat(
+                          selectedInstallment.originalValue
+                        ).toLocaleString("pt-BR", {
                           style: "currency",
                           currency: "BRL",
                         })
@@ -420,10 +483,25 @@ const PaymentHistory = () => {
                   </Text>
                 </View>
                 <View style={styles.modalItem}>
-                  <Text style={styles.modalLabel}>Valor Adicional:</Text>
+                  <Text style={styles.modalLabel}>Valor corrigido:</Text>
+                  <Text style={styles.modalValue}>
+                    {selectedInstallment.adjustedValue
+                      ? parseFloat(
+                          selectedInstallment.adjustedValue
+                        ).toLocaleString("pt-BR", {
+                          style: "currency",
+                          currency: "BRL",
+                        })
+                      : "Valor indisponível"}
+                  </Text>
+                </View>
+                <View style={styles.modalItem}>
+                  <Text style={styles.modalLabel}>Juros e multa:</Text>
                   <Text style={styles.modalValue}>
                     {selectedInstallment.additionalValue
-                      ? parseFloat(selectedInstallment.additionalValue).toLocaleString("pt-BR", {
+                      ? parseFloat(
+                          selectedInstallment.additionalValue
+                        ).toLocaleString("pt-BR", {
                           style: "currency",
                           currency: "BRL",
                         })
@@ -431,18 +509,28 @@ const PaymentHistory = () => {
                   </Text>
                 </View>
                 <View style={styles.modalItem}>
-                  <Text style={styles.modalLabel}>Correção Monetária:</Text>
+                  <Text style={styles.modalLabel}>Valor Atualizado:</Text>
                   <Text style={styles.modalValue}>
-                    {selectedInstallment.monetaryCorrectionValue
-                      ? parseFloat(selectedInstallment.monetaryCorrectionValue).toLocaleString("pt-BR", {
+                    {selectedInstallment.currentBalance
+                      ? selectedInstallment.currentBalance
+                      : parseFloat(
+                          selectedInstallment.receipt?.receiptNetValue
+                        ).toLocaleString("pt-BR", {
                           style: "currency",
                           currency: "BRL",
-                        })
-                      : "Valor indisponível"}
+                        }) ?? "Valor indisponível"}
                   </Text>
                 </View>
+                {!selectedInstallment.paymentDate && (
+                  <View style={styles.modalItem}>
+                    <Text style={styles.modalLabel}>Boleto gerado:</Text>
+                    <Text style={styles.modalValue}>
+                      {selectedInstallment.generatedBoleto ? "Sim" : "Não"}
+                    </Text>
+                  </View>
+                )}
                 <View style={styles.modalItem}>
-                  <Text style={styles.modalLabel}>Data Base da Correção:</Text>
+                  <Text style={styles.modalLabel}>Data base da correção:</Text>
                   <Text style={styles.modalValue}>
                     {selectedInstallment.baseDateOfCorrection
                       ? formatDate(selectedInstallment.baseDateOfCorrection)
@@ -451,18 +539,20 @@ const PaymentHistory = () => {
                 </View>
                 <View style={styles.modalItem}>
                   <Text style={styles.modalLabel}>Tipo de Condição:</Text>
-                  <Text style={styles.modalValue}>{selectedInstallment.conditionType}</Text>
+                  <Text style={styles.modalValue}>
+                    {selectedInstallment.conditionType}
+                  </Text>
                 </View>
                 <View style={styles.modalItem}>
-                  <Text style={styles.modalLabel}>Código do Indexador:</Text>
-                  <Text style={styles.modalValue}>{selectedInstallment.indexerCode}</Text>
+                  <Text style={styles.modalLabel}>Indexador utilizado:</Text>
+                  <Text style={styles.modalValue}>
+                    {selectedInstallment.indexerName}
+                  </Text>
                 </View>
                 <View style={styles.modalItem}>
-                  <Text style={styles.modalLabel}>Nome do Indexador:</Text>
-                  <Text style={styles.modalValue}>{selectedInstallment.indexerName}</Text>
-                </View>
-                <View style={styles.modalItem}>
-                  <Text style={styles.modalLabel}>Valor Base do Indexador:</Text>
+                  <Text style={styles.modalLabel}>
+                    Valor base do indexador:
+                  </Text>
                   <Text style={styles.modalValue}>
                     {selectedInstallment.indexerValueBaseDate
                       ? selectedInstallment.indexerValueBaseDate.toFixed(8)
@@ -470,21 +560,17 @@ const PaymentHistory = () => {
                   </Text>
                 </View>
                 <View style={styles.modalItem}>
-                  <Text style={styles.modalLabel}>Valor de Cálculo do Indexador:</Text>
+                  <Text style={styles.modalLabel}>
+                    Valor de cálculo do indexador:
+                  </Text>
                   <Text style={styles.modalValue}>
                     {selectedInstallment.indexerValueCalculationDate
-                      ? selectedInstallment.indexerValueCalculationDate.toFixed(8)
+                      ? selectedInstallment.indexerValueCalculationDate.toFixed(
+                          8
+                        )
                       : "Valor indisponível"}
                   </Text>
                 </View>
-                {!selectedInstallment.paymentDate && (
-                  <View style={styles.modalItem}>
-                    <Text style={styles.modalLabel}>Gerou Boleto:</Text>
-                    <Text style={styles.modalValue}>
-                      {selectedInstallment.generatedBoleto ? "Sim" : "Não"}
-                    </Text>
-                  </View>
-                )}
               </ScrollView>
               <TouchableOpacity
                 style={styles.closeButton}

@@ -54,7 +54,7 @@ const PaymentsCompleted = () => {
 
     try {
       const username = "engenharq-mozart";
-      const password = "sua_senha"; // Substitua 'sua_senha' pela senha correta
+      const password = "i94B1q2HUXf7PP7oscuIBygquSRZ9lhb"; // Substitua 'sua_senha' pela senha correta
       const credentials = btoa(`${username}:${password}`);
 
       const searchParam = userData.cpf
@@ -98,7 +98,7 @@ const PaymentsCompleted = () => {
         // Extrair e formatar a data de pagamento do recibo
         let paymentDate = null;
         let formattedPaymentDate = "Data indisponível";
-        let receiptValue = "Valor indisponível";
+        let receiptNetValue = "Valor indisponível";
 
         if (
           installment.receipts &&
@@ -111,8 +111,8 @@ const PaymentsCompleted = () => {
           paymentDate = new Date(Date.UTC(year, month - 1, day));
           formattedPaymentDate = `${day}/${month}/${year}`;
 
-          // Extrair receiptValue
-          receiptValue = parseFloat(installment.receipts[0].receiptValue).toLocaleString("pt-BR", {
+          // Extrair receiptNetValue
+          receiptNetValue = parseFloat(installment.receipts[0].receiptNetValue).toLocaleString("pt-BR", {
             style: "currency",
             currency: "BRL",
           });
@@ -135,7 +135,7 @@ const PaymentsCompleted = () => {
           formattedDueDate: formattedDueDate, // Data formatada para exibição
           paymentDate: paymentDate, // Data do pagamento
           formattedPaymentDate: formattedPaymentDate, // Data do pagamento formatada
-          value: parseFloat(installment.adjustedValue ).toLocaleString("pt-BR", {
+          value: parseFloat(installment.receipts[0].receiptNetValue ).toLocaleString("pt-BR", {
             style: "currency",
             currency: "BRL",
           }),
@@ -145,7 +145,7 @@ const PaymentsCompleted = () => {
             style: "currency",
             currency: "BRL",
           }),
-          receiptValue: receiptValue,
+          receiptNetValue: receiptNetValue,
         };
       });
 
@@ -310,12 +310,12 @@ const PaymentsCompleted = () => {
     <View style={styles.card}>
       <View style={styles.cardHeader}>
         <Text style={styles.cardNotice}>
-          {item.receiptValue !== "Valor indisponível" ? "Pagamento Realizado" : "Pagamento Indisponível"}
+          {item.receiptNetValue !== "Valor indisponível" ? "Pagamento Realizado" : "Pagamento Indisponível"}
         </Text>
         <Ionicons
-          name={item.receiptValue !== "Valor indisponível" ? "checkmark-circle" : "close-circle"}
+          name={item.receiptNetValue !== "Valor indisponível" ? "checkmark-circle" : "close-circle"}
           size={20}
-          color={item.receiptValue !== "Valor indisponível" ? "#28a745" : "#dc3545"}
+          color={item.receiptNetValue !== "Valor indisponível" ? "#28a745" : "#dc3545"}
         />
       </View>
       <Text style={styles.cardTitle}>Parcela: {item.number}</Text>
@@ -326,8 +326,6 @@ const PaymentsCompleted = () => {
       {/* Novos campos adicionados */}
       <Text style={styles.cardSubtitle}>Indexador: {item.indexerName}</Text>
       <Text style={styles.cardSubtitle}>Tipo de Condição: {item.conditionType}</Text>
-      <Text style={styles.cardSubtitle}>Valor do Recibo: {item.receiptValue}</Text>
-      <Text style={styles.cardSubtitle}>Valor Original: {item.originalValue}</Text>
     </View>
   );
 

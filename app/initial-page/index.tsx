@@ -300,6 +300,7 @@ const InitialPage = () => {
       params: {
         billReceivableId: item.billReceivableId,
         enterpriseName: enterpriseNames[index]?.enterpriseName,
+        receivableBillValue: enterpriseNames[index]?.receivableBillValue,
       },
     });
   };

@@ -140,7 +140,7 @@ const ParcelAntecipation = () => {
 
   const handleDateInputWithMask = (text, setDate, setDateInput) => {
     let formattedText = text.replace(/\D/g, "");
-  
+
     // Limitar o dia a 31 e o mês a 12 durante a digitação
     if (formattedText.length >= 1) {
       const day = formattedText.substring(0, 2);
@@ -148,35 +148,32 @@ const ParcelAntecipation = () => {
         formattedText = "31";
       }
     }
-  
+
     if (formattedText.length >= 3) {
       const month = formattedText.substring(2, 4);
       if (parseInt(month, 10) > 12) {
         formattedText = formattedText.substring(0, 2) + "12";
       }
     }
-  
+
     if (formattedText.length > 2) {
       formattedText = formattedText.replace(/(\d{2})(\d)/, "$1/$2");
     }
     if (formattedText.length > 5) {
-      formattedText = formattedText.replace(
-        /(\d{2})\/(\d{2})(\d)/,
-        "$1/$2/$3"
-      );
+      formattedText = formattedText.replace(/(\d{2})\/(\d{2})(\d)/, "$1/$2/$3");
     }
     if (formattedText.length > 10) {
       formattedText = formattedText.slice(0, 10);
     }
-  
+
     setDateInput(formattedText);
-  
+
     if (formattedText.length === 10) {
       const [dayStr, monthStr, yearStr] = formattedText.split("/");
       const day = parseInt(dayStr, 10);
       const month = parseInt(monthStr, 10);
       const year = parseInt(yearStr, 10);
-  
+
       // Verificar se os valores de dia, mês e ano são válidos
       const isValidDate =
         day > 0 &&
@@ -185,7 +182,7 @@ const ParcelAntecipation = () => {
         month <= 12 &&
         year >= 1900 &&
         year <= 2100;
-  
+
       if (isValidDate) {
         const date = new Date(year, month - 1, day);
         // Verificar se a data é válida (por exemplo, não permitir 31 de fevereiro)
@@ -208,8 +205,10 @@ const ParcelAntecipation = () => {
       setDate(null);
     }
   };
-  
-  
+
+  const unselectAllParcels = () => {
+    setSelectedInstallments([]);
+  };
 
   const handleWebDateChange = (selectedDate, setDate, setDateInput) => {
     if (selectedDate) {
@@ -280,7 +279,6 @@ const ParcelAntecipation = () => {
       )}
     </View>
   );
-  
 
   const renderItem = ({ item }) => (
     <TouchableOpacity
@@ -460,7 +458,7 @@ const ParcelAntecipation = () => {
 
   const handleModalDateInputWithMask = (text) => {
     let formattedText = text.replace(/\D/g, "");
-  
+
     // Limitar o dia a 31 e o mês a 12 durante a digitação
     if (formattedText.length >= 1) {
       const day = formattedText.substring(0, 2);
@@ -468,7 +466,7 @@ const ParcelAntecipation = () => {
         formattedText = "31";
       }
     }
-  
+
     if (formattedText.length >= 3) {
       const month = formattedText.substring(2, 4);
       if (parseInt(month, 10) > 12) {
@@ -476,28 +474,25 @@ const ParcelAntecipation = () => {
           formattedText.substring(0, 2) + "12" + formattedText.substring(4);
       }
     }
-  
+
     if (formattedText.length > 2) {
       formattedText = formattedText.replace(/(\d{2})(\d)/, "$1/$2");
     }
     if (formattedText.length > 5) {
-      formattedText = formattedText.replace(
-        /(\d{2})\/(\d{2})(\d)/,
-        "$1/$2/$3"
-      );
+      formattedText = formattedText.replace(/(\d{2})\/(\d{2})(\d)/, "$1/$2/$3");
     }
     if (formattedText.length > 10) {
       formattedText = formattedText.slice(0, 10);
     }
-  
+
     setNewDueDateInput(formattedText);
-  
+
     if (formattedText.length === 10) {
       const [dayStr, monthStr, yearStr] = formattedText.split("/");
       const day = parseInt(dayStr, 10);
       const month = parseInt(monthStr, 10);
       const year = parseInt(yearStr, 10);
-  
+
       // Verificar se os valores de dia, mês e ano são válidos
       const isValidDate =
         day > 0 &&
@@ -506,7 +501,7 @@ const ParcelAntecipation = () => {
         month <= 12 &&
         year >= 1900 &&
         year <= 2100;
-  
+
       if (isValidDate) {
         const date = new Date(year, month - 1, day);
         // Verificar se a data é válida (por exemplo, não permitir 31 de fevereiro)
@@ -529,36 +524,12 @@ const ParcelAntecipation = () => {
       setNewDueDate(null);
     }
   };
-  
-  
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>
         {enterpriseName || "Nome do Empreendimento"}
       </Text>
-      <TouchableOpacity
-        style={styles.actionButton}
-        onPress={() => {
-          if (selectedInstallments.length === 0) {
-            if (Platform.OS === "web") {
-              alert(
-                "Por favor, clique em uma parcela para selecioná-la antes de continuar."
-              );
-            } else {
-              Alert.alert(
-                "Atenção",
-                "Por favor, clique em uma parcela para selecioná-la antes de continuar."
-              );
-            }
-            return;
-          }
-          setConfirmModalVisible(true);
-        }}
-      >
-        <Text style={styles.actionButtonText}>Antecipar Parcelas</Text>
-      </TouchableOpacity>
-
       <Text style={styles.selectedCountText}>
         {selectedInstallments.length} parcela(s) selecionada(s)
       </Text>
@@ -608,6 +579,18 @@ const ParcelAntecipation = () => {
       <TouchableOpacity style={styles.resetButton} onPress={resetFilters}>
         <Text style={styles.resetButtonText}>Limpar Filtros</Text>
       </TouchableOpacity>
+
+      {selectedInstallments.length > 0 && (
+        <TouchableOpacity
+          style={[
+            styles.resetButton,
+            { marginBottom: 16, backgroundColor: "#6c757d" },
+          ]}
+          onPress={unselectAllParcels}
+        >
+          <Text style={styles.resetButtonText}>Desmarcar Parcelas</Text>
+        </TouchableOpacity>
+      )}
 
       {/* Adicionar instrução para o usuário */}
       {selectedInstallments.length === 0 ? (
