@@ -165,65 +165,63 @@ const BoletoScreen = () => {
     }
   };
 
-  const handleSendWhatsAppMessage = async () => {
-    if (!userData) {
-      Alert.alert("Erro", "Dados do cliente não encontrados.");
-      return;
-    }
+const handleSendWhatsAppMessage = async () => {
+  if (!userData) {
+    Alert.alert("Erro", "Dados do cliente não encontrados.");
+    return;
+  }
 
-    setLoading(true);
+  setLoading(true);
 
-    try {
-      const credentials = btoa(
-        "engenharq-mozart:i94B1q2HUXf7PP7oscuIBygquSRZ9lhb"
+  try {
+    const credentials = btoa(
+      "engenharq-mozart:i94B1q2HUXf7PP7oscuIBygquSRZ9lhb"
+    );
+
+    let companyId = null;
+
+    if (installmentDetails) {
+      const billReceivableId = installmentDetails.billReceivableId;
+      const response = await axios.get(
+        `https://engpag.backend.gustavohenrique.dev/proxy/accounts-receivable/receivable-bills/${billReceivableId}`,
+        {
+          params: { customerId: userData.id },
+          headers: { Authorization: `Basic ${credentials}` },
+        }
       );
 
-      let companyId = null;
-
-      if (installmentDetails) {
-        const billReceivableId = installmentDetails.billReceivableId;
-        const response = await axios.get(
-          `https://engpag.backend.gustavohenrique.dev/proxy/accounts-receivable/receivable-bills/${billReceivableId}`,
-          {
-            params: { customerId: userData.id },
-            headers: { Authorization: `Basic ${credentials}` },
-          }
-        );
-
-        companyId = response.data.companyId;
-      }
-
-      const companyInfo = {
-        1: { name: "Engenharq", whatsappNumber: "558296890033" },
-        2: { name: "EngeLot", whatsappNumber: "558296890066" },
-        3: { name: "EngeLoc", whatsappNumber: "558296890202" },
-        default: { name: "Desconhecida", whatsappNumber: "5585986080000" },
-      };
-
-      const { whatsappNumber } =
-        (companyId && companyInfo[companyId]) || companyInfo.default;
-
-      const message = `Olá, meu nome é ${userData.name}, portador do ${
-        userData.cpf ? `CPF ${userData.cpf}` : `CNPJ ${userData.cnpj}`
-      }. Gostaria de solicitar assistência para liberar o pagamento do meu boleto referente ao empreendimento ${enterpriseName}.`;
-
-      const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
-        message
-      )}`;
-
-      const supported = await Linking.canOpenURL(whatsappUrl);
-      if (supported) {
-        await Linking.openURL(whatsappUrl);
-      } else {
-        Alert.alert("Erro", "Não foi possível abrir o WhatsApp.");
-      }
-    } catch (error) {
-      console.error("Erro ao obter companyId:", error);
-      Alert.alert("Erro", "Não foi possível iniciar o contato via WhatsApp.");
-    } finally {
-      setLoading(false);
+      companyId = response.data.companyId;
     }
-  };
+
+    const companyInfo = {
+      1: { name: "Engenharq", whatsappNumber: "558296890033" },
+      2: { name: "EngeLot", whatsappNumber: "558296890066" },
+      3: { name: "EngeLoc", whatsappNumber: "558296890202" },
+      default: { name: "Desconhecida", whatsappNumber: "5585986080000" },
+    };
+
+    const { whatsappNumber } =
+      (companyId && companyInfo[companyId]) || companyInfo.default;
+
+    const message = `Olá, meu nome é ${userData.name}. Gostaria de solicitar a geração de um novo boleto para o pagamento do meu boleto referente ao empreendimento ${enterpriseName} cujo vencimento original era dia ${formatDate(installmentDetails.dueDate)}.`;
+
+    const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
+      message
+    )}`;
+
+    const supported = await Linking.canOpenURL(whatsappUrl);
+    if (supported) {
+      await Linking.openURL(whatsappUrl);
+    } else {
+      Alert.alert("Erro", "Não foi possível abrir o WhatsApp.");
+    }
+  } catch (error) {
+    console.error("Erro ao obter companyId:", error);
+    Alert.alert("Erro", "Não foi possível iniciar o contato via WhatsApp.");
+  } finally {
+    setLoading(false);
+  }
+};
 
   const requestBoletoLink = async () => {
     if (!userData) {
@@ -480,12 +478,6 @@ const BoletoScreen = () => {
                       })}
                     </Text>
                   </View>
-                  <Text style={styles.availabilityText}>
-                    Boleto{" "}
-                    {installmentDetails.generatedBoleto
-                      ? "Disponível"
-                      : "Indisponível"}
-                  </Text>
                 </View>
 
                 {hasOverdueInstallment ? (

@@ -377,26 +377,14 @@ const InitialPage = () => {
                     </Text>
                   </View>
                   <View style={styles.infoRow}>
-                    <Text style={styles.infoLabel}>Documento:</Text>
+                    <Text style={styles.infoLabel}>Número do contrato:</Text>
                     <Text style={styles.infoValue}>
-                      {enterpriseInfo.documentId}
-                    </Text>
-                  </View>
-                  <View style={styles.infoRow}>
-                    <Text style={styles.infoLabel}>Número:</Text>
-                    <Text style={styles.infoValue}>
-                      {enterpriseInfo.documentNumber}
-                    </Text>
-                  </View>
-                  <View style={styles.infoRow}>
-                    <Text style={styles.infoLabel}>Código:</Text>
-                    <Text style={styles.infoValue}>
-                      {enterpriseInfo.enterpriseCode}
+                      {enterpriseInfo.documentId}/{enterpriseInfo.documentNumber}
                     </Text>
                   </View>
                   <View style={styles.infoRow}>
                     <Text style={styles.infoLabel}>
-                      Valor do Empreendimento:
+                      Valor do contrato:
                     </Text>
                     <Text style={styles.infoValue}>
                       {formatCurrency(enterpriseInfo.receivableBillValue)}
