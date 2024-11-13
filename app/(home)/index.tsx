@@ -32,7 +32,7 @@ const Index = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const [cpfRecovery, setCpfRecovery] = useState("");
   const [loadingRecovery, setLoadingRecovery] = useState(false);
-
+  const [showPassword, setShowPassword] = useState(false);
   const passwordInputRef = useRef(null);
 
   useEffect(() => {
@@ -355,14 +355,14 @@ const Index = () => {
             style={styles.icon}
           />
           <TextInput
-            style={styles.input}
+            style={[styles.input, { flex: 1 }]}
             placeholder="Senha"
             value={password}
             onChangeText={(text) => {
               setPassword(text);
               setPasswordError('');
             }}
-            secureTextEntry
+            secureTextEntry={!showPassword}
             placeholderTextColor="#aaa"
             ref={passwordInputRef}
             returnKeyType="done"
@@ -370,7 +370,20 @@ const Index = () => {
             accessible={true}
             accessibilityLabel="Digite sua senha"
           />
+          <TouchableOpacity 
+            onPress={() => setShowPassword(!showPassword)}
+            style={styles.eyeIcon}
+            accessible={true}
+            accessibilityLabel={showPassword ? "Ocultar senha" : "Mostrar senha"}
+          >
+            <Ionicons
+              name={showPassword ? "eye-off" : "eye"}
+              size={24}
+              color="#E1272C"
+            />
+          </TouchableOpacity>
         </View>
+        
         {passwordError ? <Text style={styles.errorText}>{passwordError}</Text> : null}
 
         <TouchableOpacity onPress={handleForgotPassword}>
@@ -570,6 +583,9 @@ const styles = StyleSheet.create({
   modalCancelButtonText: {
     color: "#E1272C",
     fontSize: 16,
+  },
+  eyeIcon: {
+    padding: 10,
   },
 });
 
