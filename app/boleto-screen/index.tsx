@@ -46,10 +46,15 @@ const BoletoScreen = () => {
       return;
     }
 
+    if (!billReceivableId) {
+      Alert.alert("Erro", "ID do título não fornecido.");
+      return;
+    }
+
     setLoading(true);
     try {
       const credentials = btoa(
-        "engenharq-mozart:i94B1q2HUXf7PP7oscuIBygquSRZ9lhb"
+        "engenharq-mozart:senha" // Substitua "senha" pela senha correta
       );
       const searchParam = userData.cpf
         ? { cpf: userData.cpf, correctAnnualInstallment: "N" }
@@ -66,7 +71,12 @@ const BoletoScreen = () => {
       let availableInstallments = [];
       let nonGeneratedInstallments = [];
 
-      results.forEach((bill) => {
+      // **Encontrar o bill que corresponde ao billReceivableId passado**
+      const bill = results.find(
+        (bill) => bill.billReceivableId === parseInt(billReceivableId, 10)
+      );
+
+      if (bill) {
         const installments = [
           ...(bill.dueInstallments || []),
           ...(bill.payableInstallments || []),
@@ -85,50 +95,66 @@ const BoletoScreen = () => {
             });
           }
         });
-      });
 
-      if (availableInstallments.length > 0) {
-        availableInstallments.sort(
-          (a, b) => new Date(a.dueDate) - new Date(b.dueDate)
-        );
-        const installment = availableInstallments[0];
-        let status = "Pendente";
-        const today = new Date();
-        const dueDate = new Date(installment.dueDate);
-        const daysOverdue = Math.floor(
-          (today - dueDate) / (1000 * 60 * 60 * 24)
-        );
+        if (availableInstallments.length > 0) {
+          availableInstallments.sort(
+            (a, b) => new Date(a.dueDate) - new Date(b.dueDate)
+          );
 
-        if (installment.paidDate) {
-          status = "Pago";
-        } else if (dueDate < today) {
-          status = "Vencido";
-          if (daysOverdue > 30) {
-            setHasOverdueInstallment(true);
+          // **Aqui você pode ajustar para escolher a parcela que deseja**
+          const installment = availableInstallments[0];
+
+          let status = "Pendente";
+          const today = new Date();
+          const dueDate = new Date(installment.dueDate);
+          const daysOverdue = Math.floor(
+            (today - dueDate) / (1000 * 60 * 60 * 24)
+          );
+
+          if (installment.paidDate) {
+            status = "Pago";
+          } else if (dueDate < today) {
+            status = "Vencido";
+            if (daysOverdue > 30) {
+              setHasOverdueInstallment(true);
+            } else {
+              setHasOverdueInstallment(false);
+            }
+          } else {
+            setHasOverdueInstallment(false);
           }
-        }
 
-        setInstallmentDetails({ ...installment, status });
-      } else if (nonGeneratedInstallments.length > 0) {
-        Alert.alert(
-          "Boleto Indisponível",
-          "Nenhum boleto está disponível no momento. Por favor, entre em contato com o suporte via WhatsApp para liberar o pagamento.",
-          [
-            {
-              text: "Falar com Suporte",
-              onPress: () => handleSendWhatsAppMessage(),
-            },
-            {
-              text: "Cancelar",
-              style: "cancel",
-            },
-          ]
-        );
+          setInstallmentDetails({
+            ...installment,
+            status,
+            daysOverdue,
+          });
+        } else if (nonGeneratedInstallments.length > 0) {
+          Alert.alert(
+            "Boleto Indisponível",
+            "Nenhum boleto está disponível no momento. Por favor, entre em contato com o suporte via WhatsApp para liberar o pagamento.",
+            [
+              {
+                text: "Falar com Suporte",
+                onPress: () => handleSendWhatsAppMessage(),
+              },
+              {
+                text: "Cancelar",
+                style: "cancel",
+              },
+            ]
+          );
+        } else {
+          Alert.alert(
+            "Nenhum Boleto Disponível",
+            "Nenhum boleto está disponível no momento.",
+            [{ text: "OK" }]
+          );
+        }
       } else {
         Alert.alert(
-          "Nenhum Boleto Disponível",
-          "Nenhum boleto está disponível no momento.",
-          [{ text: "OK" }]
+          "Erro",
+          "Título não encontrado. Por favor, entre em contato com o suporte."
         );
       }
     } catch (error) {
