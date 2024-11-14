@@ -10,6 +10,7 @@ import {
   RefreshControl,
   StatusBar,
   Pressable,
+  Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -85,44 +86,65 @@ const NotificationScreen = () => {
 
   const deleteAllNotifications = () => {
     if (!userData || (!userData.cpf && !userData.cnpj)) {
-      Alert.alert("Erro", "Dados do usuário não disponíveis.");
+      if (Platform.OS === 'web') {
+        window.alert("Dados do usuário não disponíveis.");
+      } else {
+        Alert.alert("Erro", "Dados do usuário não disponíveis.");
+      }
       return;
     }
 
-    Alert.alert(
-      "Confirmar Deleção",
-      "Tem certeza de que deseja apagar todas as notificações?",
-      [
-        { text: "Cancelar", style: "cancel" },
+    const confirmDelete = () => {
+      setDeleting(true);
+      const deleteParam = userData.cpf ? { cpf: userData.cpf } : { cnpj: userData.cnpj };
+
+      axios.delete(
+        "https://engpag.backend.gustavohenrique.dev/notifications",
         {
-          text: "Apagar",
-          style: "destructive",
-          onPress: async () => {
-            setDeleting(true);
-            try {
-              const deleteParam = userData.cpf ? { cpf: userData.cpf } : { cnpj: userData.cnpj };
+          params: deleteParam,
+        }
+      )
+      .then(() => {
+        if (Platform.OS === 'web') {
+          window.alert("Você apagou as notificações!");
+        } else {
+          Alert.alert("Sucesso", "Você apagou as notificações!");
+        }
+        setNotifications([]);
+        setNotificationCount(0);
+      })
+      .catch((err) => {
+        console.error("Erro ao deletar notificações:", err);
+        if (Platform.OS === 'web') {
+          window.alert("Falha ao deletar notificações.");
+        } else {
+          Alert.alert("Erro", "Falha ao deletar notificações.");
+        }
+      })
+      .finally(() => {
+        setDeleting(false);
+      });
+    };
 
-              await axios.delete(
-                "https://engpag.backend.gustavohenrique.dev/notifications",
-                {
-                  params: deleteParam,
-                }
-              );
-
-              Alert.alert("Sucesso", "Você apagou as notificações!");
-              setNotifications([]);
-              setNotificationCount(0);
-            } catch (err) {
-              console.error("Erro ao deletar notificações:", err);
-              Alert.alert("Erro", "Falha ao deletar notificações.");
-            } finally {
-              setDeleting(false);
-            }
+    if (Platform.OS === 'web') {
+      if (window.confirm("Tem certeza de que deseja apagar todas as notificações?")) {
+        confirmDelete();
+      }
+    } else {
+      Alert.alert(
+        "Confirmar Deleção",
+        "Tem certeza de que deseja apagar todas as notificações?",
+        [
+          { text: "Cancelar", style: "cancel" },
+          {
+            text: "Apagar",
+            style: "destructive",
+            onPress: confirmDelete,
           },
-        },
-      ],
-      { cancelable: true }
-    );
+        ],
+        { cancelable: true }
+      );
+    }
   };
 
   const onRefresh = () => {

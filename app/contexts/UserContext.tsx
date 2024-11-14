@@ -1,6 +1,15 @@
 import React, { createContext, useState, useEffect } from "react";
 import axios from 'axios';
 
+interface Notification {
+  _id: string;
+  subject: string;
+  message: string;
+  read: boolean;
+  showOnHome: boolean;
+  dateSent: string;
+}
+
 interface UserContextProps {
   userData: any;
   setUserData: (data: any) => void;
@@ -10,6 +19,7 @@ interface UserContextProps {
   setEnterpriseNames: (names: string[]) => void;
   notificationCount: number;
   setNotificationCount: (count: number) => void;
+  notifications: Notification[];
   fetchNotificationCount: () => void;
 }
 
@@ -22,6 +32,7 @@ export const UserContext = createContext<UserContextProps>({
   setEnterpriseNames: () => {},
   notificationCount: 0,
   setNotificationCount: () => {},
+  notifications: [],
   fetchNotificationCount: () => {},
 });
 
@@ -32,16 +43,16 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
   const [installmentsData, setInstallmentsData] = useState<any>(null);
   const [enterpriseNames, setEnterpriseNames] = useState<string[]>([]);
   const [notificationCount, setNotificationCount] = useState<number>(0);
-
+  const [notifications, setNotifications] = useState<Notification[]>([]);
 
   const fetchNotificationCount = async () => {
     if (!userData || (!userData.cpf && !userData.cnpj)) {
       setNotificationCount(0);
+      setNotifications([]);
       return;
     }
 
     try {
-
       const searchParam = userData.cpf ? { cpf: userData.cpf } : { cnpj: userData.cnpj };
 
       const response = await axios.get('https://engpag.backend.gustavohenrique.dev/notifications', {
@@ -49,17 +60,20 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
       });
 
       if (Array.isArray(response.data)) {
-        const unreadCount = response.data.filter(notification => !notification.read).length;
+        const allNotifications = response.data;
+        setNotifications(allNotifications);
+        const unreadCount = allNotifications.filter(notification => !notification.read).length;
         setNotificationCount(unreadCount);
       } else {
         setNotificationCount(0);
+        setNotifications([]);
       }
     } catch (err) {
       console.error('Erro ao buscar notificações:', err);
       setNotificationCount(0);
+      setNotifications([]);
     }
   };
-
 
   useEffect(() => {
     fetchNotificationCount();
@@ -82,7 +96,8 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
         setEnterpriseNames,
         notificationCount,
         setNotificationCount,
-        fetchNotificationCount, 
+        notifications,
+        fetchNotificationCount,
       }}
     >
       {children}

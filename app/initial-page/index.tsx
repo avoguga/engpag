@@ -59,12 +59,15 @@ const InitialPage = () => {
     setInstallmentsData,
     enterpriseNames,
     setEnterpriseNames,
+    notifications,
+    fetchNotificationCount
   } = useContext(UserContext);
   const [installmentsData, setLocalInstallmentsData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [loadingEnterprise, setLoadingEnterprise] = useState(false);
   const [error, setError] = useState("");
   const [isAuthLoading, setIsAuthLoading] = useState(true);
+  const notificationsShownRef = useRef(new Set());
 
   // Ref para rastrear se o alerta já foi mostrado
   const alertShownRef = useRef(false);
@@ -88,14 +91,16 @@ const InitialPage = () => {
           if (!storedUserData) {
             router.replace("/(home)");
           } else {
-            setUserData(JSON.parse(storedUserData));
+            const parsedData = JSON.parse(storedUserData);
+            setUserData(parsedData);
           }
         } else {
           const storedUserData = await AsyncStorage.getItem("userData");
           if (!storedUserData) {
             router.replace("/(home)");
           } else {
-            setUserData(JSON.parse(storedUserData));
+            const parsedData = JSON.parse(storedUserData);
+            setUserData(parsedData);
           }
         }
       } catch (error) {
@@ -106,9 +111,16 @@ const InitialPage = () => {
         setIsAuthLoading(false);
       }
     };
-
+  
     checkAuthentication();
   }, [router, setUserData]);
+
+  useEffect(() => {
+    if (notifications.length > 0) {
+      showHomeNotifications();
+    }
+  }, [notifications]);
+
 
   useEffect(() => {
     const loadDataFromStorage = async () => {
@@ -234,6 +246,82 @@ const InitialPage = () => {
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const showHomeNotifications = () => {
+    const homeNotifications = notifications.filter(
+      notif => notif.showOnHome && !notif.read
+    );
+  
+    if (homeNotifications.length === 0) return;
+  
+    const showNextNotification = (index = 0) => {
+      if (index >= homeNotifications.length) return;
+  
+      const notification = homeNotifications[index];
+      
+      if (!notificationsShownRef.current.has(notification._id)) {
+        notificationsShownRef.current.add(notification._id);
+  
+        if (Platform.OS === 'web') {
+          const shouldMarkAsRead = window.confirm(
+            `Notificações\n\n${notification.subject}\n\n${notification.message}\n\nDeseja marcar como lida?`
+          );
+          
+          if (shouldMarkAsRead) {
+            markNotificationAsRead(notification._id).then(() => {
+              showNextNotification(index + 1);
+            });
+          } else {
+            showNextNotification(index + 1);
+          }
+        } else {
+          Alert.alert(
+            notification.subject,
+            notification.message,
+            [
+              {
+                text: "Marcar como lida",
+                onPress: () => {
+                  markNotificationAsRead(notification._id).then(() => {
+                    showNextNotification(index + 1);
+                  });
+                }
+              },
+              {
+                text: "Fechar",
+                style: "cancel",
+                onPress: () => showNextNotification(index + 1)
+              }
+            ]
+          );
+        }
+      } else {
+        showNextNotification(index + 1);
+      }
+    };
+  
+    showNextNotification();
+  };
+  
+  const markNotificationAsRead = async (notificationId) => {
+    try {
+      const response = await axios.put(
+        `https://engpag.backend.gustavohenrique.dev/notifications/${notificationId}`,
+        { read: true }
+      );
+  
+      if (response.status === 200) {
+        // Atualizar estado global das notificações
+        await fetchNotificationCount();
+      } else {
+        console.error('Erro ao marcar notificação como lida');
+        Alert.alert('Erro', 'Não foi possível marcar a notificação como lida');
+      }
+    } catch (error) {
+      console.error('Erro ao marcar notificação como lida:', error);
+      Alert.alert('Erro', 'Não foi possível marcar a notificação como lida');
     }
   };
 
