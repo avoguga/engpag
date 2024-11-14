@@ -776,7 +776,7 @@ const ParcelAntecipation = () => {
           setConfirmModalVisible(true);
         }}
       >
-        <Ionicons name="cash-outline" size={24} color="white" />
+        <Ionicons name="play-forward-outline" size={24} color="white" />
       </TouchableOpacity>
 
       {confirmModalVisible && (

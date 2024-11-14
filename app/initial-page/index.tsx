@@ -388,6 +388,7 @@ const InitialPage = () => {
       params: {
         billReceivableId: item.billReceivableId,
         enterpriseName: enterpriseNames[index]?.enterpriseName,
+        unityName: enterpriseNames[index]?.unityName,
         receivableBillValue: enterpriseNames[index]?.receivableBillValue,
       },
     });
@@ -578,26 +579,34 @@ const styles = StyleSheet.create({
   cardContent: {
     flex: 1,
   },
+
   cardTitle: {
     fontSize: 16,
     fontWeight: "700",
     color: "#333",
     marginBottom: 10,
+    flexWrap: 'wrap',
   },
   infoRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     marginBottom: 3,
+    flexWrap: 'wrap',
   },
   infoLabel: {
     fontSize: 14,
     color: "#555",
     fontWeight: "500",
+    flex: 1, // Permite que o label ocupe o espaço necessário
+    marginRight: 8, // Espaço entre o label e o valor
   },
+  
   infoValue: {
     fontSize: 14,
     color: "#333",
     fontWeight: "bold",
+    flex: 1, // Permite que o valor ocupe o espaço necessário
+    textAlign: 'right', // Alinha o texto à direita
   },
   cardRow: {
     flexDirection: "row",

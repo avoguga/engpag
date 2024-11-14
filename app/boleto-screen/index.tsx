@@ -25,7 +25,8 @@ const BoletoScreen = () => {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isSupportModalVisible, setIsSupportModalVisible] = useState(false);
   const [hasOverdueInstallment, setHasOverdueInstallment] = useState(false);
-  const { enterpriseName, billReceivableId } = useLocalSearchParams();
+  const { enterpriseName, billReceivableId, unityName } =
+    useLocalSearchParams();
   const [sendingEmail, setSendingEmail] = useState(false);
 
   useEffect(() => {
@@ -165,63 +166,64 @@ const BoletoScreen = () => {
     }
   };
 
-const handleSendWhatsAppMessage = async () => {
-  if (!userData) {
-    Alert.alert("Erro", "Dados do cliente não encontrados.");
-    return;
-  }
-
-  setLoading(true);
-
-  try {
-    const credentials = btoa(
-      "engenharq-mozart:i94B1q2HUXf7PP7oscuIBygquSRZ9lhb"
-    );
-
-    let companyId = null;
-
-    if (installmentDetails) {
-      const billReceivableId = installmentDetails.billReceivableId;
-      const response = await axios.get(
-        `https://engpag.backend.gustavohenrique.dev/proxy/accounts-receivable/receivable-bills/${billReceivableId}`,
-        {
-          params: { customerId: userData.id },
-          headers: { Authorization: `Basic ${credentials}` },
-        }
+  const handleSendWhatsAppMessage = async () => {
+    if (!userData) {
+      Alert.alert("Erro", "Dados do cliente não encontrados.");
+      return;
+    }
+  
+    setLoading(true);
+  
+    try {
+      const credentials = btoa(
+        "engenharq-mozart:i94B1q2HUXf7PP7oscuIBygquSRZ9lhb"
       );
-
-      companyId = response.data.companyId;
+  
+      let companyId = null;
+      let unityName = "N/A";
+  
+      if (installmentDetails) {
+        const response = await axios.get(
+          `https://engpag.backend.gustavohenrique.dev/proxy/accounts-receivable/receivable-bills/${billReceivableId}`,
+          {
+            params: { customerId: userData.id },
+            headers: { Authorization: `Basic ${credentials}` },
+          }
+        );
+  
+        companyId = response.data.companyId;
+        unityName = response.data.unityName || "N/A";
+      }
+  
+      const companyInfo = {
+        1: { name: "Engenharq", whatsappNumber: "558296890033" },
+        2: { name: "EngeLot", whatsappNumber: "558296890066" },
+        3: { name: "EngeLoc", whatsappNumber: "558296890202" },
+        default: { name: "Desconhecida", whatsappNumber: "5585986080000" },
+      };
+  
+      const { whatsappNumber } =
+        (companyId && companyInfo[companyId]) || companyInfo.default;
+  
+      const message = `Olá, meu nome é ${userData.name}. Gostaria de solicitar a geração de um novo boleto para o pagamento do meu boleto referente ao empreendimento ${enterpriseName} cujo vencimento original era dia ${formatDate(installmentDetails.dueDate)}. Referente a unidade ${unityName} - correspondente ao título ${billReceivableId}.`;
+  
+      const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
+        message
+      )}`;
+  
+      const supported = await Linking.canOpenURL(whatsappUrl);
+      if (supported) {
+        await Linking.openURL(whatsappUrl);
+      } else {
+        Alert.alert("Erro", "Não foi possível abrir o WhatsApp.");
+      }
+    } catch (error) {
+      console.error("Erro ao obter companyId:", error);
+      Alert.alert("Erro", "Não foi possível iniciar o contato via WhatsApp.");
+    } finally {
+      setLoading(false);
     }
-
-    const companyInfo = {
-      1: { name: "Engenharq", whatsappNumber: "558296890033" },
-      2: { name: "EngeLot", whatsappNumber: "558296890066" },
-      3: { name: "EngeLoc", whatsappNumber: "558296890202" },
-      default: { name: "Desconhecida", whatsappNumber: "5585986080000" },
-    };
-
-    const { whatsappNumber } =
-      (companyId && companyInfo[companyId]) || companyInfo.default;
-
-    const message = `Olá, meu nome é ${userData.name}. Gostaria de solicitar a geração de um novo boleto para o pagamento do meu boleto referente ao empreendimento ${enterpriseName} cujo vencimento original era dia ${formatDate(installmentDetails.dueDate)}.`;
-
-    const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
-      message
-    )}`;
-
-    const supported = await Linking.canOpenURL(whatsappUrl);
-    if (supported) {
-      await Linking.openURL(whatsappUrl);
-    } else {
-      Alert.alert("Erro", "Não foi possível abrir o WhatsApp.");
-    }
-  } catch (error) {
-    console.error("Erro ao obter companyId:", error);
-    Alert.alert("Erro", "Não foi possível iniciar o contato via WhatsApp.");
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   const requestBoletoLink = async () => {
     if (!userData) {

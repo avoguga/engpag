@@ -15,7 +15,7 @@ const DebitOptionsPage = () => {
   const router = useRouter();
   const { userData, setUserData, installmentsData, setInstallmentsData } =
     useContext(UserContext);
-  const { enterpriseName, billReceivableId,receivableBillValue } = useLocalSearchParams();
+  const { enterpriseName, billReceivableId,receivableBillValue, unityName } = useLocalSearchParams();
 
   // Load userData and installmentsData from localStorage on mount (Web only)
   useEffect(() => {
@@ -119,6 +119,7 @@ const DebitOptionsPage = () => {
             billReceivableId: billReceivableId,
             installmentId: lastInstallment.installmentId,
             enterpriseName,
+            unityName: unityName
           },
         });
       } else {
