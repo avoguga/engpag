@@ -15,6 +15,7 @@ import axios from "axios";
 import { UserContext } from "../contexts/UserContext";
 import { useFocusEffect, useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as Notifications from 'expo-notifications';
 
 const formatDate = (dateString) => {
   if (!dateString || typeof dateString !== "string") return "N/A";
@@ -82,6 +83,17 @@ const InitialPage = () => {
       return () => backHandler.remove();
     }, [])
   );
+
+    // Solicitar permissões ao carregar o componente
+    useEffect(() => {
+      const getPermission = async () => {
+        const { status } = await Notifications.requestPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert('Permissão necessária', 'Ative as permissões para notificações.');
+        }
+      };
+      getPermission();
+    }, []);
 
   useEffect(() => {
     const checkAuthentication = async () => {
@@ -498,7 +510,7 @@ const InitialPage = () => {
                       </Text>
                     </View>
                     <Text style={styles.cardIssueDate}>
-                      Data de Emissão: {formatDate(enterpriseInfo.issueDate)}
+                      Data de emissão: {formatDate(enterpriseInfo.issueDate)}
                     </Text>
                   </View>
                 </TouchableOpacity>

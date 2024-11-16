@@ -655,91 +655,100 @@ const ParcelAntecipation = () => {
 
       {/* DateTimePickers para filtros - qualquer mês a partir do atual */}
       {Platform.OS !== "web" && showStartDatePicker && (
-  <DateTimePicker
-    value={startDate || new Date()}
-    mode="date"
-    display="default"
-    onChange={(event, selectedDate) => {
-      setShowStartDatePicker(false);
-      if (selectedDate) {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        selectedDate.setHours(0, 0, 0, 0);
+        <DateTimePicker
+          value={startDate || new Date()}
+          mode="date"
+          display="default"
+          onChange={(event, selectedDate) => {
+            setShowStartDatePicker(false);
+            if (selectedDate) {
+              const today = new Date();
+              today.setHours(0, 0, 0, 0);
+              selectedDate.setHours(0, 0, 0, 0);
 
-        if (selectedDate >= today) {
-          setStartDate(selectedDate);
-          setStartDateInput(selectedDate.toLocaleDateString("pt-BR"));
-          // Se a data final for anterior à nova data inicial, limpa a data final
-          if (endDate && selectedDate > endDate) {
-            setEndDate(null);
-            setEndDateInput("");
-          }
-        } else {
-          Alert.alert("Erro", "A data inicial não pode ser anterior a hoje");
-        }
-      }
-    }}
-    minimumDate={new Date()} // Hoje
-  />
-)}
+              if (selectedDate >= today) {
+                setStartDate(selectedDate);
+                setStartDateInput(selectedDate.toLocaleDateString("pt-BR"));
+                // Se a data final for anterior à nova data inicial, limpa a data final
+                if (endDate && selectedDate > endDate) {
+                  setEndDate(null);
+                  setEndDateInput("");
+                }
+              } else {
+                Alert.alert(
+                  "Erro",
+                  "A data inicial não pode ser anterior a hoje"
+                );
+              }
+            }
+          }}
+          minimumDate={new Date()} // Hoje
+        />
+      )}
 
-{Platform.OS !== "web" && showEndDatePicker && (
-  <DateTimePicker
-    value={endDate || (startDate || new Date())}
-    mode="date"
-    display="default"
-    onChange={(event, selectedDate) => {
-      setShowEndDatePicker(false);
-      if (selectedDate) {
-        selectedDate.setHours(0, 0, 0, 0);
-        const minDate = startDate || new Date();
-        minDate.setHours(0, 0, 0, 0);
+      {Platform.OS !== "web" && showEndDatePicker && (
+        <DateTimePicker
+          value={endDate || startDate || new Date()}
+          mode="date"
+          display="default"
+          onChange={(event, selectedDate) => {
+            setShowEndDatePicker(false);
+            if (selectedDate) {
+              selectedDate.setHours(0, 0, 0, 0);
+              const minDate = startDate || new Date();
+              minDate.setHours(0, 0, 0, 0);
 
-        if (selectedDate >= minDate) {
-          setEndDate(selectedDate);
-          setEndDateInput(selectedDate.toLocaleDateString("pt-BR"));
-        } else {
-          Alert.alert("Erro", "A data final deve ser igual ou posterior à data inicial");
-        }
-      }
-    }}
-    minimumDate={startDate || new Date()} // Data inicial ou hoje
-  />
-)}
+              if (selectedDate >= minDate) {
+                setEndDate(selectedDate);
+                setEndDateInput(selectedDate.toLocaleDateString("pt-BR"));
+              } else {
+                Alert.alert(
+                  "Erro",
+                  "A data final deve ser igual ou posterior à data inicial"
+                );
+              }
+            }
+          }}
+          minimumDate={startDate || new Date()} // Data inicial ou hoje
+        />
+      )}
 
       {/* DateTimePicker para nova data de vencimento no modal */}
       {Platform.OS !== "web" && showNewDueDatePicker && (
-  <DateTimePicker
-    value={newDueDate || new Date()}
-    mode="date"
-    display="default"
-    onChange={(event, selectedDate) => {
-      setShowNewDueDatePicker(false);
-      if (selectedDate) {
-        const today = new Date();
-        // Zera as horas para comparação adequada
-        today.setHours(0, 0, 0, 0);
-        selectedDate.setHours(0, 0, 0, 0);
+        <DateTimePicker
+          value={newDueDate || new Date()}
+          mode="date"
+          display="default"
+          onChange={(event, selectedDate) => {
+            setShowNewDueDatePicker(false);
+            if (selectedDate) {
+              const today = new Date();
+              // Zera as horas para comparação adequada
+              today.setHours(0, 0, 0, 0);
+              selectedDate.setHours(0, 0, 0, 0);
 
-        if (
-          selectedDate.getMonth() === today.getMonth() &&
-          selectedDate.getFullYear() === today.getFullYear() &&
-          selectedDate >= today
-        ) {
-          setNewDueDate(selectedDate);
-          setNewDueDateInput(selectedDate.toLocaleDateString("pt-BR"));
-        } else {
-          Alert.alert("Erro", "A data de antecipação deve estar dentro do mês atual e não pode ser anterior a hoje.");
-        }
-      }
-    }}
-    minimumDate={new Date()} // Hoje
-    maximumDate={
-      // Último dia do mês atual
-      new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0)
-    }
-  />
-)}
+              if (
+                selectedDate.getMonth() === today.getMonth() &&
+                selectedDate.getFullYear() === today.getFullYear() &&
+                selectedDate >= today
+              ) {
+                setNewDueDate(selectedDate);
+                setNewDueDateInput(selectedDate.toLocaleDateString("pt-BR"));
+              } else {
+                Alert.alert(
+                  "Erro",
+                  "A data de antecipação deve estar dentro do mês atual e não pode ser anterior a hoje."
+                );
+              }
+            }
+          }}
+          minimumDate={new Date()} // Hoje
+          maximumDate={
+            // Último dia do mês atual
+            new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0)
+          }
+        />
+      )}
 
       {/* Date Picker para Web no Modal */}
       {Platform.OS === "web" && showNewDueDatePicker && (
