@@ -326,7 +326,11 @@ const PaymentHistory = () => {
         </Text>
         <Text style={styles.cardAmount}>
           <Text style={styles.label}>Valor: </Text>
-          {getAmount(item)}
+          {item.paymentDate ? (
+            <Text style={styles.cardPaidDate}>{getAmount(item)}</Text>
+          ) : (
+            getAmount(item)
+          )}
         </Text>
         {item.paymentDate && (
           <Text style={styles.cardPaidDate}>
@@ -341,7 +345,7 @@ const PaymentHistory = () => {
   return (
     <View style={styles.container}>
       <Text style={styles.enterpriseName}>{enterpriseName}</Text>
-      <Text style={styles.sectionTitle}>Extrato de Pagamentos</Text>
+      <Text style={styles.sectionTitle}>Extrato de pagamentos</Text>
       <TouchableOpacity
         style={styles.downloadButton}
         onPress={handlePaymentHistoryNavigation}
@@ -350,7 +354,7 @@ const PaymentHistory = () => {
         <View style={styles.downloadButtonContent}>
           <MaterialIcons name="download" size={20} color="#fff" />
           <Text style={styles.downloadButtonText}>
-            {loadingHistory ? "Baixando..." : "Baixar Histórico Completo"}
+            {loadingHistory ? "Baixando..." : "Baixar histórico completo"}
           </Text>
         </View>
       </TouchableOpacity>
@@ -372,7 +376,7 @@ const PaymentHistory = () => {
               filter === "A VENCER" && styles.activeFilter,
             ]}
           >
-            A Vencer
+            A vencer
           </Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={() => setFilter("PAGOS")}>
@@ -418,23 +422,23 @@ const PaymentHistory = () => {
         >
           <View style={styles.modalOverlay}>
             <View style={styles.modalContainer}>
-              <Text style={styles.modalTitle}>Detalhes da Parcela</Text>
+              <Text style={styles.modalTitle}>Detalhes da parcela</Text>
               <ScrollView style={{ width: "100%" }}>
                 <View style={styles.modalItem}>
-                  <Text style={styles.modalLabel}>Número da Parcela:</Text>
+                  <Text style={styles.modalLabel}>Número da parcela:</Text>
                   <Text style={styles.modalValue}>
                     {selectedInstallment.installmentNumber}
                   </Text>
                 </View>
                 <View style={styles.modalItem}>
-                  <Text style={styles.modalLabel}>Data de Vencimento:</Text>
+                  <Text style={styles.modalLabel}>Data de vencimento:</Text>
                   <Text style={styles.modalValue}>
                     {selectedInstallment.formattedDueDate}
                   </Text>
                 </View>
                 {selectedInstallment.formattedPaymentDate && (
                   <View style={styles.modalItem}>
-                    <Text style={styles.modalLabel}>Data de Pagamento:</Text>
+                    <Text style={styles.modalLabel}>Data de pagamento:</Text>
                     <Text style={styles.modalValue}>
                       {selectedInstallment.formattedPaymentDate}
                     </Text>
@@ -443,23 +447,10 @@ const PaymentHistory = () => {
                 {selectedInstallment.receipt && (
                   <>
                     <View style={styles.modalItem}>
-                      <Text style={styles.modalLabel}>Valor do Recibo:</Text>
+                      <Text style={styles.modalLabel}>Valor do recibo:</Text>
                       <Text style={styles.modalValue}>
                         {parseFloat(
                           selectedInstallment.receipt.receiptValue
-                        ).toLocaleString("pt-BR", {
-                          style: "currency",
-                          currency: "BRL",
-                        })}
-                      </Text>
-                    </View>
-                    <View style={styles.modalItem}>
-                      <Text style={styles.modalLabel}>
-                        Valor Líquido do Recibo:
-                      </Text>
-                      <Text style={styles.modalValue}>
-                        {parseFloat(
-                          selectedInstallment.receipt.receiptNetValue
                         ).toLocaleString("pt-BR", {
                           style: "currency",
                           currency: "BRL",
@@ -470,7 +461,7 @@ const PaymentHistory = () => {
                 )}
 
                 <View style={styles.modalItem}>
-                  <Text style={styles.modalLabel}>Valor Original:</Text>
+                  <Text style={styles.modalLabel}>Valor original:</Text>
                   <Text style={styles.modalValue}>
                     {selectedInstallment.originalValue
                       ? parseFloat(
@@ -505,11 +496,11 @@ const PaymentHistory = () => {
                           style: "currency",
                           currency: "BRL",
                         })
-                      : "Valor indisponível"}
+                      : "R$ 0,00"}
                   </Text>
                 </View>
                 <View style={styles.modalItem}>
-                  <Text style={styles.modalLabel}>Valor Atualizado:</Text>
+                  <Text style={styles.modalLabel}>Valor atualizado:</Text>
                   <Text style={styles.modalValue}>
                     {selectedInstallment.currentBalance
                       ? selectedInstallment.currentBalance
@@ -538,7 +529,7 @@ const PaymentHistory = () => {
                   </Text>
                 </View>
                 <View style={styles.modalItem}>
-                  <Text style={styles.modalLabel}>Tipo de Condição:</Text>
+                  <Text style={styles.modalLabel}>Tipo de condição:</Text>
                   <Text style={styles.modalValue}>
                     {selectedInstallment.conditionType}
                   </Text>

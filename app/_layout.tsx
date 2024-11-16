@@ -49,7 +49,7 @@ export default function RootLayout() {
                       color="white"
                     />
                   </TouchableOpacity>
-                  <Text style={styles.topBarTitle}>2ª Via do Boleto</Text>
+                  <Text style={styles.topBarTitle}>2ª Via do boleto</Text>
                   <NotificationIcon />
                 </View>
               </View>
@@ -154,7 +154,7 @@ export default function RootLayout() {
                       <View style={styles.modalOverlay}>
                         <View style={styles.modalContainer}>
                           <Text style={styles.modalTitle}>
-                            Confirmação de Logout
+                            Confirmação de logout
                           </Text>
                           <Text style={styles.modalText}>
                             Tem certeza que deseja sair?
@@ -264,7 +264,7 @@ export default function RootLayout() {
                     />
                   </TouchableOpacity>
                   <Text style={styles.topBarTitle}>
-                    Histórico de Pagamentos
+                    Histórico de pagamentos
                   </Text>
                   <NotificationIcon />
                 </View>

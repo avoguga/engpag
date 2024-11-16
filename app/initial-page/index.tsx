@@ -60,7 +60,7 @@ const InitialPage = () => {
     enterpriseNames,
     setEnterpriseNames,
     notifications,
-    fetchNotificationCount
+    fetchNotificationCount,
   } = useContext(UserContext);
   const [installmentsData, setLocalInstallmentsData] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -111,7 +111,7 @@ const InitialPage = () => {
         setIsAuthLoading(false);
       }
     };
-  
+
     checkAuthentication();
   }, [router, setUserData]);
 
@@ -120,7 +120,6 @@ const InitialPage = () => {
       showHomeNotifications();
     }
   }, [notifications]);
-
 
   useEffect(() => {
     const loadDataFromStorage = async () => {
@@ -251,24 +250,24 @@ const InitialPage = () => {
 
   const showHomeNotifications = () => {
     const homeNotifications = notifications.filter(
-      notif => notif.showOnHome && !notif.read
+      (notif) => notif.showOnHome && !notif.read
     );
-  
+
     if (homeNotifications.length === 0) return;
-  
+
     const showNextNotification = (index = 0) => {
       if (index >= homeNotifications.length) return;
-  
+
       const notification = homeNotifications[index];
-      
+
       if (!notificationsShownRef.current.has(notification._id)) {
         notificationsShownRef.current.add(notification._id);
-  
-        if (Platform.OS === 'web') {
+
+        if (Platform.OS === "web") {
           const shouldMarkAsRead = window.confirm(
             `Notificações\n\n${notification.subject}\n\n${notification.message}\n\nDeseja marcar como lida?`
           );
-          
+
           if (shouldMarkAsRead) {
             markNotificationAsRead(notification._id).then(() => {
               showNextNotification(index + 1);
@@ -277,51 +276,47 @@ const InitialPage = () => {
             showNextNotification(index + 1);
           }
         } else {
-          Alert.alert(
-            notification.subject,
-            notification.message,
-            [
-              {
-                text: "Marcar como lida",
-                onPress: () => {
-                  markNotificationAsRead(notification._id).then(() => {
-                    showNextNotification(index + 1);
-                  });
-                }
+          Alert.alert(notification.subject, notification.message, [
+            {
+              text: "Marcar como lida",
+              onPress: () => {
+                markNotificationAsRead(notification._id).then(() => {
+                  showNextNotification(index + 1);
+                });
               },
-              {
-                text: "Fechar",
-                style: "cancel",
-                onPress: () => showNextNotification(index + 1)
-              }
-            ]
-          );
+            },
+            {
+              text: "Fechar",
+              style: "cancel",
+              onPress: () => showNextNotification(index + 1),
+            },
+          ]);
         }
       } else {
         showNextNotification(index + 1);
       }
     };
-  
+
     showNextNotification();
   };
-  
+
   const markNotificationAsRead = async (notificationId) => {
     try {
       const response = await axios.put(
         `https://engpag.backend.gustavohenrique.dev/notifications/${notificationId}`,
         { read: true }
       );
-  
+
       if (response.status === 200) {
         // Atualizar estado global das notificações
         await fetchNotificationCount();
       } else {
-        console.error('Erro ao marcar notificação como lida');
-        Alert.alert('Erro', 'Não foi possível marcar a notificação como lida');
+        console.error("Erro ao marcar notificação como lida");
+        Alert.alert("Erro", "Não foi possível marcar a notificação como lida");
       }
     } catch (error) {
-      console.error('Erro ao marcar notificação como lida:', error);
-      Alert.alert('Erro', 'Não foi possível marcar a notificação como lida');
+      console.error("Erro ao marcar notificação como lida:", error);
+      Alert.alert("Erro", "Não foi possível marcar a notificação como lida");
     }
   };
 
@@ -421,103 +416,103 @@ const InitialPage = () => {
 
         {!loading &&
         Array.isArray(installmentsData) &&
-        installmentsData.length > 0 ? (
-          installmentsData.map((item, index) => {
-            const enterpriseInfo = enterpriseNames[index] || {};
-            const allDueInstallments = [
-              ...(item.dueInstallments || []),
-              ...(item.payableInstallments || []),
-            ];
+        installmentsData.length > 0
+          ? installmentsData.map((item, index) => {
+              const enterpriseInfo = enterpriseNames[index] || {};
+              const allDueInstallments = [
+                ...(item.dueInstallments || []),
+                ...(item.payableInstallments || []),
+              ];
 
-            const futureInstallments = allDueInstallments.filter(
-              (installment) => new Date(installment.dueDate) >= new Date()
-            );
+              const futureInstallments = allDueInstallments.filter(
+                (installment) => new Date(installment.dueDate) >= new Date()
+              );
 
-            futureInstallments.sort(
-              (a, b) =>
-                new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()
-            );
+              futureInstallments.sort(
+                (a, b) =>
+                  new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()
+              );
 
-            const nextInstallment = futureInstallments[0];
-            const nextInstallmentAmount = nextInstallment
-              ? nextInstallment.currentBalance
-              : null;
+              const nextInstallment = futureInstallments[0];
+              const nextInstallmentAmount = nextInstallment
+                ? nextInstallment.currentBalance
+                : null;
 
-            const hasUnpaidInstallments = allDueInstallments.length > 0;
-            const status = hasUnpaidInstallments ? "Em aberto" : "Quitado";
+              const hasUnpaidInstallments = allDueInstallments.length > 0;
+              const status = hasUnpaidInstallments ? "Em aberto" : "Quitado";
 
-            return (
-              <TouchableOpacity
-                key={item.billReceivableId}
-                style={styles.card}
-                onPress={() => handleCardPress(item, index)}
-              >
-                <View style={styles.cardIcon}>
-                  <Ionicons name="home-outline" size={28} color="#E1272C" />
-                </View>
-                <View style={styles.cardContent}>
-                  <Text style={styles.cardTitle}>
-                    {enterpriseInfo.enterpriseName}
-                  </Text>
-                  <View style={styles.infoRow}>
-                    <Text style={styles.infoLabel}>Unidade:</Text>
-                    <Text style={styles.infoValue}>
-                      {enterpriseInfo.unityName}
+              return (
+                <TouchableOpacity
+                  key={item.billReceivableId}
+                  style={styles.card}
+                  onPress={() => handleCardPress(item, index)}
+                >
+                  <View style={styles.cardIcon}>
+                    <Ionicons name="home-outline" size={28} color="#E1272C" />
+                  </View>
+                  <View style={styles.cardContent}>
+                    <Text style={styles.cardTitle}>
+                      {enterpriseInfo.enterpriseName}
+                    </Text>
+                    {enterpriseInfo.unityName !== 'N/A' ? (
+                      <View style={styles.infoRow}>
+                        <Text style={styles.infoLabel}>Unidade:</Text>
+                        <Text style={styles.infoValue}>
+                          {enterpriseInfo.unityName}
+                        </Text>
+                      </View>
+                    ) : null}
+                    <View style={styles.infoRow}>
+                      <Text style={styles.infoLabel}>Número do contrato:</Text>
+                      <Text style={styles.infoValue}>
+                        {enterpriseInfo.documentId}/
+                        {enterpriseInfo.documentNumber}
+                      </Text>
+                    </View>
+                    <View style={styles.infoRow}>
+                      <Text style={styles.infoLabel}>Valor do contrato:</Text>
+                      <Text style={styles.infoValue}>
+                        {formatCurrency(enterpriseInfo.receivableBillValue)}
+                      </Text>
+                    </View>
+                    {nextInstallmentAmount ? (
+                      <View style={styles.cardRow}>
+                        <Text style={styles.infoLabel}>
+                          Valor da próxima parcela:
+                        </Text>
+                        <Text style={styles.cardValue}>
+                          {formatCurrency(nextInstallmentAmount)}
+                        </Text>
+                      </View>
+                    ) : null}
+                    <View style={styles.cardRow}>
+                      <Text style={styles.infoLabel}>Status:</Text>
+                      <Text
+                        style={
+                          hasUnpaidInstallments
+                            ? styles.statusOpen
+                            : styles.statusClosed
+                        }
+                      >
+                        {status}
+                      </Text>
+                    </View>
+                    <Text style={styles.cardIssueDate}>
+                      Data de Emissão: {formatDate(enterpriseInfo.issueDate)}
                     </Text>
                   </View>
-                  <View style={styles.infoRow}>
-                    <Text style={styles.infoLabel}>Número do contrato:</Text>
-                    <Text style={styles.infoValue}>
-                      {enterpriseInfo.documentId}/{enterpriseInfo.documentNumber}
-                    </Text>
-                  </View>
-                  <View style={styles.infoRow}>
-                    <Text style={styles.infoLabel}>
-                      Valor do contrato:
-                    </Text>
-                    <Text style={styles.infoValue}>
-                      {formatCurrency(enterpriseInfo.receivableBillValue)}
-                    </Text>
-                  </View>
-                  <View style={styles.cardRow}>
-                    <Text style={styles.infoLabel}>
-                      Valor da próxima parcela:
-                    </Text>
-                    <Text style={styles.cardValue}>
-                      {formatCurrency(nextInstallmentAmount)}
-                    </Text>
-                  </View>
-                  <View style={styles.cardRow}>
-                    <Text style={styles.infoLabel}>Status:</Text>
-                    <Text
-                      style={
-                        hasUnpaidInstallments
-                          ? styles.statusOpen
-                          : styles.statusClosed
-                      }
-                    >
-                      {status}
-                    </Text>
-                  </View>
-                  <Text style={styles.cardIssueDate}>
-                    Data de Emissão: {formatDate(enterpriseInfo.issueDate)}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            );
-          })
-        ) : (
-          !loading && (
-            <Text style={styles.noInstallmentsText}>
-              Nenhum empreendimento encontrado.
-            </Text>
-          )
-        )}
+                </TouchableOpacity>
+              );
+            })
+          : !loading && (
+              <Text style={styles.noInstallmentsText}>
+                Nenhum empreendimento encontrado.
+              </Text>
+            )}
       </ScrollView>
     </View>
   );
 };
-
 
 const styles = StyleSheet.create({
   container: {
@@ -585,13 +580,13 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#333",
     marginBottom: 10,
-    flexWrap: 'wrap',
+    flexWrap: "wrap",
   },
   infoRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     marginBottom: 3,
-    flexWrap: 'wrap',
+    flexWrap: "wrap",
   },
   infoLabel: {
     fontSize: 14,
@@ -600,13 +595,13 @@ const styles = StyleSheet.create({
     flex: 1, // Permite que o label ocupe o espaço necessário
     marginRight: 8, // Espaço entre o label e o valor
   },
-  
+
   infoValue: {
     fontSize: 14,
     color: "#333",
     fontWeight: "bold",
     flex: 1, // Permite que o valor ocupe o espaço necessário
-    textAlign: 'right', // Alinha o texto à direita
+    textAlign: "right", // Alinha o texto à direita
   },
   cardRow: {
     flexDirection: "row",

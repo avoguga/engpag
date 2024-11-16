@@ -23,7 +23,7 @@ const PaymentsCompleted = () => {
   const [completedPayments, setCompletedPayments] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  const [selectedParcel, setSelectedParcel] = useState("Número da Parcela");
+  const [selectedParcel, setSelectedParcel] = useState("Número da parcela");
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
   const [startDateInput, setStartDateInput] = useState("");
@@ -112,7 +112,9 @@ const PaymentsCompleted = () => {
           formattedPaymentDate = `${day}/${month}/${year}`;
 
           // Extrair receiptNetValue
-          receiptNetValue = parseFloat(installment.receipts[0].receiptNetValue).toLocaleString("pt-BR", {
+          receiptNetValue = parseFloat(
+            installment.receipts[0].receiptNetValue
+          ).toLocaleString("pt-BR", {
             style: "currency",
             currency: "BRL",
           });
@@ -135,16 +137,21 @@ const PaymentsCompleted = () => {
           formattedDueDate: formattedDueDate, // Data formatada para exibição
           paymentDate: paymentDate, // Data do pagamento
           formattedPaymentDate: formattedPaymentDate, // Data do pagamento formatada
-          value: parseFloat(installment.receipts[0].receiptNetValue ).toLocaleString("pt-BR", {
+          value: parseFloat(
+            installment.receipts[0].receiptNetValue
+          ).toLocaleString("pt-BR", {
             style: "currency",
             currency: "BRL",
           }),
           indexerName: installment.indexerName || "N/A",
           conditionType: installment.conditionType || "N/A",
-          originalValue: parseFloat(installment.originalValue).toLocaleString("pt-BR", {
-            style: "currency",
-            currency: "BRL",
-          }),
+          originalValue: parseFloat(installment.originalValue).toLocaleString(
+            "pt-BR",
+            {
+              style: "currency",
+              currency: "BRL",
+            }
+          ),
           receiptNetValue: receiptNetValue,
         };
       });
@@ -159,7 +166,7 @@ const PaymentsCompleted = () => {
   };
 
   const resetFilters = () => {
-    setSelectedParcel("Número da Parcela");
+    setSelectedParcel("Número da parcela");
     setStartDate(null);
     setEndDate(null);
     setStartDateInput("");
@@ -181,7 +188,8 @@ const PaymentsCompleted = () => {
     if (formattedText.length >= 3) {
       const month = formattedText.substring(2, 4);
       if (parseInt(month, 10) > 12) {
-        formattedText = formattedText.substring(0, 2) + "12" + formattedText.substring(4);
+        formattedText =
+          formattedText.substring(0, 2) + "12" + formattedText.substring(4);
       }
     }
 
@@ -310,40 +318,57 @@ const PaymentsCompleted = () => {
     <View style={styles.card}>
       <View style={styles.cardHeader}>
         <Text style={styles.cardNotice}>
-          {item.receiptNetValue !== "Valor indisponível" ? "Pagamento Realizado" : "Pagamento Indisponível"}
+          {item.receiptNetValue !== "Valor indisponível"
+            ? "Pagamento Realizado"
+            : "Pagamento Indisponível"}
         </Text>
         <Ionicons
-          name={item.receiptNetValue !== "Valor indisponível" ? "checkmark-circle" : "close-circle"}
+          name={
+            item.receiptNetValue !== "Valor indisponível"
+              ? "checkmark-circle"
+              : "close-circle"
+          }
           size={20}
-          color={item.receiptNetValue !== "Valor indisponível" ? "#28a745" : "#dc3545"}
+          color={
+            item.receiptNetValue !== "Valor indisponível"
+              ? "#28a745"
+              : "#dc3545"
+          }
         />
       </View>
-      <Text style={styles.cardTitle}>Parcela: {item.number}</Text>
-      <Text style={styles.cardSubtitle}>Título: {item.billReceivableId}</Text>
-      <Text style={styles.cardSubtitle}>Vencimento: {item.formattedDueDate}</Text>
-      <Text style={styles.cardSubtitle}>Pagamento: {item.formattedPaymentDate}</Text>
-      <Text style={styles.cardValue}>Valor: {item.value}</Text>
-      {/* Novos campos adicionados */}
+      <Text style={styles.cardTitle}>
+        {item.conditionType}: {item.number}
+      </Text>
+      <Text style={styles.cardSubtitle}>
+        Vencimento: {item.formattedDueDate}
+      </Text>
+      <Text style={styles.cardSubtitle}>
+        Pagamento: {item.formattedPaymentDate}
+      </Text>
       <Text style={styles.cardSubtitle}>Indexador: {item.indexerName}</Text>
-      <Text style={styles.cardSubtitle}>Tipo de Condição: {item.conditionType}</Text>
+      <Text style={styles.cardValue}>Valor: {item.value}</Text>
     </View>
   );
 
   const parcelNumbers = [
-    "Número da Parcela",
+    "Número da parcela",
     ...new Set(completedPayments.map((item) => item.number)),
   ];
 
   const filteredData = completedPayments.filter((item) => {
+    if (selectedParcel === "Número da parcela" && !startDate && !endDate) {
+      return true;
+    }
+
     // Filtrar por número da parcela
     if (
-      selectedParcel !== "Número da Parcela" &&
+      selectedParcel !== "Número da parcela" &&
       item.number !== selectedParcel
     ) {
       return false;
     }
 
-    // Filtrar por data de pagamento
+    // Filtrar por data de pagamento apenas se as datas estiverem definidas
     const paymentDate = item.paymentDate;
     if (startDate && (!paymentDate || paymentDate < startDate)) {
       return false;
@@ -360,9 +385,6 @@ const PaymentsCompleted = () => {
       <Text style={styles.title}>
         {enterpriseName || "Nome do Empreendimento"}
       </Text>
-      <TouchableOpacity style={styles.actionButton}>
-        <Text style={styles.actionButtonText}>PAGAMENTOS REALIZADOS</Text>
-      </TouchableOpacity>
 
       {/* Filtro por parcela */}
       <View style={styles.pickerContainer}>
@@ -375,7 +397,7 @@ const PaymentsCompleted = () => {
             <Picker.Item
               key={parcelNumber}
               label={
-                parcelNumber === "Número da Parcela"
+                parcelNumber === "Número da parcela"
                   ? parcelNumber
                   : `Parcela ${parcelNumber}`
               }
@@ -407,24 +429,24 @@ const PaymentsCompleted = () => {
 
       {/* Botão de Resetar Filtros */}
       <TouchableOpacity style={styles.resetButton} onPress={resetFilters}>
-        <Text style={styles.resetButtonText}>Limpar Filtros</Text>
+        <Text style={styles.resetButtonText}>Limpar filtros</Text>
       </TouchableOpacity>
 
       {/* DateTimePickers para plataformas móveis */}
       {Platform.OS !== "web" && showStartDatePicker && (
-    <DateTimePicker
-      value={startDate || new Date()}
-      mode="date"
-      display="default"
-      onChange={(event, selectedDate) => {
-        setShowStartDatePicker(false);
-        if (selectedDate) {
-          setStartDate(selectedDate);
-          setStartDateInput(selectedDate.toLocaleDateString("pt-BR"));
-        }
-      }}
-    />
-  )}
+        <DateTimePicker
+          value={startDate || new Date()}
+          mode="date"
+          display="default"
+          onChange={(event, selectedDate) => {
+            setShowStartDatePicker(false);
+            if (selectedDate) {
+              setStartDate(selectedDate);
+              setStartDateInput(selectedDate.toLocaleDateString("pt-BR"));
+            }
+          }}
+        />
+      )}
 
       {Platform.OS !== "web" && showEndDatePicker && (
         <DateTimePicker
@@ -442,7 +464,11 @@ const PaymentsCompleted = () => {
       )}
 
       {loading ? (
-        <ActivityIndicator size="large" color="#E1272C" style={{ marginTop: 20 }} />
+        <ActivityIndicator
+          size="large"
+          color="#E1272C"
+          style={{ marginTop: 20 }}
+        />
       ) : (
         <FlatList
           data={filteredData}
@@ -459,7 +485,6 @@ const PaymentsCompleted = () => {
     </View>
   );
 };
-
 
 const styles = StyleSheet.create({
   container: {

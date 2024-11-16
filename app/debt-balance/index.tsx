@@ -6,21 +6,23 @@ import {
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
-  Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import axios from "axios";
 import { UserContext } from "../contexts/UserContext";
 import { useLocalSearchParams } from "expo-router";
 
+// valor contrato
+// valor financiamento
+// recurso proprio - é o que ele tem que pagar
+// desconto concedido -
+
 const DebtBalanceScreen = () => {
   const { userData } = useContext(UserContext);
-
-  // Estados para armazenar os valores calculados
   const [saldoFinanciado, setSaldoFinanciado] = useState(null);
   const [saldoPago, setSaldoPago] = useState(null);
   const [saldoDevedor, setSaldoDevedor] = useState(null);
-  const [cartaoCredito, setCartaoCredito] = useState(0);
+  const [recursoProprio, setRecursoProprio] = useState(0);
   const [nextPaymentDate, setNextPaymentDate] = useState(null);
   const [nextPaymentAmount, setNextPaymentAmount] = useState(null);
   const [contratoDetalhes, setContratoDetalhes] = useState({
@@ -28,18 +30,71 @@ const DebtBalanceScreen = () => {
     prazoTotal: 0,
     prazoRestante: 0,
   });
-
+  const [descontoConcedido, setDescontoConcedido] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-
+  const [outstandingInstallments, setOutstandingInstallments] = useState([]);
+  const [restanteFinanciado, setRestanteFinanciado] = useState();
   const { enterpriseName, billReceivableId, receivableBillValue } =
     useLocalSearchParams();
 
-  const excludeConditionTypes = ["Cartão de crédito", "Financiamento"];
+  // Tipos que serão considerados como recurso próprio
+  const recursoProprioTypes = [
+    "Cartão de crédito",
+    "Cartão de débito",
+    "PIX",
+    "Desconto",
+  ];
+  const excludeFromDebtTypes = [...recursoProprioTypes, "Financiamento"];
+
+  const fetchDiscountData = async (userId) => {
+    try {
+      const credentials = btoa(
+        "engenharq-mozart:i94B1q2HUXf7PP7oscuIBygquSRZ9lhb"
+      );
+      const response = await axios.get(
+        "https://engpag.backend.gustavohenrique.dev/proxy/customer-financial-statements",
+        {
+          params: { customerId: userId },
+          headers: {
+            Authorization: `Basic ${credentials}`,
+          },
+        }
+      );
+
+      // Procura por parcelas do tipo DS (desconto/bonificação)
+      const descontos = response.data.results
+        .flatMap((result) =>
+          result.billsReceivable.flatMap((bill) =>
+            bill.installments.filter((inst) => inst.conditionType === "DS")
+          )
+        )
+        .reduce(
+          (total, inst) => total + (inst.receipts?.[0]?.netReceiptValue || 0),
+          0
+        );
+
+      return descontos;
+    } catch (error) {
+      console.error("Erro ao buscar descontos:", error);
+      return 0;
+    }
+  };
 
   useEffect(() => {
     if (userData && (userData.cpf || userData.cnpj) && billReceivableId) {
       fetchData();
+    }
+  }, [userData, billReceivableId]);
+
+  useEffect(() => {
+    if (userData && (userData.cpf || userData.cnpj) && billReceivableId) {
+      fetchData();
+      const getDiscounts = async () => {
+        const discount = await fetchDiscountData(userData.id);
+        setDescontoConcedido(discount);
+      };
+      getDiscounts();
     }
   }, [userData, billReceivableId]);
 
@@ -78,9 +133,15 @@ const DebtBalanceScreen = () => {
         ];
 
         const outstandingInstallments = [
-          ...(selectedResult.dueInstallments || []),
-          ...(selectedResult.payableInstallments || []),
-        ];
+          ...(selectedResult.dueInstallments || []), // parcelas vencidas
+          ...(selectedResult.payableInstallments || []), // parcelas a vencer
+        ].sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate)); // ordenar por data
+
+        const allOutstandingInstallments = [
+          ...(selectedResult.dueInstallments || []), // apenas parcelas vencidas
+        ].sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate)); // ordenar por data
+
+        setOutstandingInstallments(allOutstandingInstallments);
 
         const paidInstallments = selectedResult.paidInstallments || [];
 
@@ -95,17 +156,20 @@ const DebtBalanceScreen = () => {
           const todasDesteTipo = allInstallments.filter(
             (i) => i.conditionType.trim() === tipo
           );
-        
-          // Pega o número total de parcelas do installmentNumber (exemplo: "6/100")
-          const totalParcelasFromNumber = todasDesteTipo[0]?.installmentNumber?.split('/')[1];
-          const totalParcelas = totalParcelasFromNumber ? parseInt(totalParcelasFromNumber) : todasDesteTipo.length;
-        
+
+          // Pega o número total de parcelas do installmentNumber
+          const totalParcelasFromNumber =
+            todasDesteTipo[0]?.installmentNumber?.split("/")[1];
+          const totalParcelas = totalParcelasFromNumber
+            ? parseInt(totalParcelasFromNumber)
+            : todasDesteTipo.length;
+
           const pagasDesteTipo = paidInstallments.filter(
             (i) => i.conditionType.trim() === tipo
           );
-        
+
           const restantesDesteTipo = totalParcelas - pagasDesteTipo.length;
-        
+
           detalheParcelas[tipo] = {
             total: totalParcelas,
             restantes: restantesDesteTipo,
@@ -126,24 +190,89 @@ const DebtBalanceScreen = () => {
           prazoRestante: outstandingInstallments.length,
         });
 
-        // Cálculo do Cartão de Crédito
-        const cartaoCreditoTotal = allInstallments
-          .filter((i) => i.conditionType.trim() === "Cartão de crédito")
-          .reduce((sum, i) => sum + (i.adjustedValue || 0), 0);
-        setCartaoCredito(cartaoCreditoTotal);
+        const valorFinanciamentoALiberar = selectedResult.payableInstallments
+          .filter((inst) => inst.conditionType === "Financiamento")
+          .reduce((total, inst) => total + (inst.currentBalance || 0), 0);
 
-        // Cálculo do Saldo Financiado
+        // Cálculo do Recurso Próprio
+        const valorContrato = parseFloat(receivableBillValue) || 0;
+        const valorDesconto = descontoConcedido || 0;
+        const valorFinanciamentoTotal =
+          saldoFinanciado + valorFinanciamentoALiberar;
+
+        // Recurso próprio = Valor contrato - Desconto concedido - Valor total financiamento
+        const totalRecursoProprio =
+          valorContrato - valorDesconto - valorFinanciamentoTotal;
+        setRecursoProprio(totalRecursoProprio);
+
+        // Cálculo do saldoFinanciado com logs de depuração
         const totalFinanciado = allInstallments
           .filter(
             (installment) =>
               installment.conditionType.trim() === "Financiamento"
           )
-          .reduce(
-            (sum, installment) => sum + (installment.adjustedValue || 0),
-            0
-          );
+          .reduce((sum, installment, index) => {
+            console.log(`\nProcessando Parcela ${index + 1}:`, installment);
+
+            if (installment.receipts && installment.receipts.length > 0) {
+              installment.receipts.forEach((receipt, receiptIndex) => {
+                console.log(
+                  `  Receipt ${receiptIndex + 1}: receiptNetValue = ${
+                    receipt.receiptNetValue
+                  }`
+                );
+              });
+
+              const receiptSum = installment.receipts.reduce(
+                (rSum, receipt) => rSum + (receipt.receiptNetValue || 0),
+                0
+              );
+
+              console.log(
+                `  Soma dos receiptNetValue para esta parcela: ${receiptSum}`
+              );
+
+              const newSum = sum + receiptSum;
+              console.log(`  Soma acumulada até agora: ${newSum}`);
+
+              return newSum;
+            } else {
+              console.log(`  Nenhum receipt encontrado para esta parcela.`);
+              console.log(`  Soma acumulada permanece: ${sum}`);
+              return sum;
+            }
+          }, 0);
+
+        console.log(`\nTotal Financiado Calculado: ${totalFinanciado}`);
+
         setSaldoFinanciado(totalFinanciado);
 
+        // Cálculo do Restante Financiado com logs de depuração
+        const restanteFinanciado = allInstallments
+          .filter(
+            (installment) =>
+              installment.conditionType.trim().toLowerCase() ===
+                "financiamento" &&
+              (!installment.receipts || installment.receipts.length === 0)
+          )
+          .reduce((sum, installment, index) => {
+            console.log(
+              `\nProcessando Parcela sem Recebimentos (${index + 1}):`,
+              installment
+            );
+
+            const balance = installment.currentBalance || 0;
+            console.log(`  currentBalance para esta parcela: ${balance}`);
+
+            const newSum = sum + balance;
+            console.log(`  Soma acumulada do restante até agora: ${newSum}`);
+
+            return newSum;
+          }, 0);
+
+        console.log(`\nRestante Financiado Calculado: ${restanteFinanciado}`);
+
+        setRestanteFinanciado(restanteFinanciado);
         // Cálculo do Saldo Pago
         const totalPaid = paidInstallments.reduce(
           (sum, installment) =>
@@ -157,10 +286,10 @@ const DebtBalanceScreen = () => {
         );
         setSaldoPago(totalPaid);
 
-        // Filtrar parcelas para saldo devedor (excluindo cartão e financiamento)
+        // Filtrar parcelas para saldo devedor (excluindo recurso próprio e financiamento)
         const filteredDevedorInstallments = outstandingInstallments.filter(
           (installment) =>
-            !excludeConditionTypes.includes(installment.conditionType.trim())
+            !excludeFromDebtTypes.includes(installment.conditionType.trim())
         );
 
         // Cálculo do Saldo Devedor
@@ -227,7 +356,7 @@ const DebtBalanceScreen = () => {
         <Text style={styles.errorText}>{error}</Text>
         <TouchableOpacity style={styles.retryButton} onPress={fetchData}>
           <Ionicons name="reload-outline" size={20} color="#fff" />
-          <Text style={styles.retryButtonText}>Tentar Novamente</Text>
+          <Text style={styles.retryButtonText}>Tentar novamente</Text>
         </TouchableOpacity>
       </View>
     );
@@ -240,11 +369,63 @@ const DebtBalanceScreen = () => {
       </Text>
 
       <View style={styles.debtContainer}>
-        <Text style={styles.debtLabel}>Saldo Devedor</Text>
+        <Text style={styles.debtLabel}>Saldo a pagar</Text>
         <Text style={styles.debtAmount}>
           {saldoDevedor !== null ? formatCurrency(saldoDevedor) : "R$ 0,00"}
         </Text>
       </View>
+
+      {outstandingInstallments.length > 0 ? (
+        <View style={styles.nextPaymentContainer}>
+          <Text style={styles.sectionTitle}>Parcelas vencidas</Text>
+
+          {outstandingInstallments.map((installment) => (
+            <View key={installment.installmentId} style={styles.parcelCard}>
+              <View style={styles.parcelHeader}>
+                <Text style={styles.parcelTitle}>
+                  Parcela {installment.installmentNumber}
+                </Text>
+                <Text style={styles.parcelType}>
+                  {installment.conditionType}
+                </Text>
+              </View>
+
+              <View style={styles.parcelInfo}>
+                <Text style={styles.infoLabel}>Vencimento:</Text>
+                <Text style={styles.infoValue}>
+                  {formatDate(installment.dueDate)}
+                </Text>
+              </View>
+
+              <View style={styles.parcelInfo}>
+                <Text style={styles.infoLabel}>Valor Original:</Text>
+                <Text style={styles.infoValue}>
+                  {formatCurrency(installment.originalValue)}
+                </Text>
+              </View>
+
+              <View style={styles.parcelInfo}>
+                <Text style={styles.infoLabel}>Valor Atual:</Text>
+                <Text style={styles.infoValue}>
+                  {formatCurrency(installment.currentBalance)}
+                </Text>
+              </View>
+            </View>
+          ))}
+
+          <View style={styles.totalContainer}>
+            <Text style={styles.totalLabel}>Total vencido:</Text>
+            <Text style={styles.totalValue}>
+              {formatCurrency(
+                outstandingInstallments.reduce(
+                  (sum, inst) => sum + (inst.currentBalance || 0),
+                  0
+                )
+              )}
+            </Text>
+          </View>
+        </View>
+      ) : null}
 
       {nextPaymentDate && nextPaymentAmount ? (
         <View style={styles.nextPaymentContainer}>
@@ -265,11 +446,10 @@ const DebtBalanceScreen = () => {
           </View>
         </View>
       ) : null}
-
       <View style={styles.financialInfoContainer}>
-        <Text style={styles.sectionTitle}>Detalhes Financeiros</Text>
+        <Text style={styles.sectionTitle}>Detalhes financeiros</Text>
         <View style={styles.financialRow}>
-          <Text style={styles.financialLabel}>Valor do Contrato</Text>
+          <Text style={styles.financialLabel}>Valor do contrato</Text>
           <Text style={styles.financialValue}>
             {receivableBillValue !== null
               ? formatCurrency(receivableBillValue)
@@ -277,31 +457,42 @@ const DebtBalanceScreen = () => {
           </Text>
         </View>
         <View style={styles.financialRow}>
-          <Text style={styles.financialLabel}>Valor Financiado</Text>
+          <Text style={styles.financialLabel}>Valor do financiamento</Text>
           <Text style={styles.financialValue}>
             {saldoFinanciado !== null
               ? formatCurrency(saldoFinanciado)
               : "R$ 0,00"}
           </Text>
         </View>
-        {cartaoCredito > 0 && (
+        {restanteFinanciado ? (
           <View style={styles.financialRow}>
-            <Text style={styles.financialLabel}>Cartão de Crédito</Text>
+            <Text style={styles.financialLabel}>Restante do financiamento</Text>
             <Text style={styles.financialValue}>
-              {formatCurrency(cartaoCredito)}
+              {restanteFinanciado !== null
+                ? formatCurrency(restanteFinanciado)
+                : "R$ 0,00"}
             </Text>
           </View>
-        )}
+        ) : null}
+
         <View style={styles.financialRow}>
-          <Text style={styles.financialLabel}>Valor Pago</Text>
+          <Text style={styles.financialLabel}>Recurso próprio</Text>
           <Text style={styles.financialValue}>
-            {saldoPago !== null ? formatCurrency(saldoPago) : "R$ 0,00"}
+            {recursoProprio > 0 ? formatCurrency(recursoProprio) : "R$ 0,00"}
+          </Text>
+        </View>
+        <View style={styles.financialRow}>
+          <Text style={styles.financialLabel}>Desconto concedido</Text>
+          <Text style={styles.financialValue}>
+            {descontoConcedido > 0
+              ? formatCurrency(descontoConcedido)
+              : "R$ 0,00"}
           </Text>
         </View>
       </View>
 
       <View style={styles.contractDetailsContainer}>
-        <Text style={styles.sectionTitle}>Detalhes do Contrato</Text>
+        <Text style={styles.sectionTitle}>Detalhes do contrato</Text>
 
         {/* Primeiro exibe as parcelas regulares */}
         {Object.entries(contratoDetalhes.parcelas)
@@ -317,7 +508,7 @@ const DebtBalanceScreen = () => {
                 <Text style={styles.contractValueHighlight}>{dados.total}</Text>
               </View>
               <View style={styles.contractRow}>
-                <Text style={styles.contractLabel}>Parcelas Pagas</Text>
+                <Text style={styles.contractLabel}>Parcelas pagas</Text>
                 <Text style={styles.contractValue}>{dados.pagas}</Text>
               </View>
               <View style={styles.contractRow}>
@@ -325,9 +516,7 @@ const DebtBalanceScreen = () => {
                 <Text style={styles.contractValue}>{dados.restantes}</Text>
               </View>
               <View style={styles.contractRow}>
-                <Text style={styles.contractLabelBold}>
-                  Valor a pagar
-                </Text>
+                <Text style={styles.contractLabelBold}>Valor a pagar</Text>
                 <Text style={styles.contractValueHighlight}>
                   {formatCurrency(dados.valorAtual)}
                 </Text>
@@ -340,6 +529,12 @@ const DebtBalanceScreen = () => {
 };
 
 const styles = StyleSheet.create({
+  // Estilos gerais do container e cabeçalhos
+  container: {
+    flex: 1,
+    backgroundColor: "#FFF8F8",
+    padding: 16,
+  },
   mainTitle: {
     fontSize: 24,
     fontWeight: "bold",
@@ -354,15 +549,163 @@ const styles = StyleSheet.create({
     color: "#333",
     marginBottom: 16,
   },
-  statusPago: {
-    color: "#2E8B57",
+
+  // Estilos para o container de débito
+  debtContainer: {
+    backgroundColor: "#fff",
+    padding: 20,
+    borderRadius: 8,
+    alignItems: "center",
+    marginBottom: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  debtLabel: {
+    fontSize: 18,
+    color: "#333",
+    fontWeight: "bold",
+    marginBottom: 10,
+  },
+  debtAmount: {
+    fontSize: 26,
+    color: "#E1272C",
     fontWeight: "bold",
   },
-  parcelasTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#444",
+
+  // Estilos para parcelas vencidas
+  nextPaymentContainer: {
+    marginBottom: 20,
+    backgroundColor: "#fff",
+    borderRadius: 8,
+    padding: 16,
+    elevation: 3,
+  },
+  parcelCard: {
+    backgroundColor: "#fff",
+    borderRadius: 8,
+    padding: 16,
     marginBottom: 12,
+    borderWidth: 1,
+    borderColor: "#eee",
+  },
+  parcelHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
+    paddingBottom: 8,
+  },
+  parcelTitle: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#333",
+  },
+  parcelType: {
+    fontSize: 14,
+    color: "#666",
+  },
+  parcelInfo: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 8,
+  },
+  infoLabel: {
+    fontSize: 14,
+    color: "#666",
+  },
+  infoValue: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: "#333",
+  },
+
+  // Estilos para o container de total
+  totalContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    backgroundColor: "#f8f8f8",
+    padding: 16,
+    borderRadius: 8,
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: "#ddd",
+  },
+  totalLabel: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#333",
+  },
+  totalValue: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#E1272C",
+  },
+
+  // Estilos para o próximo vencimento
+  paymentRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    backgroundColor: "#fff",
+    padding: 16,
+    borderRadius: 8,
+    elevation: 3,
+    marginBottom: 8,
+  },
+  paymentInfo: {
+    flex: 1,
+    alignItems: "center",
+  },
+  paymentLabel: {
+    fontSize: 14,
+    color: "#555",
+    marginBottom: 4,
+  },
+  paymentValue: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#333",
+  },
+
+  // Estilos para informações financeiras
+  financialInfoContainer: {
+    backgroundColor: "#fff",
+    borderRadius: 8,
+    padding: 16,
+    marginBottom: 20,
+    elevation: 3,
+  },
+  financialRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 8,
+  },
+  financialLabel: {
+    fontSize: 15,
+    color: "#444",
+  },
+  financialValue: {
+    fontSize: 16,
+    fontWeight: "500",
+    color: "#333",
+  },
+
+  // Estilos para detalhes do contrato
+  contractDetailsContainer: {
+    padding: 16,
+    backgroundColor: "#fff",
+    borderRadius: 8,
+    elevation: 3,
+    marginBottom: 20,
+  },
+  contractRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 8,
   },
   contractLabelBold: {
     fontSize: 16,
@@ -382,41 +725,20 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: "#333",
   },
-  debtLabel: {
+  parcelasTitle: {
     fontSize: 18,
-    color: "#333",
-    fontWeight: "bold",
-    marginBottom: 10,
-  },
-  debtAmount: {
-    fontSize: 26,
-    color: "#E1272C",
-    fontWeight: "bold",
-  },
-  paymentLabel: {
-    fontSize: 14,
-    color: "#555",
-    marginBottom: 4,
-  },
-  paymentValue: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#333",
-  },
-  financialLabel: {
-    fontSize: 15,
+    fontWeight: "600",
     color: "#444",
+    marginBottom: 12,
   },
-  financialValue: {
-    fontSize: 16,
-    fontWeight: "500",
-    color: "#333",
+
+  // Estilos para status e estados
+  statusPago: {
+    color: "#2E8B57",
+    fontWeight: "bold",
   },
-  container: {
-    flex: 1,
-    backgroundColor: "#FFF8F8",
-    padding: 16,
-  },
+
+  // Estilos para loading e erro
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
@@ -449,65 +771,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "bold",
     marginLeft: 8,
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: "bold",
-    textAlign: "center",
-    color: "#333",
-    marginTop: 10,
-    marginBottom: 20,
-  },
-  debtContainer: {
-    backgroundColor: "#fff",
-    padding: 20,
-    borderRadius: 8,
-    alignItems: "center",
-    marginBottom: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    elevation: 3,
-  },
-  nextPaymentContainer: {
-    marginBottom: 20,
-  },
-  paymentRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    backgroundColor: "#fff",
-    padding: 16,
-    borderRadius: 8,
-    elevation: 3,
-  },
-  paymentInfo: {
-    flex: 1,
-    alignItems: "center",
-  },
-  financialInfoContainer: {
-    backgroundColor: "#fff",
-    borderRadius: 8,
-    padding: 16,
-    marginBottom: 20,
-    elevation: 3,
-  },
-  financialRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 8,
-  },
-  contractDetailsContainer: {
-    padding: 16,
-    backgroundColor: "#fff",
-    borderRadius: 8,
-    elevation: 3,
-    marginBottom: 20,
-  },
-  contractRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 8,
   },
 });
 

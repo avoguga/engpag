@@ -20,6 +20,23 @@ import axios from "axios";
 import { UserContext } from "../contexts/UserContext";
 import { useLocalSearchParams } from "expo-router";
 
+const excludedConditionTypes = [
+  "Cartão de crédito",
+  "Cartão de débito",
+  "Sinal",
+  "Financiamento",
+  "Promissória",
+  "Valor do terreno",
+  "Sinal - Tev/Pix/depósito",
+];
+
+const filterValidInstallments = (installments) => {
+  return installments.filter(
+    (installment) =>
+      !excludedConditionTypes.includes(installment.conditionType.trim())
+  );
+};
+
 const ParcelAntecipation = () => {
   const { userData } = useContext(UserContext);
   const { billReceivableId, enterpriseName } = useLocalSearchParams();
@@ -38,7 +55,9 @@ const ParcelAntecipation = () => {
   const [showNewDueDatePicker, setShowNewDueDatePicker] = useState(false);
   const [newDueDateInput, setNewDueDateInput] = useState("");
   const [hasOverdueInstallments, setHasOverdueInstallments] = useState(false);
-
+  // antecipar parcela menos credito, debito, sinal, financiamento, promissoria, valor do terreno.
+  // bloquar datas anteriores
+  // arrumar data
   const startDateInputRef = useRef(null);
   const endDateInputRef = useRef(null);
   const newDueDateInputRef = useRef(null);
@@ -111,7 +130,6 @@ const ParcelAntecipation = () => {
               currency: "BRL",
             }
           ),
-          // status: dueDateUTC < new Date() ? "vencido" : "pendente",
           status: isOverdue ? "vencido" : "pendente",
           installmentId: installment.installmentId,
           generatedBoleto: installment.generatedBoleto,
@@ -120,10 +138,14 @@ const ParcelAntecipation = () => {
         };
       });
 
-      const hasOverdue = installments.some((item) => item.status === "vencido");
+      const validInstallments = filterValidInstallments(installments);
+
+      const hasOverdue = validInstallments.some(
+        (item) => item.status === "vencido"
+      );
       setHasOverdueInstallments(hasOverdue);
 
-      setData(installments);
+      setData(validInstallments);
     } catch (error) {
       console.error("Erro ao buscar parcelas:", error);
       Alert.alert("Erro", "Não foi possível obter as parcelas.");
@@ -299,7 +321,7 @@ const ParcelAntecipation = () => {
     >
       <View style={styles.cardHeader}>
         <Text style={styles.cardNotice}>
-          {item.generatedBoleto ? "Boleto Disponível" : "Boleto Indisponível"}
+          {item.generatedBoleto ? "Boleto disponível" : "Boleto indisponível"}
         </Text>
         <Ionicons
           name={item.generatedBoleto ? "checkmark-circle" : "close-circle"}
@@ -471,22 +493,7 @@ const ParcelAntecipation = () => {
   const handleModalDateInputWithMask = (text) => {
     let formattedText = text.replace(/\D/g, "");
 
-    // Formatação da data (mantém como está)
-    if (formattedText.length >= 1) {
-      const day = formattedText.substring(0, 2);
-      if (parseInt(day, 10) > 31) {
-        formattedText = "31";
-      }
-    }
-
-    if (formattedText.length >= 3) {
-      const month = formattedText.substring(2, 4);
-      if (parseInt(month, 10) > 12) {
-        formattedText =
-          formattedText.substring(0, 2) + "12" + formattedText.substring(4);
-      }
-    }
-
+    // Formatação básica da máscara
     if (formattedText.length > 2) {
       formattedText = formattedText.replace(/(\d{2})(\d)/, "$1/$2");
     }
@@ -497,53 +504,72 @@ const ParcelAntecipation = () => {
       formattedText = formattedText.slice(0, 10);
     }
 
+    // Atualiza o input
     setNewDueDateInput(formattedText);
 
+    // Só valida quando a data estiver completa
     if (formattedText.length === 10) {
       const [dayStr, monthStr, yearStr] = formattedText.split("/");
       const day = parseInt(dayStr, 10);
       const month = parseInt(monthStr, 10);
       const year = parseInt(yearStr, 10);
 
-      // Verificar se os valores de dia, mês e ano são válidos
-      const isValidDate =
-        day > 0 &&
-        day <= 31 &&
-        month > 0 &&
-        month <= 12 &&
-        year >= 1900 &&
-        year <= 2100;
+      // Verifica se o mês é válido (1-12)
+      if (month < 1 || month > 12) {
+        if (Platform.OS === "web") {
+          alert("Mês inválido");
+        } else {
+          Alert.alert("Erro", "Mês inválido");
+        }
+        return;
+      }
 
-      if (isValidDate) {
-        const date = new Date(year, month - 1, day);
-        const today = new Date();
-
-        // Verifica se a data é válida e está dentro do mês atual
-        if (
-          date &&
-          date.getFullYear() === year &&
-          date.getMonth() === month - 1 &&
-          date.getDate() === day &&
-          date.getMonth() === today.getMonth() &&
-          date.getFullYear() === today.getFullYear() &&
-          date >= today // Não permite datas passadas
-        ) {
-          setNewDueDate(date);
+      // Verifica o número máximo de dias para o mês específico
+      const maxDays = new Date(year, month, 0).getDate();
+      if (day < 1 || day > maxDays) {
+        if (Platform.OS === "web") {
+          alert(`Dia inválido para o mês ${month}. O máximo é ${maxDays} dias`);
         } else {
           Alert.alert(
             "Erro",
-            "A data de antecipação deve estar dentro do mês atual."
+            `Dia inválido para o mês ${month}. O máximo é ${maxDays} dias`
           );
-          setNewDueDate(null);
-          setNewDueDateInput("");
         }
-      } else {
-        Alert.alert("Erro", "Data inválida.");
-        setNewDueDate(null);
-        setNewDueDateInput("");
+        return;
       }
-    } else {
-      setNewDueDate(null);
+
+      // Pega o mês atual
+      const today = new Date();
+      const currentMonth = today.getMonth() + 1;
+      const currentYear = today.getFullYear();
+
+      // Verifica se está no mês atual
+      if (month !== currentMonth || year !== currentYear) {
+        if (Platform.OS === "web") {
+          alert("A data deve ser do mês atual");
+        } else {
+          Alert.alert("Erro", "A data deve ser do mês atual");
+        }
+        return;
+      }
+
+      const selectedDate = new Date(year, month - 1, day);
+      const currentDate = new Date();
+
+      currentDate.setHours(0, 0, 0, 0);
+      selectedDate.setHours(0, 0, 0, 0);
+
+      if (selectedDate < currentDate) {
+        if (Platform.OS === "web") {
+          alert("Não é possível selecionar datas passadas");
+        } else {
+          Alert.alert("Erro", "Não é possível selecionar datas passadas");
+        }
+        return;
+      }
+
+      // Se chegou aqui, a data é válida
+      setNewDueDate(selectedDate);
     }
   };
 
@@ -605,7 +631,7 @@ const ParcelAntecipation = () => {
 
       {/* Botão de Resetar Filtros */}
       <TouchableOpacity style={styles.resetButton} onPress={resetFilters}>
-        <Text style={styles.resetButtonText}>Limpar Filtros</Text>
+        <Text style={styles.resetButtonText}>Limpar filtros</Text>
       </TouchableOpacity>
 
       {selectedInstallments.length > 0 && (
@@ -616,7 +642,7 @@ const ParcelAntecipation = () => {
           ]}
           onPress={unselectAllParcels}
         >
-          <Text style={styles.resetButtonText}>Desmarcar Parcelas</Text>
+          <Text style={styles.resetButtonText}>Desmarcar parcelas</Text>
         </TouchableOpacity>
       )}
 
@@ -627,78 +653,93 @@ const ParcelAntecipation = () => {
         </Text>
       ) : null}
 
-      {/* DateTimePickers para plataformas móveis */}
+      {/* DateTimePickers para filtros - qualquer mês a partir do atual */}
       {Platform.OS !== "web" && showStartDatePicker && (
-        <DateTimePicker
-          value={startDate || new Date()}
-          mode="date"
-          display="default"
-          onChange={(event, selectedDate) => {
-            setShowStartDatePicker(false);
-            if (selectedDate) {
-              setStartDate(selectedDate);
-              setStartDateInput(selectedDate.toLocaleDateString("pt-BR"));
-            }
-          }}
-          minimumDate={
-            new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1)
-          }
-        />
-      )}
+  <DateTimePicker
+    value={startDate || new Date()}
+    mode="date"
+    display="default"
+    onChange={(event, selectedDate) => {
+      setShowStartDatePicker(false);
+      if (selectedDate) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        selectedDate.setHours(0, 0, 0, 0);
 
-      {Platform.OS !== "web" && showEndDatePicker && (
-        <DateTimePicker
-          value={endDate || new Date()}
-          mode="date"
-          display="default"
-          onChange={(event, selectedDate) => {
-            setShowEndDatePicker(false);
-            if (selectedDate) {
-              setEndDate(selectedDate);
-              setEndDateInput(selectedDate.toLocaleDateString("pt-BR"));
-            }
-          }}
-          minimumDate={
-            new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1)
+        if (selectedDate >= today) {
+          setStartDate(selectedDate);
+          setStartDateInput(selectedDate.toLocaleDateString("pt-BR"));
+          // Se a data final for anterior à nova data inicial, limpa a data final
+          if (endDate && selectedDate > endDate) {
+            setEndDate(null);
+            setEndDateInput("");
           }
-        />
-      )}
+        } else {
+          Alert.alert("Erro", "A data inicial não pode ser anterior a hoje");
+        }
+      }
+    }}
+    minimumDate={new Date()} // Hoje
+  />
+)}
+
+{Platform.OS !== "web" && showEndDatePicker && (
+  <DateTimePicker
+    value={endDate || (startDate || new Date())}
+    mode="date"
+    display="default"
+    onChange={(event, selectedDate) => {
+      setShowEndDatePicker(false);
+      if (selectedDate) {
+        selectedDate.setHours(0, 0, 0, 0);
+        const minDate = startDate || new Date();
+        minDate.setHours(0, 0, 0, 0);
+
+        if (selectedDate >= minDate) {
+          setEndDate(selectedDate);
+          setEndDateInput(selectedDate.toLocaleDateString("pt-BR"));
+        } else {
+          Alert.alert("Erro", "A data final deve ser igual ou posterior à data inicial");
+        }
+      }
+    }}
+    minimumDate={startDate || new Date()} // Data inicial ou hoje
+  />
+)}
 
       {/* DateTimePicker para nova data de vencimento no modal */}
       {Platform.OS !== "web" && showNewDueDatePicker && (
-        <DateTimePicker
-          value={newDueDate || new Date()}
-          mode="date"
-          display="default"
-          onChange={(event, selectedDate) => {
-            setShowNewDueDatePicker(false);
-            if (selectedDate) {
-              // Verifica se a data selecionada está no mês atual
-              const today = new Date();
-              if (
-                selectedDate.getMonth() === today.getMonth() &&
-                selectedDate.getFullYear() === today.getFullYear() &&
-                selectedDate >= today
-              ) {
-                const formattedDate = selectedDate.toLocaleDateString("pt-BR");
-                setNewDueDate(selectedDate);
-                setNewDueDateInput(formattedDate);
-              } else {
-                Alert.alert(
-                  "Erro",
-                  "A data de antecipação deve estar dentro do mês atual."
-                );
-                setNewDueDate(null);
-                setNewDueDateInput("");
-              }
-            }
-          }}
-          minimumDate={new Date()} // Data atual
-          maximumDate={
-            new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0)
-          } // Último dia do mês atual
-        />
-      )}
+  <DateTimePicker
+    value={newDueDate || new Date()}
+    mode="date"
+    display="default"
+    onChange={(event, selectedDate) => {
+      setShowNewDueDatePicker(false);
+      if (selectedDate) {
+        const today = new Date();
+        // Zera as horas para comparação adequada
+        today.setHours(0, 0, 0, 0);
+        selectedDate.setHours(0, 0, 0, 0);
+
+        if (
+          selectedDate.getMonth() === today.getMonth() &&
+          selectedDate.getFullYear() === today.getFullYear() &&
+          selectedDate >= today
+        ) {
+          setNewDueDate(selectedDate);
+          setNewDueDateInput(selectedDate.toLocaleDateString("pt-BR"));
+        } else {
+          Alert.alert("Erro", "A data de antecipação deve estar dentro do mês atual e não pode ser anterior a hoje.");
+        }
+      }
+    }}
+    minimumDate={new Date()} // Hoje
+    maximumDate={
+      // Último dia do mês atual
+      new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0)
+    }
+  />
+)}
 
       {/* Date Picker para Web no Modal */}
       {Platform.OS === "web" && showNewDueDatePicker && (
@@ -1136,7 +1177,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginBottom: 10,
     fontStyle: "italic",
-    fontWeight: 'bold'
+    fontWeight: "bold",
   },
   floatingButton: {
     backgroundColor: "#E1272C",

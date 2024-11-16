@@ -162,9 +162,9 @@ const Index = () => {
     setPasswordError("");
 
     try {
-      const username = "engenharq-mozart";
-      const apiPassword = "sua_senha"; // Substitua 'sua_senha' pela senha correta
-      const credentials = btoa(`${username}:${apiPassword}`);
+      const credentials = btoa(
+        "engenharq-mozart:i94B1q2HUXf7PP7oscuIBygquSRZ9lhb"
+      );
 
       const sanitizedInput = inputValue.replace(/\D/g, '');
 
@@ -247,9 +247,9 @@ const Index = () => {
     setLoadingRecovery(true);
 
     try {
-      const username = "engenharq-mozart";
-      const apiPassword = "sua_senha"; // Substitua 'sua_senha' pela senha correta
-      const credentials = btoa(`${username}:${apiPassword}`);
+      const credentials = btoa(
+        "engenharq-mozart:i94B1q2HUXf7PP7oscuIBygquSRZ9lhb"
+      );
 
       const sanitizedCpf = cpfRecovery.replace(/\D/g, '');
 

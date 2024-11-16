@@ -55,7 +55,7 @@ const BoletoScreen = () => {
     setLoading(true);
     try {
       const credentials = btoa(
-        "engenharq-mozart:senha" // Substitua "senha" pela senha correta
+        "engenharq-mozart:i94B1q2HUXf7PP7oscuIBygquSRZ9lhb"
       );
       const searchParam = userData.cpf
         ? { cpf: userData.cpf, correctAnnualInstallment: "N" }
@@ -132,11 +132,11 @@ const BoletoScreen = () => {
           });
         } else if (nonGeneratedInstallments.length > 0) {
           Alert.alert(
-            "Boleto Indisponível",
-            "Nenhum boleto está disponível no momento. Por favor, entre em contato com o suporte via WhatsApp para liberar o pagamento.",
+            "Boleto indisponível",
+            "Nenhum boleto está disponível no momento. Por favor, entre em contato com o suporte via WhatsApp para solicitar a geração.",
             [
               {
-                text: "Falar com Suporte",
+                text: "Falar com suporte",
                 onPress: () => handleSendWhatsAppMessage(),
               },
               {
@@ -171,17 +171,16 @@ const BoletoScreen = () => {
       Alert.alert("Erro", "Dados do cliente não encontrados.");
       return;
     }
-  
+   
     setLoading(true);
-  
+   
     try {
       const credentials = btoa(
         "engenharq-mozart:i94B1q2HUXf7PP7oscuIBygquSRZ9lhb"
       );
-  
+   
       let companyId = null;
-      let unityName = "N/A";
-  
+   
       if (installmentDetails) {
         const response = await axios.get(
           `https://engpag.backend.gustavohenrique.dev/proxy/accounts-receivable/receivable-bills/${billReceivableId}`,
@@ -190,27 +189,43 @@ const BoletoScreen = () => {
             headers: { Authorization: `Basic ${credentials}` },
           }
         );
-  
+   
         companyId = response.data.companyId;
-        unityName = response.data.unityName || "N/A";
       }
-  
+   
       const companyInfo = {
         1: { name: "Engenharq", whatsappNumber: "558296890033" },
         2: { name: "EngeLot", whatsappNumber: "558296890066" },
         3: { name: "EngeLoc", whatsappNumber: "558296890202" },
         default: { name: "Desconhecida", whatsappNumber: "5585986080000" },
       };
-  
+   
       const { whatsappNumber } =
         (companyId && companyInfo[companyId]) || companyInfo.default;
-  
-      const message = `Olá, meu nome é ${userData.name}. Gostaria de solicitar a geração de um novo boleto para o pagamento do meu boleto referente ao empreendimento ${enterpriseName} cujo vencimento original era dia ${formatDate(installmentDetails.dueDate)}. Referente a unidade ${unityName} - correspondente ao título ${billReceivableId}.`;
-  
+   
+      const getCurrentMonthDate = () => {
+        const now = new Date();
+        now.setMonth(now.getMonth() + 1); // Adiciona 1 mês
+        return `${now.getDate().toString().padStart(2, '0')}/${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getFullYear()}`;
+      };
+   
+      let message = "";
+   
+      if (!installmentDetails) {
+        // Caso 1: Cliente já pagou e quer pagar próximo mês
+        message = `Olá, meu nome é ${userData.name}. Gostaria de verificar a disponibilidade da 2ª via de boleto no sistema, referente ao empreendimento ${enterpriseName}, da unidade ${unityName} - correspondente ao título ${billReceivableId}.`;
+      } else if (hasOverdueInstallment || (installmentDetails.daysOverdue > 30)) {
+        // Caso 2: Cliente inadimplente após 30 dias
+        message = `Olá, meu nome é ${userData.name}. Gostaria de solicitar a liberação e geração de um novo boleto para pagamento referente ao empreendimento ${enterpriseName} cujo vencimento original era dia ${formatDate(installmentDetails.dueDate)}. Referente a unidade ${unityName} - correspondente ao título ${billReceivableId}.`;
+      } else {
+        // Caso 3: Pagamento normal
+        message = `Olá, meu nome é ${userData.name}. Gostaria de solicitar a geração de uma segunda via do boleto para pagamento referente ao empreendimento ${enterpriseName} cujo vencimento é dia ${formatDate(installmentDetails.dueDate)}. Referente a unidade ${unityName} - correspondente ao título ${billReceivableId}.`;
+      }
+   
       const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
         message
       )}`;
-  
+   
       const supported = await Linking.canOpenURL(whatsappUrl);
       if (supported) {
         await Linking.openURL(whatsappUrl);
@@ -223,7 +238,7 @@ const BoletoScreen = () => {
     } finally {
       setLoading(false);
     }
-  };
+   };
 
   const requestBoletoLink = async () => {
     if (!userData) {
@@ -246,11 +261,11 @@ const BoletoScreen = () => {
 
     if (hasOverdueInstallment || daysOverdue > 30) {
       Alert.alert(
-        "Boleto Indisponível",
+        "Boleto indisponível",
         "Este boleto está vencido há mais de 30 dias. Por favor, entre em contato com o suporte via WhatsApp para liberar o pagamento e gerar uma nova via.",
         [
           {
-            text: "Falar com Suporte",
+            text: "Falar com suporte",
             onPress: () => handleSendWhatsAppMessage(),
           },
           {
@@ -515,7 +530,7 @@ const BoletoScreen = () => {
                       <Ionicons name="logo-whatsapp" size={20} color="white" />
                       <Text style={styles.contactSupportButtonText}>
                         {" "}
-                        Falar com Suporte
+                        Falar com suporte
                       </Text>
                     </TouchableOpacity>
                   ) : (
@@ -561,7 +576,7 @@ const BoletoScreen = () => {
                   <Ionicons name="logo-whatsapp" size={20} color="white" />
                   <Text style={styles.contactSupportButtonText}>
                     {" "}
-                    Falar com Suporte
+                    Falar com suporte
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -616,7 +631,7 @@ const BoletoScreen = () => {
           </View>
         </Modal>
 
-        {/* Modal de Suporte */}
+        {/* Modal de suporte */}
         <Modal
           visible={isSupportModalVisible}
           animationType="slide"
@@ -625,7 +640,7 @@ const BoletoScreen = () => {
         >
           <View style={styles.modalOverlay}>
             <View style={styles.supportModalContainer}>
-              <Text style={styles.supportModalTitle}>Suporte</Text>
+              <Text style={styles.supportModalTitle}>suporte</Text>
               <Text style={styles.supportModalText}>
                 Este boleto não está disponível. Por favor, entre em contato com
                 o suporte via WhatsApp para liberar o pagamento.
@@ -640,7 +655,7 @@ const BoletoScreen = () => {
                 >
                   <Ionicons name="logo-whatsapp" size={20} color="white" />
                   <Text style={styles.supportButtonText}>
-                    Falar com Suporte
+                    Falar com suporte
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
