@@ -15,7 +15,7 @@ import axios from "axios";
 import { UserContext } from "../contexts/UserContext";
 import { useFocusEffect, useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import * as Notifications from 'expo-notifications';
+import * as Notifications from "expo-notifications";
 
 const formatDate = (dateString) => {
   if (!dateString || typeof dateString !== "string") return "N/A";
@@ -84,16 +84,19 @@ const InitialPage = () => {
     }, [])
   );
 
-    // Solicitar permissões ao carregar o componente
-    useEffect(() => {
-      const getPermission = async () => {
-        const { status } = await Notifications.requestPermissionsAsync();
-        if (status !== 'granted') {
-          Alert.alert('Permissão necessária', 'Ative as permissões para notificações.');
-        }
-      };
-      getPermission();
-    }, []);
+  // Solicitar permissões ao carregar o componente
+  useEffect(() => {
+    const getPermission = async () => {
+      const { status } = await Notifications.requestPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert(
+          "Permissão necessária",
+          "Ative as permissões para notificações."
+        );
+      }
+    };
+    getPermission();
+  }, []);
 
   useEffect(() => {
     const checkAuthentication = async () => {
@@ -413,7 +416,16 @@ const InitialPage = () => {
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.greeting}>
-          Olá, {userData?.name?.split(" ")[0] || "Usuário"}!
+          Olá,{" "}
+          {userData?.name
+            ? userData.name
+                .toLowerCase()
+                .split(" ")
+                .slice(0, 2)
+                .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+                .join(" ") || "Usuário"
+            : "Usuário"}
+          !
         </Text>
         <View style={styles.lineSeparatorLarge} />
         <View style={styles.lineSeparatorSmall} />
@@ -466,7 +478,7 @@ const InitialPage = () => {
                     <Text style={styles.cardTitle}>
                       {enterpriseInfo.enterpriseName}
                     </Text>
-                    {enterpriseInfo.unityName !== 'N/A' ? (
+                    {enterpriseInfo.unityName !== "N/A" ? (
                       <View style={styles.infoRow}>
                         <Text style={styles.infoLabel}>Unidade:</Text>
                         <Text style={styles.infoValue}>

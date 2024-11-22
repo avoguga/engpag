@@ -23,6 +23,10 @@ const formatDate = (dateString) => {
   return `${day.padStart(2, "0")}/${month.padStart(2, "0")}/${year}`;
 };
 
+const formatConditionType = (text) => {
+  return text.toLowerCase().replace(/^\w/, (c) => c.toUpperCase());
+};
+
 const PaymentHistory = () => {
   const { userData } = useContext(UserContext);
   const { billReceivableId, enterpriseName } = useLocalSearchParams();
@@ -322,10 +326,10 @@ const PaymentHistory = () => {
         </Text>
         <Text style={styles.cardConditionType}>
           <Text style={styles.label}>Condição: </Text>
-          {item.conditionType}
+          {formatConditionType(item.conditionType)}
         </Text>
         <Text style={styles.cardAmount}>
-          <Text style={styles.label}>Valor: </Text>
+          <Text style={ !item.paymentDate ? styles.label : styles.labell}>Valor: </Text>
           {item.paymentDate ? (
             <Text style={styles.cardPaidDate}>{getAmount(item)}</Text>
           ) : (
@@ -531,7 +535,7 @@ const PaymentHistory = () => {
                 <View style={styles.modalItem}>
                   <Text style={styles.modalLabel}>Tipo de condição:</Text>
                   <Text style={styles.modalValue}>
-                    {selectedInstallment.conditionType}
+                    {formatConditionType(selectedInstallment.conditionType)}
                   </Text>
                 </View>
                 <View style={styles.modalItem}>
@@ -686,6 +690,11 @@ const styles = StyleSheet.create({
   },
   label: {
     fontWeight: "600",
+  },
+
+  labell: {
+    fontWeight: "600",
+    color: "#2E7D32",
   },
   noInstallmentsText: {
     textAlign: "center",

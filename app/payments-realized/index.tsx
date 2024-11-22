@@ -17,6 +17,11 @@ import axios from "axios";
 import { UserContext } from "../contexts/UserContext";
 import { useLocalSearchParams } from "expo-router";
 
+const formatConditionType = (text) => {
+  return text.toLowerCase().replace(/^\w/, (c) => c.toUpperCase());
+};
+
+
 const PaymentsCompleted = () => {
   const { userData } = useContext(UserContext);
   const { billReceivableId, enterpriseName } = useLocalSearchParams();
@@ -319,8 +324,8 @@ const PaymentsCompleted = () => {
       <View style={styles.cardHeader}>
         <Text style={styles.cardNotice}>
           {item.receiptNetValue !== "Valor indisponível"
-            ? "Pagamento Realizado"
-            : "Pagamento Indisponível"}
+            ? "Pagamento realizado"
+            : "Pagamento indisponível"}
         </Text>
         <Ionicons
           name={
@@ -337,7 +342,7 @@ const PaymentsCompleted = () => {
         />
       </View>
       <Text style={styles.cardTitle}>
-        {item.conditionType}: {item.number}
+        {formatConditionType(item.conditionType)}: {item.number}
       </Text>
       <Text style={styles.cardSubtitle}>
         Vencimento: {item.formattedDueDate}

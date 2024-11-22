@@ -26,8 +26,7 @@ const excludedConditionTypes = [
   "Sinal",
   "Financiamento",
   "Promissória",
-  "Valor do terreno",
-  "Sinal - Tev/Pix/depósito",
+  "Valor do terreno"
 ];
 
 const filterValidInstallments = (installments) => {
@@ -164,6 +163,10 @@ const ParcelAntecipation = () => {
     } else {
       setSelectedInstallments([...selectedInstallments, item]);
     }
+  };
+
+  const formatConditionType = (text) => {
+    return text.toLowerCase().replace(/^\w/, (c) => c.toUpperCase());
   };
 
   const handleDateInputWithMask = (text, setDate, setDateInput) => {
@@ -321,7 +324,7 @@ const ParcelAntecipation = () => {
     >
       <View style={styles.cardHeader}>
         <Text style={styles.cardNotice}>
-          {item.generatedBoleto ? "Boleto disponível" : "Boleto indisponível"}
+          {item.generatedBoleto ? "Boleto disponível" : "Apto para antecipação"}
         </Text>
         <Ionicons
           name={item.generatedBoleto ? "checkmark-circle" : "close-circle"}
@@ -334,8 +337,8 @@ const ParcelAntecipation = () => {
       <Text style={styles.cardSubtitle}>
         Vencimento: {item.formattedDueDate}
       </Text>
-      <Text style={styles.cardSubtitle}>
-        Condição de pagamento: {item.conditionType}
+    <Text style={styles.cardSubtitle}>
+        Condição de pagamento: {formatConditionType(item.conditionType)}
       </Text>
       <Text style={styles.cardValue}>Valor: {item.value}</Text>
     </TouchableOpacity>
@@ -918,29 +921,6 @@ const ParcelAntecipation = () => {
                 </View>
               )}
 
-              {Platform.OS !== "web" && showNewDueDatePicker && (
-                <DateTimePicker
-                  value={newDueDate || new Date()}
-                  mode="date"
-                  display="default"
-                  onChange={(event, selectedDate) => {
-                    setShowNewDueDatePicker(false);
-                    if (selectedDate) {
-                      const formattedDate =
-                        selectedDate.toLocaleDateString("pt-BR");
-                      setNewDueDate(selectedDate);
-                      setNewDueDateInput(formattedDate);
-                    }
-                  }}
-                  minimumDate={
-                    new Date(
-                      new Date().getFullYear(),
-                      new Date().getMonth() + 1,
-                      1
-                    )
-                  }
-                />
-              )}
 
               <TouchableOpacity
                 style={styles.modalButton}
