@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "EngePag",
-    "slug": "engepag",
+    "slug": "engpag",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -20,7 +20,11 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.avogugadev.engpag"
+      "package": "com.avogugadev.engepag",
+      "permissions": [
+        "NOTIFICATIONS",
+        "POST_NOTIFICATIONS"
+      ]
     },
     "web": {
       "bundler": "metro",

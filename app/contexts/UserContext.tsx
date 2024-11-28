@@ -1,6 +1,8 @@
 import React, { createContext, useState, useEffect, useRef } from "react";
 import axios from "axios";
 import * as Notifications from "expo-notifications";
+import { useRouter } from "expo-router";
+import { useLastNotificationResponse } from "expo-notifications";
 
 interface Notification {
   _id: string;
@@ -45,24 +47,56 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
   const [enterpriseNames, setEnterpriseNames] = useState<string[]>([]);
   const [notificationCount, setNotificationCount] = useState<number>(0);
   const [notifications, setNotifications] = useState<Notification[]>([]);
-
+  const router = useRouter();
   const previousCount = useRef(notificationCount);
+  const responseListener = useRef<any>();
+  const lastNotificationResponse = useLastNotificationResponse();
 
-  Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-      shouldShowAlert: true,
-      shouldPlaySound: true,
-      shouldSetBadge: false,
-    }),
-  });
+  useEffect(() => {
+    if (lastNotificationResponse) {
+      const data = lastNotificationResponse.notification.request.content.data;
+      if (data?.screen) {
+        router.push(data.screen as string);
+      } else {
+        router.push("/initial-page");
+      }
+    }
+  }, [lastNotificationResponse]);
+
+  useEffect(() => {
+    Notifications.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowAlert: true,
+        shouldPlaySound: true,
+        shouldSetBadge: false,
+      }),
+    });
+
+    responseListener.current =
+      Notifications.addNotificationResponseReceivedListener((response) => {
+        const data = response.notification.request.content.data;
+        if (data?.screen) {
+          router.push(data.screen as string);
+        } else {
+          router.push("/initial-page");
+        }
+      });
+
+    return () => {
+      Notifications.removeNotificationSubscription(responseListener.current);
+    };
+  }, []);
 
   const sendLocalNotification = async (notification: Notification) => {
     await Notifications.scheduleNotificationAsync({
       content: {
         title: `${notification.subject}`,
         body: notification.message,
+        data: {
+          notificationId: notification._id,
+        },
       },
-      trigger: null, 
+      trigger: null,
     });
   };
 
