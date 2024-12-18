@@ -12,23 +12,26 @@ import {
   Platform,
   ScrollView,
   Modal,
+  Dimensions,
+  Linking,
 } from "react-native";
 import axios from "axios";
-import { useRouter } from "expo-router";
+import { Link, useRouter } from "expo-router";
 import { UserContext } from "../contexts/UserContext";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import LogoENG from "./engenharq.svg";
+import LogoENGELOT from "./enegelot.svg";
 
 const Index = () => {
-  const [inputValue, setInputValue] = useState(""); // CPF ou CNPJ formatado
-  const [password, setPassword] = useState(""); // Armazena a senha
+  const [inputValue, setInputValue] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [inputError, setInputError] = useState("");
   const [passwordError, setPasswordError] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
   const router = useRouter();
-
   const { setUserData } = useContext(UserContext);
-
   const [modalVisible, setModalVisible] = useState(false);
   const [cpfRecovery, setCpfRecovery] = useState("");
   const [loadingRecovery, setLoadingRecovery] = useState(false);
@@ -39,13 +42,11 @@ const Index = () => {
     const checkLoginStatus = async () => {
       try {
         let userDataString;
-
         if (Platform.OS === "web") {
           userDataString = localStorage.getItem("userData");
         } else {
           userDataString = await AsyncStorage.getItem("userData");
         }
-
         if (userDataString) {
           const userData = JSON.parse(userDataString);
           setUserData(userData);
@@ -55,70 +56,49 @@ const Index = () => {
         console.error("Failed to load user data from storage", e);
       }
     };
-
     checkLoginStatus();
   }, []);
 
   const formatCpfCnpj = (value) => {
-    const numericValue = value.replace(/\D/g, '');
+    const numericValue = value.replace(/\D/g, "");
     if (numericValue.length <= 11) {
-      // Máscara CPF: XXX.XXX.XXX-XX
-      let cpf = numericValue.replace(/(\d{3})(\d)/, '$1.$2');
-      cpf = cpf.replace(/(\d{3})(\d)/, '$1.$2');
-      cpf = cpf.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+      let cpf = numericValue.replace(/(\d{3})(\d)/, "$1.$2");
+      cpf = cpf.replace(/(\d{3})(\d)/, "$1.$2");
+      cpf = cpf.replace(/(\d{3})(\d{1,2})$/, "$1-$2");
       return cpf;
     } else {
-      // Máscara CNPJ: XX.XXX.XXX/XXXX-XX
-      let cnpj = numericValue.replace(/^(\d{2})(\d)/, '$1.$2');
-      cnpj = cnpj.replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3');
-      cnpj = cnpj.replace(/\.(\d{3})(\d)/, '.$1/$2');
-      cnpj = cnpj.replace(/(\d{4})(\d)/, '$1-$2');
+      let cnpj = numericValue.replace(/^(\d{2})(\d)/, "$1.$2");
+      cnpj = cnpj.replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3");
+      cnpj = cnpj.replace(/\.(\d{3})(\d)/, ".$1/$2");
+      cnpj = cnpj.replace(/(\d{4})(\d)/, "$1-$2");
       return cnpj;
     }
   };
 
   const isValidCpf = (cpf) => {
-    cpf = cpf.replace(/\D/g, '');
-    if (cpf.length !== 11) {
-      return false;
-    }
-    if (/^(\d)\1+$/.test(cpf)) {
-      return false;
-    }
+    cpf = cpf.replace(/\D/g, "");
+    if (cpf.length !== 11) return false;
+    if (/^(\d)\1+$/.test(cpf)) return false;
     let sum = 0;
     let rest;
-    for (let i = 1; i <= 9; i++) {
+    for (let i = 1; i <= 9; i++)
       sum = sum + parseInt(cpf.substring(i - 1, i)) * (11 - i);
-    }
     rest = (sum * 10) % 11;
-    if (rest === 10 || rest === 11) {
-      rest = 0;
-    }
-    if (rest !== parseInt(cpf.substring(9, 10))) {
-      return false;
-    }
+    if (rest === 10 || rest === 11) rest = 0;
+    if (rest !== parseInt(cpf.substring(9, 10))) return false;
     sum = 0;
-    for (let i = 1; i <= 10; i++) {
+    for (let i = 1; i <= 10; i++)
       sum = sum + parseInt(cpf.substring(i - 1, i)) * (12 - i);
-    }
     rest = (sum * 10) % 11;
-    if (rest === 10 || rest === 11) {
-      rest = 0;
-    }
-    if (rest !== parseInt(cpf.substring(10, 11))) {
-      return false;
-    }
+    if (rest === 10 || rest === 11) rest = 0;
+    if (rest !== parseInt(cpf.substring(10, 11))) return false;
     return true;
   };
 
   const isValidCnpj = (cnpj) => {
-    cnpj = cnpj.replace(/\D/g, '');
-    if (cnpj.length !== 14) {
-      return false;
-    }
-    if (/^(\d)\1+$/.test(cnpj)) {
-      return false;
-    }
+    cnpj = cnpj.replace(/\D/g, "");
+    if (cnpj.length !== 14) return false;
+    if (/^(\d)\1+$/.test(cnpj)) return false;
     let length = cnpj.length - 2;
     let numbers = cnpj.substring(0, length);
     let digits = cnpj.substring(length);
@@ -126,28 +106,20 @@ const Index = () => {
     let pos = length - 7;
     for (let i = length; i >= 1; i--) {
       sum += numbers.charAt(length - i) * pos--;
-      if (pos < 2) {
-        pos = 9;
-      }
+      if (pos < 2) pos = 9;
     }
     let result = sum % 11 < 2 ? 0 : 11 - (sum % 11);
-    if (result !== parseInt(digits.charAt(0))) {
-      return false;
-    }
+    if (result !== parseInt(digits.charAt(0))) return false;
     length = length + 1;
     numbers = cnpj.substring(0, length);
     sum = 0;
     pos = length - 7;
     for (let i = length; i >= 1; i--) {
       sum += numbers.charAt(length - i) * pos--;
-      if (pos < 2) {
-        pos = 9;
-      }
+      if (pos < 2) pos = 9;
     }
     result = sum % 11 < 2 ? 0 : 11 - (sum % 11);
-    if (result !== parseInt(digits.charAt(1))) {
-      return false;
-    }
+    if (result !== parseInt(digits.charAt(1))) return false;
     return true;
   };
 
@@ -165,10 +137,7 @@ const Index = () => {
       const credentials = btoa(
         "engenharq-mozart:i94B1q2HUXf7PP7oscuIBygquSRZ9lhb"
       );
-
-      const sanitizedInput = inputValue.replace(/\D/g, '');
-
-      // Verifica se o valor é CPF (11 dígitos) ou CNPJ (14 dígitos)
+      const sanitizedInput = inputValue.replace(/\D/g, "");
       const isCpf = sanitizedInput.length === 11;
       const isCnpj = sanitizedInput.length === 14;
 
@@ -190,19 +159,16 @@ const Index = () => {
         return;
       }
 
-      // Define a senha como os primeiros 6 dígitos para CPF e últimos 6 dígitos para CNPJ
       const expectedPassword = sanitizedInput.slice(0, 6);
-
       if (password !== expectedPassword) {
         setPasswordError("Senha incorreta.");
         setLoading(false);
         return;
       }
 
-      // Define a URL de acordo com o tipo de documento
-      const searchParam = isCpf ? `cpf=${sanitizedInput}` : `cnpj=${sanitizedInput}`;
-
-      // Busca os dados do usuário
+      const searchParam = isCpf
+        ? `cpf=${sanitizedInput}`
+        : `cnpj=${sanitizedInput}`;
       const response = await axios.get(
         `https://engpag.backend.gustavohenrique.dev/proxy/customers?${searchParam}&limit=100&offset=0`,
         {
@@ -216,10 +182,12 @@ const Index = () => {
         const userData = response.data.results[0];
         setUserData(userData);
 
-        if (Platform.OS === "web") {
-          localStorage.setItem("userData", JSON.stringify(userData));
-        } else {
-          await AsyncStorage.setItem("userData", JSON.stringify(userData));
+        if (rememberMe) {
+          if (Platform.OS === "web") {
+            localStorage.setItem("userData", JSON.stringify(userData));
+          } else {
+            await AsyncStorage.setItem("userData", JSON.stringify(userData));
+          }
         }
 
         router.replace("/initial-page");
@@ -250,8 +218,7 @@ const Index = () => {
       const credentials = btoa(
         "engenharq-mozart:i94B1q2HUXf7PP7oscuIBygquSRZ9lhb"
       );
-
-      const sanitizedCpf = cpfRecovery.replace(/\D/g, '');
+      const sanitizedCpf = cpfRecovery.replace(/\D/g, "");
 
       if (!isValidCpf(sanitizedCpf)) {
         Alert.alert("Erro", "CPF inválido.");
@@ -272,14 +239,14 @@ const Index = () => {
         const user = response.data.results[0];
         const cpfPassword = sanitizedCpf.slice(0, 6);
 
-        const backendUrl =
-          "https://engpag.backend.gustavohenrique.dev/send-password";
-
-        await axios.post(backendUrl, {
-          email: user.email,
-          userName: user.name,
-          password: cpfPassword,
-        });
+        await axios.post(
+          "https://engpag.backend.gustavohenrique.dev/send-password",
+          {
+            email: user.email,
+            userName: user.name,
+            password: cpfPassword,
+          }
+        );
 
         Alert.alert("Sucesso", "A senha foi enviada para o seu email.");
         setModalVisible(false);
@@ -297,171 +264,196 @@ const Index = () => {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
-      <ScrollView contentContainerStyle={styles.contentContainer}>
-        <Text style={styles.title}>ENGEPAG</Text>
-
-        <View style={styles.inputContainer}>
-          <Ionicons
-            name="person"
-            size={24}
-            color="#E1272C"
-            style={styles.icon}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="CPF ou CNPJ"
-            value={inputValue}
-            onChangeText={(text) => {
-              const formatted = formatCpfCnpj(text);
-              setInputValue(formatted);
-              setInputError('');
-
-              const sanitizedInput = formatted.replace(/\D/g, '');
-              if (sanitizedInput.length === 11) {
-                if (isValidCpf(sanitizedInput)) {
-                  setInputError('');
-                } else {
-                  setInputError('CPF inválido');
-                }
-              } else if (sanitizedInput.length === 14) {
-                if (isValidCnpj(sanitizedInput)) {
-                  setInputError('');
-                } else {
-                  setInputError('CNPJ inválido');
-                }
-              } else {
-                setInputError('CPF ou CNPJ incompleto');
-              }
-            }}
-            keyboardType="numeric"
-            placeholderTextColor="#aaa"
-            returnKeyType="next"
-            onSubmitEditing={() => {
-              passwordInputRef.current.focus();
-            }}
-            accessible={true}
-            accessibilityLabel="Digite seu CPF ou CNPJ"
+      <View style={styles.topSection}>
+        <View style={styles.whiteCurve}>
+          <Image
+            source={require("./engepag-logo.png")}
+            style={styles.logoTop}
+            resizeMode="contain"
           />
         </View>
-        {inputError ? <Text style={styles.errorText}>{inputError}</Text> : null}
+      </View>
 
-        <View style={styles.inputContainer}>
-          <Ionicons
-            name="lock-closed"
-            size={24}
-            color="#E1272C"
-            style={styles.icon}
-          />
-          <TextInput
-            style={[styles.input, { flex: 1 }]}
-            placeholder="Senha"
-            value={password}
-            onChangeText={(text) => {
-              setPassword(text);
-              setPasswordError('');
-            }}
-            secureTextEntry={!showPassword}
-            placeholderTextColor="#aaa"
-            ref={passwordInputRef}
-            returnKeyType="done"
-            onSubmitEditing={fetchUserData}
-            accessible={true}
-            accessibilityLabel="Digite sua senha"
-          />
-          <TouchableOpacity 
-            onPress={() => setShowPassword(!showPassword)}
-            style={styles.eyeIcon}
-            accessible={true}
-            accessibilityLabel={showPassword ? "Ocultar senha" : "Mostrar senha"}
-          >
-            <Ionicons
-              name={showPassword ? "eye-off" : "eye"}
-              size={24}
-              color="#E1272C"
+      <ScrollView style={styles.scrollView}>
+        <View style={styles.formCard}>
+          <View style={styles.inputWrapper}>
+            <Ionicons name="mail-outline" size={22} color="#D00000" />
+            <TextInput
+              style={styles.input}
+              placeholder="Insira seu CPF ou CNPJ"
+              value={inputValue}
+              onChangeText={(text) => {
+                const formatted = formatCpfCnpj(text);
+                setInputValue(formatted);
+                setInputError("");
+
+                const sanitizedInput = formatted.replace(/\D/g, "");
+                if (sanitizedInput.length === 11) {
+                  if (isValidCpf(sanitizedInput)) {
+                    setInputError("");
+                  } else {
+                    setInputError("CPF inválido");
+                  }
+                } else if (sanitizedInput.length === 14) {
+                  if (isValidCnpj(sanitizedInput)) {
+                    setInputError("");
+                  } else {
+                    setInputError("CNPJ inválido");
+                  }
+                } else {
+                  setInputError("CPF ou CNPJ incompleto");
+                }
+              }}
+              keyboardType="numeric"
+              placeholderTextColor="#999"
+              returnKeyType="next"
+              onSubmitEditing={() => passwordInputRef.current?.focus()}
             />
+          </View>
+          {inputError ? (
+            <Text style={styles.errorText}>{inputError}</Text>
+          ) : null}
+
+          <View style={styles.inputWrapper}>
+            <Ionicons name="lock-closed-outline" size={22} color="#D00000" />
+            <TextInput
+              ref={passwordInputRef}
+              style={styles.input}
+              placeholder="Digite sua Senha"
+              value={password}
+              onChangeText={(text) => {
+                setPassword(text);
+                setPasswordError("");
+              }}
+              secureTextEntry={!showPassword}
+              placeholderTextColor="#999"
+              returnKeyType="done"
+              onSubmitEditing={fetchUserData}
+            />
+            <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+              <Ionicons
+                name={showPassword ? "eye-off-outline" : "eye-outline"}
+                size={22}
+                color="#999"
+              />
+            </TouchableOpacity>
+          </View>
+          {passwordError ? (
+            <Text style={styles.errorText}>{passwordError}</Text>
+          ) : null}
+
+          <View style={styles.optionsRow}>
+            <TouchableOpacity
+              style={styles.checkboxContainer}
+              onPress={() => setRememberMe(!rememberMe)}
+            >
+              <View
+                style={[styles.checkbox, rememberMe && styles.checkboxChecked]}
+              >
+                {rememberMe && (
+                  <Ionicons name="checkmark" size={16} color="white" />
+                )}
+              </View>
+              <Text style={styles.checkboxLabel}>Lembre-me</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={handleForgotPassword}>
+              <Text style={styles.forgotPassword}>Esqueci a senha?</Text>
+            </TouchableOpacity>
+          </View>
+
+          <TouchableOpacity
+            style={styles.loginButton}
+            onPress={fetchUserData}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="white" size="small" />
+            ) : (
+              <Text style={styles.loginButtonText}>LOGIN</Text>
+            )}
           </TouchableOpacity>
         </View>
-        
-        {passwordError ? <Text style={styles.errorText}>{passwordError}</Text> : null}
 
-        <TouchableOpacity onPress={handleForgotPassword}>
-          <Text style={styles.forgotPasswordText}>Esqueceu a senha?</Text>
-        </TouchableOpacity>
+        <View style={styles.bottomLogos}>
+          <LogoENG
+            width={150}
+            height={40}
+            style={{ transform: [{ translateY: 20 }] }} // Ajusta a posição vertical
+          />
 
-        <TouchableOpacity
-          style={styles.accessButton}
-          onPress={fetchUserData}
-          accessible={true}
-          accessibilityLabel="Acessar o aplicativo"
-        >
-          {loading ? (
-            <ActivityIndicator
-              size="large"
-              color="#fff"
-              style={styles.loading}
-            />
-          ) : (
-            <Text style={styles.accessButtonText}>ACESSAR</Text>
-          )}
-        </TouchableOpacity>
+          <LogoENGELOT
+            width={100}
+            height={50}
+            style={{ transform: [{ translateY: 20 }] }}
+          />
 
-        <Image source={require("./homelogo.png")} style={styles.logo} />
+          <TouchableOpacity
+            style={styles.whatsappButton}
+            onPress={() => {
+              const url = "https://wa.me/5582996343342";
+              Linking.canOpenURL(url)
+                .then((supported) => {
+                  if (supported) {
+                    return Linking.openURL(url);
+                  } else {
+                    Alert.alert("Erro", "WhatsApp não está instalado");
+                  }
+                })
+                .catch((err) => console.error("Erro ao abrir WhatsApp:", err));
+            }}
+          >
+            <Ionicons name="logo-whatsapp" size={32} color="white" />
+            <Text style={styles.whatsappText}>Fale Conosco</Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
 
-      {modalVisible && (
-        <Modal
-          visible={modalVisible}
-          transparent={true}
-          animationType="slide"
-          onRequestClose={() => setModalVisible(false)}
-        >
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContainer}>
-              <Text style={styles.modalTitle}>Recuperar Senha</Text>
-              <View style={styles.modalInputContainer}>
-                <Ionicons
-                  name="person"
-                  size={24}
-                  color="#E1272C"
-                  style={styles.icon}
-                />
-                <TextInput
-                  style={styles.input}
-                  placeholder="CPF"
-                  value={cpfRecovery}
-                  onChangeText={setCpfRecovery}
-                  keyboardType="numeric"
-                  placeholderTextColor="#aaa"
-                />
-              </View>
+      <Modal
+        visible={modalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Recuperar Senha</Text>
 
-              <TouchableOpacity
-                style={styles.modalButton}
-                onPress={handleSendPassword}
-              >
-                {loadingRecovery ? (
-                  <ActivityIndicator
-                    size="large"
-                    color="#fff"
-                    style={styles.loading}
-                  />
-                ) : (
-                  <Text style={styles.modalButtonText}>Enviar Senha</Text>
-                )}
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.modalCancelButton}
-                onPress={() => setModalVisible(false)}
-              >
-                <Text style={styles.modalCancelButtonText}>Cancelar</Text>
-              </TouchableOpacity>
+            <View style={styles.modalInputWrapper}>
+              <Ionicons name="person-outline" size={22} color="#D00000" />
+              <TextInput
+                style={styles.modalInput}
+                placeholder="CPF"
+                value={cpfRecovery}
+                onChangeText={setCpfRecovery}
+                keyboardType="numeric"
+                placeholderTextColor="#999"
+              />
             </View>
+
+            <TouchableOpacity
+              style={styles.modalButton}
+              onPress={handleSendPassword}
+              disabled={loadingRecovery}
+            >
+              {loadingRecovery ? (
+                <ActivityIndicator color="white" size="small" />
+              ) : (
+                <Text style={styles.modalButtonText}>Enviar Senha</Text>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.modalCancelButton}
+              onPress={() => setModalVisible(false)}
+            >
+              <Text style={styles.modalCancelText}>Cancelar</Text>
+            </TouchableOpacity>
           </View>
-        </Modal>
-      )}
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 };
@@ -469,123 +461,220 @@ const Index = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FFF8F8",
+    backgroundColor: "#D00000",
   },
-  contentContainer: {
-    flexGrow: 1,
-    padding: 20,
-    justifyContent: "center",
+  topSection: {
+    width: "100%",
+    height: 280, // Increased for larger logo area
+  },
+  whiteCurve: {
+    backgroundColor: "white",
+    height: "100%",
+    borderBottomLeftRadius: 1000,
+    borderBottomRightRadius: 1000,
+    transform: [{ scaleX: 1.5 }],
     alignItems: "center",
+    paddingTop: 40,
+    overflow: "hidden",
   },
-  title: {
-    fontSize: 60,
-    fontWeight: "bold",
-    marginBottom: 60,
-    color: "#333",
+  logoTop: {
+    width: 300, // Larger logo size
+    height: 200,
+    transform: [{ scaleX: 0.667 }], // Compensate for parent scaleX
   },
-  inputContainer: {
+  scrollView: {
+    flex: 1,
+  },
+  formCard: {
+    backgroundColor: "white",
+    margin: 20,
+    borderRadius: 30,
+    padding: 20,
+    paddingBottom: 60, // Aumentado para acomodar a curva
+    elevation: 5,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  inputWrapper: {
     flexDirection: "row",
     alignItems: "center",
     borderBottomWidth: 1,
-    borderColor: "#E1272C",
-    marginBottom: 10,
-    width: "100%",
-  },
-  icon: {
+    borderBottomColor: "#E0E0E0",
+    marginBottom: 15,
+    paddingVertical: 8,
     paddingHorizontal: 10,
   },
   input: {
     flex: 1,
-    height: 50,
-    fontSize: 18,
+    fontSize: 16,
     color: "#333",
+    marginLeft: 10,
+    padding: 0,
   },
-  forgotPasswordText: {
-    color: "#E1272C",
+  errorText: {
+    color: "#D00000",
+    fontSize: 12,
+    marginBottom: 5,
+    marginLeft: 10,
+  },
+  optionsRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginVertical: 15,
+    paddingHorizontal: 10,
+  },
+  checkboxContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: "#999",
+    marginRight: 8,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  checkboxChecked: {
+    backgroundColor: "#D00000",
+    borderColor: "#D00000",
+  },
+  checkboxLabel: {
+    color: "#666",
     fontSize: 14,
-    alignSelf: "center",
-    marginBottom: 20,
-    marginTop: 10,
   },
-  accessButton: {
-    backgroundColor: "#E1272C",
-    width: "60%",
-    paddingVertical: 15,
+  whatsappButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#25D366", // Cor oficial do WhatsApp
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginLeft: 10,
+    elevation: 3,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  whatsappText: {
+    color: "white",
+    marginLeft: 8,
+    fontWeight: "bold",
+  },
+  forgotPassword: {
+    color: "#666",
+    fontSize: 14,
+    fontStyle: "italic",
+  },
+  loginButton: {
+    position: "absolute",
+    bottom: -25,
+    left: 20,
+    right: 20,
+    backgroundColor: "#FF0000",
+    height: 50,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 25,
+    elevation: 8,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 5.84,
+    zIndex: 1,
+  },
+  loginButtonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "bold",
+    textTransform: "uppercase",
+    letterSpacing: 1, // Added for better text spacing
+  },
+  bottomLogos: {
+    flexDirection: "column",
     justifyContent: "center",
     alignItems: "center",
-    borderRadius: 5,
-    marginTop: 40,
-    marginBottom: 30,
-  },
-  accessButtonText: {
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "bold",
-  },
-  loading: {},
-  errorText: {
-    color: "#E1272C",
-    fontWeight: "bold",
-    marginBottom: 10,
-    alignSelf: "flex-start",
-    paddingLeft: 40,
-  },
-  logo: {
-    width: 155,
-    height: 89,
+    marginTop: 30,
     marginBottom: 20,
-    alignSelf: "center",
+    gap: 30,
+    overflow: 'hidden'
   },
+  logoContainer: {
+    width: 300,
+    height: 60, // Reduzido para remover o espaço extra
+    overflow: "hidden", // Isso vai cortar qualquer espaço extra
+  },
+
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",
     justifyContent: "center",
     alignItems: "center",
   },
-  modalContainer: {
-    backgroundColor: "#fff",
+  modalContent: {
+    backgroundColor: "white",
     width: "90%",
-    borderRadius: 10,
+    maxWidth: 400,
+    borderRadius: 20,
     padding: 20,
-    alignItems: "center",
   },
   modalTitle: {
     fontSize: 20,
     fontWeight: "bold",
+    color: "#D00000",
+    textAlign: "center",
     marginBottom: 20,
-    color: "#E1272C",
   },
-  modalInputContainer: {
+  modalInputWrapper: {
     flexDirection: "row",
     alignItems: "center",
     borderBottomWidth: 1,
-    borderColor: "#E1272C",
+    borderBottomColor: "#E0E0E0",
     marginBottom: 20,
-    width: "100%",
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+  },
+  modalInput: {
+    flex: 1,
+    fontSize: 16,
+    color: "#333",
+    marginLeft: 10,
+    padding: 0,
   },
   modalButton: {
-    backgroundColor: "#E1272C",
-    width: "60%",
-    paddingVertical: 15,
-    justifyContent: "center",
+    backgroundColor: "#D00000",
+    borderRadius: 25,
+    height: 50,
     alignItems: "center",
-    borderRadius: 5,
-    marginTop: 20,
+    justifyContent: "center",
   },
   modalButtonText: {
-    color: "#fff",
-    fontSize: 18,
+    color: "white",
+    fontSize: 16,
     fontWeight: "bold",
   },
   modalCancelButton: {
-    marginTop: 10,
+    marginTop: 15,
+    alignItems: "center",
   },
-  modalCancelButtonText: {
-    color: "#E1272C",
+  modalCancelText: {
+    color: "#666",
     fontSize: 16,
-  },
-  eyeIcon: {
-    padding: 10,
   },
 });
 
