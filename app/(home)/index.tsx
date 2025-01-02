@@ -135,7 +135,7 @@ const Index = () => {
 
     try {
       const credentials = btoa(
-        "engenharq-mozart:i94B1q2HUXf7PP7oscuIBygquSRZ9lhb"
+        "engenharq-mozart:wfW2ra73xSbH5r4AbQne4WesFDb1NaWe"
       );
       const sanitizedInput = inputValue.replace(/\D/g, "");
       const isCpf = sanitizedInput.length === 11;
@@ -216,7 +216,7 @@ const Index = () => {
 
     try {
       const credentials = btoa(
-        "engenharq-mozart:i94B1q2HUXf7PP7oscuIBygquSRZ9lhb"
+        "engenharq-mozart:wfW2ra73xSbH5r4AbQne4WesFDb1NaWe"
       );
       const sanitizedCpf = cpfRecovery.replace(/\D/g, "");
 

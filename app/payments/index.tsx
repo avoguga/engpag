@@ -53,7 +53,7 @@ const PaymentHistory = () => {
     setLoading(true);
     try {
       const username = "engenharq-mozart";
-      const password = "i94B1q2HUXf7PP7oscuIBygquSRZ9lhb";
+      const password = "wfW2ra73xSbH5r4AbQne4WesFDb1NaWe";
       const credentials = btoa(`${username}:${password}`);
 
       const searchParam = userData.cpf
@@ -113,7 +113,7 @@ const PaymentHistory = () => {
     setLoading(true);
     try {
       const username = "engenharq-mozart";
-      const password = "i94B1q2HUXf7PP7oscuIBygquSRZ9lhb";
+      const password = "wfW2ra73xSbH5r4AbQne4WesFDb1NaWe";
       const credentials = btoa(`${username}:${password}`);
 
       const searchParam = userData.cpf
@@ -216,7 +216,7 @@ const PaymentHistory = () => {
 
     try {
       const username = "engenharq-mozart";
-      const password = "i94B1q2HUXf7PP7oscuIBygquSRZ9lhb";
+      const password = "wfW2ra73xSbH5r4AbQne4WesFDb1NaWe";
       const credentials = btoa(`${username}:${password}`);
 
       const response = await axios.get(

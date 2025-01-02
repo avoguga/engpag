@@ -55,7 +55,7 @@ const BoletoScreen = () => {
     setLoading(true);
     try {
       const credentials = btoa(
-        "engenharq-mozart:i94B1q2HUXf7PP7oscuIBygquSRZ9lhb"
+        "engenharq-mozart:wfW2ra73xSbH5r4AbQne4WesFDb1NaWe"
       );
       const searchParam = userData.cpf
         ? { cpf: userData.cpf, correctAnnualInstallment: "N" }
@@ -176,7 +176,7 @@ const BoletoScreen = () => {
 
     try {
       const credentials = btoa(
-        "engenharq-mozart:i94B1q2HUXf7PP7oscuIBygquSRZ9lhb"
+        "engenharq-mozart:wfW2ra73xSbH5r4AbQne4WesFDb1NaWe"
       );
 
       let companyId = null;
@@ -296,7 +296,7 @@ const BoletoScreen = () => {
 
     try {
       const credentials = btoa(
-        "engenharq-mozart:i94B1q2HUXf7PP7oscuIBygquSRZ9lhb"
+        "engenharq-mozart:wfW2ra73xSbH5r4AbQne4WesFDb1NaWe"
       );
 
       const response = await axios.get(
@@ -376,7 +376,7 @@ const BoletoScreen = () => {
 
             try {
               const credentials = btoa(
-                "engenharq-mozart:i94B1q2HUXf7PP7oscuIBygquSRZ9lhb"
+                "engenharq-mozart:wfW2ra73xSbH5r4AbQne4WesFDb1NaWe"
               );
               const responseBoleto = await axios.get(
                 "https://engpag.backend.gustavohenrique.dev/proxy/payment-slip-notification",

@@ -59,7 +59,7 @@ const PaymentsCompleted = () => {
 
     try {
       const username = "engenharq-mozart";
-      const password = "i94B1q2HUXf7PP7oscuIBygquSRZ9lhb"; // Substitua 'sua_senha' pela senha correta
+      const password = "wfW2ra73xSbH5r4AbQne4WesFDb1NaWe"; // Substitua 'sua_senha' pela senha correta
       const credentials = btoa(`${username}:${password}`);
 
       const searchParam = userData.cpf
