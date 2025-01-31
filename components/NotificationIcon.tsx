@@ -14,7 +14,7 @@ const NotificationIcon = () => {
 
   return (
     <TouchableOpacity onPress={handlePress} style={styles.container}>
-      <Ionicons name="notifications-outline" size={28} color="white" />
+      <Ionicons name="notifications-sharp" size={28} color="white" />
       {notificationCount > 0 ? (
         <View style={styles.badge}>
           <Text style={styles.badgeText}>
@@ -34,7 +34,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 0,
     top: 0,
-    backgroundColor: '#fff',
+    backgroundColor: '#E1272C',
     borderRadius: 8,
     minWidth: 16,
     height: 16,
@@ -43,7 +43,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 2,
   },
   badgeText: {
-    color: '#E1272C',
+    color: '#fff',
     fontSize: 10,
     fontWeight: 'bold',
   },

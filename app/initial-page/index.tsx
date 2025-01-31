@@ -9,6 +9,8 @@ import {
   Alert,
   BackHandler,
   Platform,
+  Image,
+  Modal,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import axios from "axios";
@@ -16,6 +18,24 @@ import { UserContext } from "../contexts/UserContext";
 import { useFocusEffect, useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Notifications from "expo-notifications";
+import NotificationIcon from "@/components/NotificationIcon";
+
+const excludedConditionTypes = [
+  "Cartão de crédito",
+  "Cartão de débito",
+  "Sinal",
+  "Financiamento",
+  "Promissória",
+  "Valor do terreno",
+];
+
+const filterValidInstallments = (installments) => {
+  if (!installments) return [];
+  return installments.filter(
+    (installment) =>
+      !excludedConditionTypes.includes(installment.conditionType?.trim())
+  );
+};
 
 const formatDate = (dateString) => {
   if (!dateString || typeof dateString !== "string") return "N/A";
@@ -69,6 +89,25 @@ const InitialPage = () => {
   const [error, setError] = useState("");
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const notificationsShownRef = useRef(new Set());
+  const [modalVisible, setModalVisible] = useState(false);
+
+  const handleLogoutPress = () => {
+    setModalVisible(true);
+  };
+
+  const confirmLogout = async () => {
+    try {
+      await AsyncStorage.removeItem("userData");
+      setModalVisible(false);
+      router.replace("/(home)"); // Navigate back to the login screen
+    } catch (e) {
+      console.error("Failed to logout", e);
+    }
+  };
+
+  const cancelLogout = () => {
+    setModalVisible(false);
+  };
 
   // Ref para rastrear se o alerta já foi mostrado
   const alertShownRef = useRef(false);
@@ -232,16 +271,18 @@ const InitialPage = () => {
       );
 
       const fetchedData = response.data.results || [];
-      setLocalInstallmentsData(fetchedData);
-      setInstallmentsData(fetchedData);
+
+      const processedData = fetchedData.map((item) => ({
+        ...item,
+        dueInstallments: filterValidInstallments(item.dueInstallments),
+        payableInstallments: filterValidInstallments(item.payableInstallments),
+      }));
+
+      setLocalInstallmentsData(processedData);
+      setInstallmentsData(processedData);
 
       // Verifica se existem boletos vencidos
       let hasOverdueBills = false;
-      fetchedData.forEach((item) => {
-        if (item.dueInstallments && item.dueInstallments.length > 0) {
-          hasOverdueBills = true;
-        }
-      });
 
       // Exibe o alerta apenas se ainda não tiver sido mostrado
       if (hasOverdueBills && !alertShownRef.current) {
@@ -414,126 +455,177 @@ const InitialPage = () => {
 
   return (
     <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.greeting}>
-          Olá,{" "}
-          {userData?.name
-            ? userData.name
-                .toLowerCase()
-                .split(" ")
-                .slice(0, 2)
-                .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-                .join(" ") || "Usuário"
-            : "Usuário"}
-          !
-        </Text>
-        <View style={styles.lineSeparatorLarge} />
-        <View style={styles.lineSeparatorSmall} />
+      <View style={styles.content}>
+        <ScrollView>
+          <View style={styles.headerName}>
+            <NotificationIcon />
 
-        <Text style={styles.sectionTitle}>Empreendimentos</Text>
+            <Text style={styles.greeting}>
+              Olá,{" "}
+              {userData?.name
+                ? userData.name
+                    .toLowerCase()
+                    .split(" ")
+                    .slice(0, 2)
+                    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+                    .join(" ") || "Usuário"
+                : "Usuário"}
+              !
+            </Text>
+          </View>
+          <Text style={styles.sectionTitleSeus}>Seus</Text>
+          <Text style={styles.sectionTitle}>Empreendimentos</Text>
 
-        {loading && <ActivityIndicator size="large" color="#E1272C" />}
-        {error !== "" && <Text style={styles.errorText}>{error}</Text>}
-        {loadingEnterprise && (
-          <ActivityIndicator size="small" color="#E1272C" />
-        )}
+          {loading && <ActivityIndicator size="large" color="#E1272C" />}
+          {error !== "" && <Text style={styles.errorText}>{error}</Text>}
+          {loadingEnterprise && (
+            <ActivityIndicator size="small" color="#E1272C" />
+          )}
 
-        {!loading &&
-        Array.isArray(installmentsData) &&
-        installmentsData.length > 0
-          ? installmentsData.map((item, index) => {
-              const enterpriseInfo = enterpriseNames[index] || {};
-              const allDueInstallments = [
-                ...(item.dueInstallments || []),
-                ...(item.payableInstallments || []),
-              ];
+          {!loading &&
+          Array.isArray(installmentsData) &&
+          installmentsData.length > 0
+            ? installmentsData.map((item, index) => {
+                const enterpriseInfo = enterpriseNames[index] || {};
+                const allDueInstallments = [
+                  ...(item.dueInstallments || []),
+                  ...(item.payableInstallments || []),
+                ];
 
-              const futureInstallments = allDueInstallments.filter(
-                (installment) => new Date(installment.dueDate) >= new Date()
-              );
+                const futureInstallments = allDueInstallments.filter(
+                  (installment) => new Date(installment.dueDate) >= new Date()
+                );
 
-              futureInstallments.sort(
-                (a, b) =>
-                  new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()
-              );
+                futureInstallments.sort(
+                  (a, b) =>
+                    new Date(a.dueDate).getTime() -
+                    new Date(b.dueDate).getTime()
+                );
 
-              const nextInstallment = futureInstallments[0];
-              const nextInstallmentAmount = nextInstallment
-                ? nextInstallment.currentBalance
-                : null;
+                const nextInstallment = futureInstallments[0];
+                const nextInstallmentAmount = nextInstallment
+                  ? nextInstallment.currentBalance
+                  : null;
 
-              const hasUnpaidInstallments = allDueInstallments.length > 0;
-              const status = hasUnpaidInstallments ? "Em aberto" : "Quitado";
+                const hasUnpaidInstallments = allDueInstallments.length > 0;
+                const status = hasUnpaidInstallments ? "Em aberto" : "Quitado";
 
-              return (
-                <TouchableOpacity
-                  key={item.billReceivableId}
-                  style={styles.card}
-                  onPress={() => handleCardPress(item, index)}
-                >
-                  <View style={styles.cardIcon}>
-                    <Ionicons name="home-outline" size={28} color="#E1272C" />
-                  </View>
-                  <View style={styles.cardContent}>
-                    <Text style={styles.cardTitle}>
-                      {enterpriseInfo.enterpriseName}
-                    </Text>
-                    {enterpriseInfo.unityName !== "N/A" ? (
+                return (
+                  <TouchableOpacity
+                    key={item.billReceivableId}
+                    style={styles.card}
+                    onPress={() => handleCardPress(item, index)}
+                  >
+                    <View style={styles.cardIcon}>
+                      <Ionicons name="home-outline" size={28} color="#E1272C" />
+                    </View>
+                    <View style={styles.cardContent}>
+                      <Text style={styles.cardTitle}>
+                        {enterpriseInfo.enterpriseName}
+                      </Text>
+                      {enterpriseInfo.unityName !== "N/A" ? (
+                        <View style={styles.infoRow}>
+                          <Text style={styles.infoLabel}>Unidade:</Text>
+                          <Text style={styles.infoValue}>
+                            {enterpriseInfo.unityName}
+                          </Text>
+                        </View>
+                      ) : null}
                       <View style={styles.infoRow}>
-                        <Text style={styles.infoLabel}>Unidade:</Text>
-                        <Text style={styles.infoValue}>
-                          {enterpriseInfo.unityName}
-                        </Text>
-                      </View>
-                    ) : null}
-                    <View style={styles.infoRow}>
-                      <Text style={styles.infoLabel}>Número do contrato:</Text>
-                      <Text style={styles.infoValue}>
-                        {enterpriseInfo.documentId}/
-                        {enterpriseInfo.documentNumber}
-                      </Text>
-                    </View>
-                    <View style={styles.infoRow}>
-                      <Text style={styles.infoLabel}>Valor do contrato:</Text>
-                      <Text style={styles.infoValue}>
-                        {formatCurrency(enterpriseInfo.receivableBillValue)}
-                      </Text>
-                    </View>
-                    {nextInstallmentAmount ? (
-                      <View style={styles.cardRow}>
                         <Text style={styles.infoLabel}>
-                          Valor da próxima parcela:
+                          Número do contrato:
                         </Text>
-                        <Text style={styles.cardValue}>
-                          {formatCurrency(nextInstallmentAmount)}
+                        <Text style={styles.infoValue}>
+                          {enterpriseInfo.documentId}/
+                          {enterpriseInfo.documentNumber}
                         </Text>
                       </View>
-                    ) : null}
-                    <View style={styles.cardRow}>
-                      <Text style={styles.infoLabel}>Status:</Text>
-                      <Text
-                        style={
-                          hasUnpaidInstallments
-                            ? styles.statusOpen
-                            : styles.statusClosed
-                        }
-                      >
-                        {status}
+                      <View style={styles.infoRow}>
+                        <Text style={styles.infoLabel}>Valor do contrato:</Text>
+                        <Text style={styles.infoValue}>
+                          {formatCurrency(enterpriseInfo.receivableBillValue)}
+                        </Text>
+                      </View>
+                      {nextInstallmentAmount ? (
+                        <View style={styles.cardRow}>
+                          <Text style={styles.infoLabel}>
+                            Valor da próxima parcela:
+                          </Text>
+                          <Text style={styles.cardValue}>
+                            {formatCurrency(nextInstallmentAmount)}
+                          </Text>
+                        </View>
+                      ) : null}
+                      <View style={styles.cardRow}>
+                        <Text style={styles.infoLabel}>Status:</Text>
+                        <Text
+                          style={
+                            hasUnpaidInstallments
+                              ? styles.statusOpen
+                              : styles.statusClosed
+                          }
+                        >
+                          {status}
+                        </Text>
+                      </View>
+                      <Text style={styles.cardIssueDate}>
+                        Data de emissão: {formatDate(enterpriseInfo.issueDate)}
                       </Text>
                     </View>
-                    <Text style={styles.cardIssueDate}>
-                      Data de emissão: {formatDate(enterpriseInfo.issueDate)}
-                    </Text>
-                  </View>
+                  </TouchableOpacity>
+                );
+              })
+            : !loading && (
+                <Text style={styles.noInstallmentsText}>
+                  Nenhum empreendimento encontrado.
+                </Text>
+              )}
+        </ScrollView>
+        {/* Bottom Navigation Section */}
+        <View style={styles.bottomSection}>
+          <View style={styles.navigationContainer}>
+            <TouchableOpacity
+              style={styles.navButton}
+              onPress={handleLogoutPress}
+            >
+              <Image
+                source={require("../seta.png")}
+                style={styles.logoBottom}
+                resizeMode="contain"
+              />
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+      {modalVisible && (
+        <Modal
+          animationType="fade"
+          transparent={true}
+          visible={modalVisible}
+          onRequestClose={cancelLogout}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContainer}>
+              <Text style={styles.modalTitle}>Confirmação de logout</Text>
+              <Text style={styles.modalText}>Tem certeza que deseja sair?</Text>
+              <View style={styles.modalButtonsContainer}>
+                <TouchableOpacity
+                  style={styles.modalButton}
+                  onPress={confirmLogout}
+                >
+                  <Text style={styles.modalButtonText}>Sim</Text>
                 </TouchableOpacity>
-              );
-            })
-          : !loading && (
-              <Text style={styles.noInstallmentsText}>
-                Nenhum empreendimento encontrado.
-              </Text>
-            )}
-      </ScrollView>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.cancelButton]}
+                  onPress={cancelLogout}
+                >
+                  <Text style={styles.modalButtonText}>Não</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      )}
     </View>
   );
 };
@@ -541,47 +633,50 @@ const InitialPage = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F9F9F9",
+    backgroundColor: "#D00000",
   },
   content: {
-    paddingHorizontal: 20,
-    paddingBottom: 20,
+    paddingHorizontal: 40,
+    marginBottom: 200,
+    backgroundColor: "#880000",
+    borderRadius: 40,
+    marginHorizontal: 20,
+  },
+  headerName: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 20,
+    marginBottom: 20,
+  },
+  logoBottom: {
+    width: 50,
   },
   greeting: {
-    fontSize: 28,
-    fontWeight: "600",
-    color: "#E1272C",
-    marginTop: 20,
-    textAlign: "center",
-  },
-  lineSeparatorLarge: {
-    borderBottomColor: "#D1D1D1",
-    borderBottomWidth: 1,
-    width: 200,
-    alignSelf: "center",
-    marginTop: 10,
-  },
-  lineSeparatorSmall: {
-    borderBottomColor: "#D1D1D1",
-    borderBottomWidth: 1,
-    width: 150,
-    alignSelf: "center",
-    marginTop: 7,
-    marginBottom: 20,
-  },
-  sectionTitle: {
     fontSize: 20,
-    fontWeight: "bold",
-    color: "#333",
+    fontWeight: "600",
+    color: "#FFFFFF",
     textAlign: "center",
+  },
+
+  sectionTitle: {
+    fontSize: 32,
+    fontWeight: "bold",
+    color: "#FFFFFF",
+    textAlign: "left",
     marginBottom: 20,
+  },
+  sectionTitleSeus: {
+    fontSize: 32,
+    color: "#FFFFFF",
+    textAlign: "left",
   },
   card: {
     backgroundColor: "#FFFFFF",
     borderRadius: 12,
     flexDirection: "row",
     padding: 15,
-    marginBottom: 15,
+    marginBottom: 30,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -667,6 +762,70 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: "#fff",
+  },
+  // Bottom Navigation Styles
+  bottomSection: {
+    bottom: 0,
+    width: "100%",
+    height: 170,
+  },
+
+  navigationContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    width: "100%",
+  },
+  navButton: {
+    paddingLeft: 50,
+    paddingTop: 50,
+  },
+
+  modalOverlay: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+  },
+  modalContainer: {
+    width: "80%",
+    backgroundColor: "#FFF",
+    borderRadius: 10,
+    padding: 20,
+    alignItems: "center",
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: "bold",
+    marginBottom: 15,
+    color: "#E1272C",
+  },
+  modalText: {
+    fontSize: 18,
+    marginBottom: 25,
+    textAlign: "center",
+    color: "#333",
+  },
+  modalButtonsContainer: {
+    flexDirection: "row",
+    width: "100%",
+    justifyContent: "space-between",
+  },
+  modalButton: {
+    flex: 1,
+    backgroundColor: "#E1272C",
+    paddingVertical: 12,
+    marginHorizontal: 5,
+    borderRadius: 5,
+    alignItems: "center",
+  },
+  cancelButton: {
+    backgroundColor: "#5B5B5B",
+  },
+  modalButtonText: {
+    color: "#FFF",
+    fontSize: 16,
+    fontWeight: "bold",
   },
 });
 

@@ -11,15 +11,22 @@ import {
   StatusBar,
   Pressable,
   Platform,
+  Image,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import axios from "axios";
 import { UserContext } from "../contexts/UserContext";
+import NotificationIcon from "@/components/NotificationIcon";
 
 const NotificationScreen = () => {
   const router = useRouter();
-  const { userData, notificationCount, setNotificationCount, fetchNotificationCount } = useContext(UserContext);
+  const {
+    userData,
+    notificationCount,
+    setNotificationCount,
+    fetchNotificationCount,
+  } = useContext(UserContext);
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
@@ -34,18 +41,21 @@ const NotificationScreen = () => {
     }
 
     try {
-      const searchParam = userData.cpf ? { cpf: userData.cpf } : { cnpj: userData.cnpj };
+      const searchParam = userData.cpf
+        ? { cpf: userData.cpf }
+        : { cnpj: userData.cnpj };
 
       const response = await axios.get(
         `https://engpag.backend.gustavohenrique.dev/notifications`,
         { params: searchParam }
       );
-      
+
       setNotifications(response.data);
 
-      const unreadCount = response.data.filter(notification => !notification.read).length;
+      const unreadCount = response.data.filter(
+        (notification) => !notification.read
+      ).length;
       setNotificationCount(unreadCount);
-
     } catch (err) {
       console.error("Erro ao buscar notificações:", err);
       setError("Falha ao buscar notificações.");
@@ -77,7 +87,6 @@ const NotificationScreen = () => {
       );
 
       setNotificationCount(notificationCount - 1);
-
     } catch (err) {
       console.error("Erro ao marcar notificação como lida:", err);
       Alert.alert("Erro", "Falha ao marcar notificação como lida.");
@@ -86,7 +95,7 @@ const NotificationScreen = () => {
 
   const deleteAllNotifications = () => {
     if (!userData || (!userData.cpf && !userData.cnpj)) {
-      if (Platform.OS === 'web') {
+      if (Platform.OS === "web") {
         window.alert("Dados do usuário não disponíveis.");
       } else {
         Alert.alert("Erro", "Dados do usuário não disponíveis.");
@@ -96,38 +105,42 @@ const NotificationScreen = () => {
 
     const confirmDelete = () => {
       setDeleting(true);
-      const deleteParam = userData.cpf ? { cpf: userData.cpf } : { cnpj: userData.cnpj };
+      const deleteParam = userData.cpf
+        ? { cpf: userData.cpf }
+        : { cnpj: userData.cnpj };
 
-      axios.delete(
-        "https://engpag.backend.gustavohenrique.dev/notifications",
-        {
+      axios
+        .delete("https://engpag.backend.gustavohenrique.dev/notifications", {
           params: deleteParam,
-        }
-      )
-      .then(() => {
-        if (Platform.OS === 'web') {
-          window.alert("Você apagou as notificações!");
-        } else {
-          Alert.alert("Sucesso", "Você apagou as notificações!");
-        }
-        setNotifications([]);
-        setNotificationCount(0);
-      })
-      .catch((err) => {
-        console.error("Erro ao deletar notificações:", err);
-        if (Platform.OS === 'web') {
-          window.alert("Falha ao deletar notificações.");
-        } else {
-          Alert.alert("Erro", "Falha ao deletar notificações.");
-        }
-      })
-      .finally(() => {
-        setDeleting(false);
-      });
+        })
+        .then(() => {
+          if (Platform.OS === "web") {
+            window.alert("Você apagou as notificações!");
+          } else {
+            Alert.alert("Sucesso", "Você apagou as notificações!");
+          }
+          setNotifications([]);
+          setNotificationCount(0);
+        })
+        .catch((err) => {
+          console.error("Erro ao deletar notificações:", err);
+          if (Platform.OS === "web") {
+            window.alert("Falha ao deletar notificações.");
+          } else {
+            Alert.alert("Erro", "Falha ao deletar notificações.");
+          }
+        })
+        .finally(() => {
+          setDeleting(false);
+        });
     };
 
-    if (Platform.OS === 'web') {
-      if (window.confirm("Tem certeza de que deseja apagar todas as notificações?")) {
+    if (Platform.OS === "web") {
+      if (
+        window.confirm(
+          "Tem certeza de que deseja apagar todas as notificações?"
+        )
+      ) {
         confirmDelete();
       }
     } else {
@@ -154,83 +167,159 @@ const NotificationScreen = () => {
 
   return (
     <View style={styles.container}>
-      <View style={styles.topBarWrapper}>
-        <View style={styles.topBar}>
-          <Pressable
-            onPress={() => router.back()}
-            style={({ pressed }) => [
-              styles.backButton,
-              pressed ? styles.backButtonPressed : null,
-            ]}
-          >
-            <Ionicons name="arrow-back-outline" size={28} color="white" />
-          </Pressable>
-          <Text style={styles.headerTitle}>Notificações</Text>
-          <TouchableOpacity
-            onPress={deleteAllNotifications}
-            disabled={deleting}
-          >
-            {deleting ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <Ionicons name="trash-outline" size={28} color="white" />
-            )}
-          </TouchableOpacity>
+      <View style={styles.content}>
+        <View style={styles.headerName}>
+          <NotificationIcon />
+
+          <Text style={styles.greeting}>
+            Olá,{" "}
+            {userData?.name
+              ? userData.name
+                  .toLowerCase()
+                  .split(" ")
+                  .slice(0, 2)
+                  .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+                  .join(" ") || "Usuário"
+              : "Usuário"}
+            !
+          </Text>
+        </View>
+         <Text style={styles.sectionTitleSeus}>Minhas</Text>
+                <Text style={styles.sectionTitle}>Notificações</Text>
+        <ScrollView
+          contentContainerStyle={styles.contentContainer}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+        >
+          {loading ? (
+            <ActivityIndicator
+              size="large"
+              color="#E1272C"
+              style={{ marginTop: 20 }}
+            />
+          ) : error ? (
+            <Text style={styles.errorText}>{error}</Text>
+          ) : notifications.length > 0 ? (
+            notifications.map((notification) => (
+              <TouchableOpacity
+                key={notification._id}
+                style={[
+                  styles.notificationCard,
+                  notification.read
+                    ? styles.notificationCardRead
+                    : styles.notificationCardUnread,
+                ]}
+                onPress={() => handleNotificationPress(notification)}
+              >
+                <Text style={styles.notificationTitle}>
+                  {notification.subject}
+                </Text>
+                <Text style={styles.notificationMessage}>
+                  {notification.message}
+                </Text>
+                <Text style={styles.notificationDate}>
+                  {new Date(notification.dateSent).toLocaleDateString("pt-BR")}
+                </Text>
+              </TouchableOpacity>
+            ))
+          ) : (
+            <Text style={styles.noNotificationsText}>
+              Nenhuma notificação disponível.
+            </Text>
+          )}
+        </ScrollView>
+        {/* Bottom Navigation Section */}
+        <View style={styles.bottomSection}>
+          <View style={styles.navigationContainer}>
+            <TouchableOpacity
+              style={styles.navButton}
+              onPress={() => router.back()}
+            >
+              <Image
+                source={require("../seta.png")}
+                style={styles.logoBottom}
+                resizeMode="contain"
+              />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={deleteAllNotifications}
+              disabled={deleting}
+            >
+              {deleting ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Ionicons name="trash-outline" size={50} color="white" />
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.navButton}
+              onPress={() => router.navigate("/initial-page")}
+            >
+              <Image
+                source={require("../home.png")}
+                style={styles.logoBottom}
+                resizeMode="contain"
+              />
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
-
-      <ScrollView
-        contentContainerStyle={styles.contentContainer}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-      >
-        {loading ? (
-          <ActivityIndicator
-            size="large"
-            color="#E1272C"
-            style={{ marginTop: 20 }}
-          />
-        ) : error ? (
-          <Text style={styles.errorText}>{error}</Text>
-        ) : notifications.length > 0 ? (
-          notifications.map((notification) => (
-            <TouchableOpacity
-              key={notification._id}
-              style={[
-                styles.notificationCard,
-                notification.read
-                  ? styles.notificationCardRead
-                  : styles.notificationCardUnread,
-              ]}
-              onPress={() => handleNotificationPress(notification)}
-            >
-              <Text style={styles.notificationTitle}>
-                {notification.subject}
-              </Text>
-              <Text style={styles.notificationMessage}>
-                {notification.message}
-              </Text>
-              <Text style={styles.notificationDate}>
-                {new Date(notification.dateSent).toLocaleDateString("pt-BR")}
-              </Text>
-            </TouchableOpacity>
-          ))
-        ) : (
-          <Text style={styles.noNotificationsText}>
-            Nenhuma notificação disponível.
-          </Text>
-        )}
-      </ScrollView>
     </View>
   );
 };
 
-
 const styles = StyleSheet.create({
+  headerName: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 20,
+    marginBottom: 20,
+    width: "100%",
+    paddingHorizontal: 20,
+  },
+  greeting: {
+    fontSize: 20,
+    fontWeight: "600",
+    color: "#FFFFFF",
+    textAlign: "center",
+  },
+
+  sectionTitle: {
+    fontSize: 32,
+    fontWeight: "bold",
+    color: "#FFFFFF",
+    textAlign: "left",
+    marginBottom: 20,
+    width: "100%",
+    paddingHorizontal: 20,
+
+  },
+  sectionTitleSeus: {
+    fontSize: 32,
+    color: "#FFFFFF",
+    paddingHorizontal: 20,
+    textAlign: "left",
+    width: "100%",
+  },
+  logoBottom: {
+    width: 50,
+  },
   container: {
     flex: 1,
-    backgroundColor: "#FAF6F6",
+    padding: 16,
+    backgroundColor: "#D00000",
+  },
+  content: {
+    flex: 1,
+    marginTop: 30,
+
+    paddingHorizontal: 10,
+    paddingBottom: 20,
+    backgroundColor: "#880000",
+    borderRadius: 40,
+    marginHorizontal: 5,
   },
   topBarWrapper: {
     paddingTop: StatusBar.currentHeight || 24,
@@ -300,6 +389,25 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#E1272C",
     textAlign: "center",
+    marginTop: 20,
+  },
+  // Bottom Navigation Styles
+  bottomSection: {
+    position: "absolute",
+    bottom: 0,
+    width: "100%",
+    height: 140,
+  },
+
+  navigationContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    width: "100%",
+    paddingHorizontal: 70,
+  },
+  navButton: {
+    padding: 10,
     marginTop: 20,
   },
 });

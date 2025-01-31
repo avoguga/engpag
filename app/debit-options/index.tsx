@@ -6,16 +6,25 @@ import {
   StyleSheet,
   Alert,
   Platform,
+  Image,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { UserContext } from "../contexts/UserContext";
+import LogoENG from "../(home)/engenharq.svg";
+import LogoENGELOT from "../(home)/enegelot.svg";
+import Boleto from "./baixarboletoo.svg";
+import Historico from "./historico.svg";
+import Realizado from "./realizados.svg";
+import SaldoDevedor from "./saldodevedo.svg";
+import Antecipar from "./antecipar.svg";
 
 const DebitOptionsPage = () => {
   const router = useRouter();
   const { userData, setUserData, installmentsData, setInstallmentsData } =
     useContext(UserContext);
-  const { enterpriseName, billReceivableId,receivableBillValue, unityName } = useLocalSearchParams();
+  const { enterpriseName, billReceivableId, receivableBillValue, unityName } =
+    useLocalSearchParams();
 
   // Load userData and installmentsData from localStorage on mount (Web only)
   useEffect(() => {
@@ -52,9 +61,15 @@ const DebitOptionsPage = () => {
   useEffect(() => {
     if (Platform.OS === "web" && installmentsData) {
       try {
-        localStorage.setItem("installmentsData", JSON.stringify(installmentsData));
+        localStorage.setItem(
+          "installmentsData",
+          JSON.stringify(installmentsData)
+        );
       } catch (error) {
-        console.error("Erro ao salvar installmentsData no localStorage:", error);
+        console.error(
+          "Erro ao salvar installmentsData no localStorage:",
+          error
+        );
       }
     }
   }, [installmentsData]);
@@ -119,7 +134,7 @@ const DebitOptionsPage = () => {
             billReceivableId: billReceivableId,
             installmentId: lastInstallment.installmentId,
             enterpriseName,
-            unityName: unityName
+            unityName: unityName,
           },
         });
       } else {
@@ -171,7 +186,7 @@ const DebitOptionsPage = () => {
       params: {
         billReceivableId: billReceivableId,
         enterpriseName,
-        receivableBillValue
+        receivableBillValue,
       },
     });
   };
@@ -180,14 +195,24 @@ const DebitOptionsPage = () => {
 
   return (
     <View style={styles.container}>
-      <View style={styles.iconContainer}>
+      <View style={styles.topSection}>
+        <View style={styles.whiteCurve}>
+          <Image
+            source={require("./engepag-logo.png")}
+            style={styles.logoTop}
+            resizeMode="contain"
+          />
+        </View>
+      </View>
+
+      {/* <View style={styles.iconContainer}>
         <View style={styles.circleIcon}>
           <Ionicons name="home-outline" size={40} color="white" />
         </View>
         <Text style={styles.title}>
           {enterpriseName || "Nome do Empreendimento"}
         </Text>
-      </View>
+      </View> */}
 
       <View style={styles.buttonContainer}>
         <TouchableOpacity
@@ -195,6 +220,7 @@ const DebitOptionsPage = () => {
           style={[styles.buttonLarge, isPaid && styles.disabledButton]}
           disabled={isPaid}
         >
+          <Boleto width={35} height={35} />
           <Text style={[styles.buttonText, isPaid && styles.disabledText]}>
             2ª VIA BOLETO
           </Text>
@@ -206,6 +232,7 @@ const DebitOptionsPage = () => {
             onPress={handleParcelAntecipationNavigation}
             disabled={isPaid}
           >
+            <Antecipar width={35} height={35} />
             <Text style={[styles.buttonText, isPaid && styles.disabledText]}>
               ANTECIPAR PARCELAS
             </Text>
@@ -216,6 +243,7 @@ const DebitOptionsPage = () => {
             onPress={handleDebtBalance}
             disabled={isPaid}
           >
+            <SaldoDevedor width={35} height={35} />
             <Text style={[styles.buttonText, isPaid && styles.disabledText]}>
               SALDO DEVEDOR
             </Text>
@@ -227,6 +255,7 @@ const DebitOptionsPage = () => {
             style={styles.buttonSmall}
             onPress={handlePaymentsRealizedNavigation}
           >
+            <Realizado width={35} height={35} />
             <Text style={styles.buttonText}>PAGAMENTOS REALIZADOS</Text>
           </TouchableOpacity>
 
@@ -234,7 +263,46 @@ const DebitOptionsPage = () => {
             style={styles.buttonSmall}
             onPress={handlePaymentsNavigation}
           >
+            <Historico width={35} height={35} />
             <Text style={styles.buttonText}>HISTÓRICO DE PAGAMENTOS</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+      <View style={styles.bottomLogos}>
+        <LogoENG
+          width={150}
+          height={40}
+          style={{ transform: [{ translateY: 20 }] }} // Ajusta a posição vertical
+        />
+
+        <LogoENGELOT
+          width={100}
+          height={50}
+          style={{ transform: [{ translateY: 20 }] }}
+        />
+      </View>
+      <View style={styles.bottomSection}>
+        <View style={styles.navigationContainer}>
+          <TouchableOpacity
+            style={styles.navButton}
+            onPress={() => router.back()}
+          >
+            <Image
+              source={require("../seta.png")}
+              style={styles.logoBottom}
+              resizeMode="contain"
+            />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.navButton}
+            onPress={() => router.navigate("/initial-page")}
+          >
+            <Image
+              source={require("../home.png")}
+              style={styles.logoBottom}
+              resizeMode="contain"
+            />
           </TouchableOpacity>
         </View>
       </View>
@@ -243,9 +311,32 @@ const DebitOptionsPage = () => {
 };
 
 const styles = StyleSheet.create({
+  logoBottom: {
+    width: 50,
+  },
+  // Bottom Navigation Styles
+  bottomSection: {
+    position: "absolute",
+    bottom: 0,
+    width: "100%",
+    height: 140,
+    paddingTop: 10,
+  },
+
+  navigationContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    width: "100%",
+    paddingHorizontal: 120,
+  },
+  navButton: {
+    padding: 10,
+    marginTop: 20,
+  },
   container: {
     flex: 1,
-    backgroundColor: "#FFF8F8",
+    backgroundColor: "#D00000",
   },
   iconContainer: {
     justifyContent: "center",
@@ -292,6 +383,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     textAlign: "center",
+    gap: 10,
+    flexDirection: "row",
   },
   buttonSmall: {
     backgroundColor: "#fff",
@@ -307,6 +400,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     textAlign: "center",
+    flexDirection: "row",
+    gap: 8,
   },
   buttonText: {
     color: "#000",
@@ -319,6 +414,33 @@ const styles = StyleSheet.create({
   },
   disabledText: {
     color: "#888", // Cor mais clara para texto desabilitado
+  },
+  topSection: {
+    width: "100%",
+    height: 280, // Increased for larger logo area
+  },
+  whiteCurve: {
+    backgroundColor: "white",
+    height: "100%",
+    borderBottomLeftRadius: 1000,
+    borderBottomRightRadius: 1000,
+    transform: [{ scaleX: 1.5 }],
+    alignItems: "center",
+    paddingTop: 40,
+    overflow: "hidden",
+  },
+  logoTop: {
+    width: 300, // Larger logo size
+    height: 200,
+    transform: [{ scaleX: 0.667 }], // Compensate for parent scaleX
+  },
+  bottomLogos: {
+    flexDirection: "column",
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: 30,
+    marginBottom: 20,
+    gap: 30,
   },
 });
 

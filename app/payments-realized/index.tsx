@@ -9,18 +9,36 @@ import {
   Alert,
   TextInput,
   Platform,
+  Image,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Picker } from "@react-native-picker/picker";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import axios from "axios";
 import { UserContext } from "../contexts/UserContext";
-import { useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
+import NotificationIcon from "@/components/NotificationIcon";
 
-const formatConditionType = (text) => {
-  return text.toLowerCase().replace(/^\w/, (c) => c.toUpperCase());
+const excludedConditionTypes = [
+  "Cartão de crédito",
+  "Cartão de débito",
+  "Sinal",
+  "Financiamento",
+  "Promissória",
+  "Valor do terreno",
+];
+
+const filterValidPayments = (payments: any) => {
+  return payments.filter(
+    (payment) => !excludedConditionTypes.includes(payment.conditionType.trim())
+  );
 };
 
+
+
+const formatConditionType = (text: string) => {
+  return text.toLowerCase().replace(/^\w/, (c) => c.toUpperCase());
+};
 
 const PaymentsCompleted = () => {
   const { userData } = useContext(UserContext);
@@ -161,7 +179,10 @@ const PaymentsCompleted = () => {
         };
       });
 
-      setCompletedPayments(payments);
+      const validPayments = filterValidPayments(payments);
+
+
+      setCompletedPayments(validPayments);
     } catch (error) {
       console.error("Erro ao buscar parcelas pagas:", error);
       Alert.alert("Erro", "Não foi possível obter as parcelas pagas.");
@@ -245,19 +266,6 @@ const PaymentsCompleted = () => {
       }
     } else {
       setDate(null);
-    }
-  };
-
-  const handleWebDateChange = (selectedDate, setDate, setDateInput) => {
-    if (selectedDate) {
-      setDate(selectedDate);
-      setDateInput(selectedDate.toLocaleDateString("pt-BR"));
-    }
-  };
-
-  const openWebDatePicker = (inputRef) => {
-    if (inputRef.current) {
-      inputRef.current.click();
     }
   };
 
@@ -387,122 +395,208 @@ const PaymentsCompleted = () => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>
-        {enterpriseName || "Nome do Empreendimento"}
-      </Text>
+      <View style={styles.content}>
+        <View style={styles.headerName}>
+          <NotificationIcon />
 
-      {/* Filtro por parcela */}
-      <View style={styles.pickerContainer}>
-        <Picker
-          selectedValue={selectedParcel}
-          style={styles.picker}
-          onValueChange={(itemValue) => setSelectedParcel(itemValue)}
-        >
-          {parcelNumbers.map((parcelNumber) => (
-            <Picker.Item
-              key={parcelNumber}
-              label={
-                parcelNumber === "Número da parcela"
-                  ? parcelNumber
-                  : `Parcela ${parcelNumber}`
+          <Text style={styles.greeting}>
+            Olá,{" "}
+            {userData?.name
+              ? userData.name
+                  .toLowerCase()
+                  .split(" ")
+                  .slice(0, 2)
+                  .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+                  .join(" ") || "Usuário"
+              : "Usuário"}
+            !
+          </Text>
+        </View>
+        <Text style={styles.sectionTitleSeus}>Pagamentos</Text>
+        <Text style={styles.sectionTitle}>Realizados</Text>
+        <Text style={styles.title}>
+          {enterpriseName || "Nome do Empreendimento"}
+        </Text>
+
+        {/* Filtro por parcela */}
+        <View style={styles.pickerContainer}>
+          <Picker
+            selectedValue={selectedParcel}
+            style={styles.picker}
+            onValueChange={(itemValue) => setSelectedParcel(itemValue)}
+          >
+            {parcelNumbers.map((parcelNumber) => (
+              <Picker.Item
+                key={parcelNumber}
+                label={
+                  parcelNumber === "Número da parcela"
+                    ? parcelNumber
+                    : `Parcela ${parcelNumber}`
+                }
+                value={parcelNumber}
+              />
+            ))}
+          </Picker>
+        </View>
+
+        {/* Filtro por intervalo de datas */}
+        <View style={styles.dateFilterContainer}>
+          {renderDateInput(
+            "start",
+            startDate,
+            setStartDate,
+            startDateInput,
+            setStartDateInput,
+            startDateInputRef
+          )}
+          {renderDateInput(
+            "end",
+            endDate,
+            setEndDate,
+            endDateInput,
+            setEndDateInput,
+            endDateInputRef
+          )}
+        </View>
+
+        {/* Botão de Resetar Filtros */}
+        <TouchableOpacity style={styles.resetButton} onPress={resetFilters}>
+          <Text style={styles.resetButtonText}>Limpar filtros</Text>
+        </TouchableOpacity>
+
+        {/* DateTimePickers para plataformas móveis */}
+        {Platform.OS !== "web" && showStartDatePicker && (
+          <DateTimePicker
+            value={startDate || new Date()}
+            mode="date"
+            display="default"
+            onChange={(event, selectedDate) => {
+              setShowStartDatePicker(false);
+              if (selectedDate) {
+                setStartDate(selectedDate);
+                setStartDateInput(selectedDate.toLocaleDateString("pt-BR"));
               }
-              value={parcelNumber}
+            }}
+          />
+        )}
+
+        {Platform.OS !== "web" && showEndDatePicker && (
+          <DateTimePicker
+            value={endDate || new Date()}
+            mode="date"
+            display="default"
+            onChange={(event, selectedDate) => {
+              setShowEndDatePicker(false);
+              if (selectedDate) {
+                setEndDate(selectedDate);
+                setEndDateInput(selectedDate.toLocaleDateString("pt-BR"));
+              }
+            }}
+          />
+        )}
+
+        {loading ? (
+          <ActivityIndicator
+            size="large"
+            color="#E1272C"
+            style={{ marginTop: 20 }}
+          />
+        ) : (
+          <FlatList
+            data={filteredData}
+            keyExtractor={(item) => item.id}
+            renderItem={renderItem}
+            style={styles.list}
+            ListEmptyComponent={
+              <Text style={styles.noDataText}>
+                Nenhum pagamento realizado encontrado.
+              </Text>
+            }
+          />
+        )}
+      </View>
+      {/* Bottom Navigation Section */}
+      <View style={styles.bottomSection}>
+        <View style={styles.navigationContainer}>
+          <TouchableOpacity
+            style={styles.navButton}
+            onPress={() => router.back()}
+          >
+            <Image
+              source={require("../seta.png")}
+              style={styles.logoBottom}
+              resizeMode="contain"
             />
-          ))}
-        </Picker>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.navButton}
+            onPress={() => router.navigate("/initial-page")}
+          >
+            <Image
+              source={require("../home.png")}
+              style={styles.logoBottom}
+              resizeMode="contain"
+            />
+          </TouchableOpacity>
+        </View>
       </View>
-
-      {/* Filtro por intervalo de datas */}
-      <View style={styles.dateFilterContainer}>
-        {renderDateInput(
-          "start",
-          startDate,
-          setStartDate,
-          startDateInput,
-          setStartDateInput,
-          startDateInputRef
-        )}
-        {renderDateInput(
-          "end",
-          endDate,
-          setEndDate,
-          endDateInput,
-          setEndDateInput,
-          endDateInputRef
-        )}
-      </View>
-
-      {/* Botão de Resetar Filtros */}
-      <TouchableOpacity style={styles.resetButton} onPress={resetFilters}>
-        <Text style={styles.resetButtonText}>Limpar filtros</Text>
-      </TouchableOpacity>
-
-      {/* DateTimePickers para plataformas móveis */}
-      {Platform.OS !== "web" && showStartDatePicker && (
-        <DateTimePicker
-          value={startDate || new Date()}
-          mode="date"
-          display="default"
-          onChange={(event, selectedDate) => {
-            setShowStartDatePicker(false);
-            if (selectedDate) {
-              setStartDate(selectedDate);
-              setStartDateInput(selectedDate.toLocaleDateString("pt-BR"));
-            }
-          }}
-        />
-      )}
-
-      {Platform.OS !== "web" && showEndDatePicker && (
-        <DateTimePicker
-          value={endDate || new Date()}
-          mode="date"
-          display="default"
-          onChange={(event, selectedDate) => {
-            setShowEndDatePicker(false);
-            if (selectedDate) {
-              setEndDate(selectedDate);
-              setEndDateInput(selectedDate.toLocaleDateString("pt-BR"));
-            }
-          }}
-        />
-      )}
-
-      {loading ? (
-        <ActivityIndicator
-          size="large"
-          color="#E1272C"
-          style={{ marginTop: 20 }}
-        />
-      ) : (
-        <FlatList
-          data={filteredData}
-          keyExtractor={(item) => item.id}
-          renderItem={renderItem}
-          style={styles.list}
-          ListEmptyComponent={
-            <Text style={styles.noDataText}>
-              Nenhum pagamento realizado encontrado.
-            </Text>
-          }
-        />
-      )}
     </View>
   );
 };
 
 const styles = StyleSheet.create({
+  headerName: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 20,
+    marginBottom: 20,
+    width: "100%",
+  },
+  greeting: {
+    fontSize: 20,
+    fontWeight: "600",
+    color: "#FFFFFF",
+    textAlign: "center",
+  },
+
+  sectionTitle: {
+    fontSize: 32,
+    fontWeight: "bold",
+    color: "#FFFFFF",
+    textAlign: "left",
+    marginBottom: 20,
+    width: "100%",
+  },
+  sectionTitleSeus: {
+    fontSize: 32,
+    color: "#FFFFFF",
+    textAlign: "left",
+    width: "100%",
+  },
+  logoBottom: {
+    width: 50,
+  },
   container: {
     flex: 1,
     padding: 16,
-    backgroundColor: "#F5F5F5",
+    backgroundColor: "#D00000",
+  },
+  content: {
+    flex: 1,
+    paddingHorizontal: 10,
+    paddingBottom: 20,
+    backgroundColor: "#880000",
+    borderRadius: 40,
+    marginHorizontal: 5,
   },
   title: {
     fontSize: 22,
     fontWeight: "700",
     textAlign: "center",
     marginVertical: 10,
-    color: "#333",
+    color: "#fff",
   },
   actionButton: {
     backgroundColor: "#E1272C",
@@ -526,7 +620,7 @@ const styles = StyleSheet.create({
   pickerContainer: {
     borderWidth: 1,
     borderColor: "#888",
-    borderRadius: 8,
+    borderRadius: 30,
     backgroundColor: "#fff",
     marginBottom: 16,
     marginHorizontal: 16,
@@ -553,26 +647,30 @@ const styles = StyleSheet.create({
   },
   dateInput: {
     flex: 1,
-    height: 50,
+    height: 45,
     width: 30,
     borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 8,
+    borderColor: "#fff",
+    borderRadius: 20,
     paddingHorizontal: 8,
-    fontSize: 13,
+    fontSize: 14,
     backgroundColor: "#fff",
+    borderRightColor: "#fff",
+    borderTopRightRadius: 0,
+    borderBottomRightRadius: 0,
   },
-  validInput: {
-    borderColor: "#28a745",
-  },
-  invalidInput: {
-    borderColor: "#dc3545",
-  },
+  validInput: {},
+  invalidInput: {},
   calendarButton: {
-    marginLeft: 8,
     padding: 10,
+    height: 45,
     borderRadius: 8,
-    backgroundColor: "#F0F0F0",
+    borderLeftColor: "#fff",
+    backgroundColor: "#fff",
+    borderTopLeftRadius: 0,
+    borderBottomLeftRadius: 0,
+    borderTopRightRadius: 20,
+    borderBottomRightRadius: 20,
   },
   resetButton: {
     backgroundColor: "#E1272C",
@@ -595,6 +693,7 @@ const styles = StyleSheet.create({
   list: {
     flex: 1,
     marginHorizontal: 16,
+    marginBottom: 120,
   },
   card: {
     padding: 16,
@@ -639,7 +738,7 @@ const styles = StyleSheet.create({
   noDataText: {
     textAlign: "center",
     fontSize: 16,
-    color: "#555",
+    color: "#fff",
     marginTop: 20,
   },
   hiddenDateInput: {
@@ -647,6 +746,25 @@ const styles = StyleSheet.create({
     left: -9999,
     opacity: 0,
     pointerEvents: "none",
+  },
+  // Bottom Navigation Styles
+  bottomSection: {
+    position: "absolute",
+    bottom: 0,
+    width: "100%",
+    height: 140,
+  },
+
+  navigationContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    width: "100%",
+    paddingHorizontal: 120,
+  },
+  navButton: {
+    padding: 10,
+    marginTop: 20,
   },
 });
 

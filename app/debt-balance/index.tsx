@@ -6,11 +6,13 @@ import {
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
+  Image,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import axios from "axios";
 import { UserContext } from "../contexts/UserContext";
-import { useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
+import NotificationIcon from "@/components/NotificationIcon";
 
 // Definição dos tipos de condição a serem excluídos
 const excludedConditionTypes = [
@@ -306,179 +308,274 @@ const DebtBalanceScreen = () => {
   }
 
   return (
-    <ScrollView style={styles.container}>
-      <Text style={styles.mainTitle}>
-        {enterpriseName || "Nome do Empreendimento"}
-      </Text>
+    <View style={styles.container}>
+      <View style={styles.content}>
+        <ScrollView>
+          <View style={styles.headerName}>
+            <NotificationIcon />
 
-      <View style={styles.debtContainer}>
-        <Text style={styles.debtLabel}>Saldo a pagar</Text>
-        <Text style={styles.debtAmount}>
-          {saldoDevedor !== null ? formatCurrency(saldoDevedor) : "R$ 0,00"}
-        </Text>
-      </View>
-
-      {outstandingInstallments.length > 0 ? (
-        <View style={styles.nextPaymentContainer}>
-          <Text style={styles.sectionTitle}>Parcelas vencidas</Text>
-
-          {outstandingInstallments.map((installment) => (
-            <View key={installment.installmentId} style={styles.parcelCard}>
-              <View style={styles.parcelHeader}>
-                <Text style={styles.parcelTitle}>
-                  Parcela {installment.installmentNumber}
-                </Text>
-                <Text style={styles.parcelType}>
-                  {installment.conditionType.charAt(0).toUpperCase() +
-                    installment.conditionType.slice(1).toLowerCase()}
-                </Text>
-              </View>
-
-              <View style={styles.parcelInfo}>
-                <Text style={styles.infoLabel}>Vencimento:</Text>
-                <Text style={styles.infoValue}>
-                  {formatDate(installment.dueDate)}
-                </Text>
-              </View>
-
-              <View style={styles.parcelInfo}>
-                <Text style={styles.infoLabel}>Valor original:</Text>
-                <Text style={styles.infoValue}>
-                  {formatCurrency(installment.originalValue)}
-                </Text>
-              </View>
-
-              <View style={styles.parcelInfo}>
-                <Text style={styles.infoLabel}>Valor atual:</Text>
-                <Text style={styles.infoValue}>
-                  {formatCurrency(installment.currentBalance)}
-                </Text>
-              </View>
-            </View>
-          ))}
-
-          <View style={styles.totalContainer}>
-            <Text style={styles.totalLabel}>Total vencido:</Text>
-            <Text style={styles.totalValue}>
-              {formatCurrency(
-                outstandingInstallments.reduce(
-                  (sum, inst) => sum + (inst.currentBalance || 0),
-                  0
-                )
-              )}
+            <Text style={styles.greeting}>
+              Olá,{" "}
+              {userData?.name
+                ? userData.name
+                    .toLowerCase()
+                    .split(" ")
+                    .slice(0, 2)
+                    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+                    .join(" ") || "Usuário"
+                : "Usuário"}
+              !
             </Text>
           </View>
-        </View>
-      ) : null}
+          <Text style={styles.sectionTitleSeus}>Saldo</Text>
+          <Text style={styles.sectionTitleNew}>Devedor</Text>
 
-      {nextPaymentDate && nextPaymentAmount ? (
-        <View style={styles.nextPaymentContainer}>
-          <Text style={styles.sectionTitle}>Próximo vencimento</Text>
-          <View style={styles.paymentRow}>
-            <View style={styles.paymentInfo}>
-              <Text style={styles.paymentLabel}>Data</Text>
-              <Text style={styles.paymentValue}>
-                {formatDate(nextPaymentDate)}
-              </Text>
-            </View>
-            <View style={styles.paymentInfo}>
-              <Text style={styles.paymentLabel}>Valor</Text>
-              <Text style={styles.paymentValue}>
-                {formatCurrency(nextPaymentAmount)}
-              </Text>
-            </View>
-          </View>
-        </View>
-      ) : null}
+          <Text style={styles.mainTitle}>
+            {enterpriseName || "Nome do Empreendimento"}
+          </Text>
 
-      <View style={styles.financialInfoContainer}>
-        <Text style={styles.sectionTitle}>Detalhes financeiros</Text>
-        <View style={styles.financialRow}>
-          <Text style={styles.financialLabel}>Valor do contrato</Text>
-          <Text style={styles.financialValue}>
-            {receivableBillValue !== null
-              ? formatCurrency(receivableBillValue)
-              : "R$ 0,00"}
-          </Text>
-        </View>
-        <View style={styles.financialRow}>
-          <Text style={styles.financialLabel}>
-            Valor do financiamento CAIXA
-          </Text>
-          <Text style={styles.financialValue}>
-            {saldoFinanciado !== null
-              ? formatCurrency(saldoFinanciado)
-              : "R$ 0,00"}
-          </Text>
-        </View>
-
-        <View style={styles.financialRow}>
-          <Text style={styles.financialLabel}>Recurso próprio</Text>
-          <Text style={styles.financialValue}>
-            {recursoProprio > 0 ? formatCurrency(recursoProprio) : "R$ 0,00"}
-          </Text>
-        </View>
-        {descontoConcedido > 0 ? (
-          <View style={styles.financialRow}>
-            <Text style={styles.financialLabel}>Desconto concedido</Text>
-            <Text style={styles.financialValue}>
-              {descontoConcedido > 0
-                ? formatCurrency(descontoConcedido)
-                : "R$ 0,00"}
+          <View style={styles.debtContainer}>
+            <Text style={styles.debtLabel}>Saldo a pagar</Text>
+            <Text style={styles.debtAmount}>
+              {saldoDevedor !== null ? formatCurrency(saldoDevedor) : "R$ 0,00"}
             </Text>
           </View>
-        ) : null}
-      </View>
 
-      <View style={styles.contractDetailsContainer}>
-        <Text style={styles.sectionTitle}>Detalhes do contrato</Text>
+          {outstandingInstallments.length > 0 ? (
+            <View style={styles.nextPaymentContainer}>
+              <Text style={styles.sectionTitle}>Parcelas vencidas</Text>
 
-        {/* Primeiro exibe as parcelas regulares */}
-        {Object.entries(contratoDetalhes.parcelas)
-          .filter(([tipo]) => tipo.toLowerCase().includes("parcela"))
-          .map(([tipo, dados]) => (
-            <View
-              key={tipo}
-              style={[styles.contractSection, { marginTop: 16 }]}
+              {outstandingInstallments.map((installment) => (
+                <View key={installment.installmentId} style={styles.parcelCard}>
+                  <View style={styles.parcelHeader}>
+                    <Text style={styles.parcelTitle}>
+                      Parcela {installment.installmentNumber}
+                    </Text>
+                    <Text style={styles.parcelType}>
+                      {installment.conditionType.charAt(0).toUpperCase() +
+                        installment.conditionType.slice(1).toLowerCase()}
+                    </Text>
+                  </View>
+
+                  <View style={styles.parcelInfo}>
+                    <Text style={styles.infoLabel}>Vencimento:</Text>
+                    <Text style={styles.infoValue}>
+                      {formatDate(installment.dueDate)}
+                    </Text>
+                  </View>
+
+                  <View style={styles.parcelInfo}>
+                    <Text style={styles.infoLabel}>Valor original:</Text>
+                    <Text style={styles.infoValue}>
+                      {formatCurrency(installment.originalValue)}
+                    </Text>
+                  </View>
+
+                  <View style={styles.parcelInfo}>
+                    <Text style={styles.infoLabel}>Valor atual:</Text>
+                    <Text style={styles.infoValue}>
+                      {formatCurrency(installment.currentBalance)}
+                    </Text>
+                  </View>
+                </View>
+              ))}
+
+              <View style={styles.totalContainer}>
+                <Text style={styles.totalLabel}>Total vencido:</Text>
+                <Text style={styles.totalValue}>
+                  {formatCurrency(
+                    outstandingInstallments.reduce(
+                      (sum, inst) => sum + (inst.currentBalance || 0),
+                      0
+                    )
+                  )}
+                </Text>
+              </View>
+            </View>
+          ) : null}
+
+          {nextPaymentDate && nextPaymentAmount ? (
+            <View style={styles.nextPaymentContainer}>
+              <Text style={styles.sectionTitle}>Próximo vencimento</Text>
+              <View style={styles.paymentRow}>
+                <View style={styles.paymentInfo}>
+                  <Text style={styles.paymentLabel}>Data</Text>
+                  <Text style={styles.paymentValue}>
+                    {formatDate(nextPaymentDate)}
+                  </Text>
+                </View>
+                <View style={styles.paymentInfo}>
+                  <Text style={styles.paymentLabel}>Valor</Text>
+                  <Text style={styles.paymentValue}>
+                    {formatCurrency(nextPaymentAmount)}
+                  </Text>
+                </View>
+              </View>
+            </View>
+          ) : null}
+
+          <View style={styles.financialInfoContainer}>
+            <Text style={styles.sectionTitle}>Detalhes financeiros</Text>
+            <View style={styles.financialRow}>
+              <Text style={styles.financialLabel}>Valor do contrato</Text>
+              <Text style={styles.financialValue}>
+                {receivableBillValue !== null
+                  ? formatCurrency(receivableBillValue)
+                  : "R$ 0,00"}
+              </Text>
+            </View>
+            <View style={styles.financialRow}>
+              <Text style={styles.financialLabel}>
+                Valor do financiamento CAIXA
+              </Text>
+              <Text style={styles.financialValue}>
+                {saldoFinanciado !== null
+                  ? formatCurrency(saldoFinanciado)
+                  : "R$ 0,00"}
+              </Text>
+            </View>
+
+            <View style={styles.financialRow}>
+              <Text style={styles.financialLabel}>Recurso próprio</Text>
+              <Text style={styles.financialValue}>
+                {recursoProprio > 0
+                  ? formatCurrency(recursoProprio)
+                  : "R$ 0,00"}
+              </Text>
+            </View>
+            {descontoConcedido > 0 ? (
+              <View style={styles.financialRow}>
+                <Text style={styles.financialLabel}>Desconto concedido</Text>
+                <Text style={styles.financialValue}>
+                  {descontoConcedido > 0
+                    ? formatCurrency(descontoConcedido)
+                    : "R$ 0,00"}
+                </Text>
+              </View>
+            ) : null}
+          </View>
+
+          <View style={styles.contractDetailsContainer}>
+            <Text style={styles.sectionTitle}>Detalhes do contrato</Text>
+
+            {/* Primeiro exibe as parcelas regulares */}
+            {Object.entries(contratoDetalhes.parcelas)
+              .filter(([tipo]) => tipo.toLowerCase().includes("parcela"))
+              .map(([tipo, dados]) => (
+                <View
+                  key={tipo}
+                  style={[styles.contractSection, { marginTop: 16 }]}
+                >
+                  <Text style={styles.parcelasTitle}>{tipo}</Text>
+                  <View style={styles.contractRow}>
+                    <Text style={styles.contractLabelBold}>
+                      Total de parcelas
+                    </Text>
+                    <Text style={styles.contractValueHighlight}>
+                      {dados.total}
+                    </Text>
+                  </View>
+                  <View style={styles.contractRow}>
+                    <Text style={styles.contractLabel}>Parcelas pagas</Text>
+                    <Text style={styles.contractValue}>{dados.pagas}</Text>
+                  </View>
+                  <View style={styles.contractRow}>
+                    <Text style={styles.contractLabel}>Parcelas restantes</Text>
+                    <Text style={styles.contractValue}>{dados.restantes}</Text>
+                  </View>
+                  <View style={styles.contractRow}>
+                    <Text style={styles.contractLabelBold}>Valor a pagar</Text>
+                    <Text style={styles.contractValueHighlight}>
+                      {formatCurrency(dados.valorAtual)}
+                    </Text>
+                  </View>
+                </View>
+              ))}
+          </View>
+        </ScrollView>
+        {/* Bottom Navigation Section */}
+        <View style={styles.bottomSection}>
+          <View style={styles.navigationContainer}>
+            <TouchableOpacity
+              style={styles.navButton}
+              onPress={() => router.back()}
             >
-              <Text style={styles.parcelasTitle}>{tipo}</Text>
-              <View style={styles.contractRow}>
-                <Text style={styles.contractLabelBold}>Total de parcelas</Text>
-                <Text style={styles.contractValueHighlight}>{dados.total}</Text>
-              </View>
-              <View style={styles.contractRow}>
-                <Text style={styles.contractLabel}>Parcelas pagas</Text>
-                <Text style={styles.contractValue}>{dados.pagas}</Text>
-              </View>
-              <View style={styles.contractRow}>
-                <Text style={styles.contractLabel}>Parcelas restantes</Text>
-                <Text style={styles.contractValue}>{dados.restantes}</Text>
-              </View>
-              <View style={styles.contractRow}>
-                <Text style={styles.contractLabelBold}>Valor a pagar</Text>
-                <Text style={styles.contractValueHighlight}>
-                  {formatCurrency(dados.valorAtual)}
-                </Text>
-              </View>
-            </View>
-          ))}
+              <Image
+                source={require("../seta.png")}
+                style={styles.logoBottom}
+                resizeMode="contain"
+              />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.navButton}
+              onPress={() => router.navigate("/initial-page")}
+            >
+              <Image
+                source={require("../home.png")}
+                style={styles.logoBottom}
+                resizeMode="contain"
+              />
+            </TouchableOpacity>
+          </View>
+        </View>
       </View>
-    </ScrollView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
+  logoBottom: {
+    width: 50,
+  },
+  headerName: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 20,
+    marginBottom: 20,
+    width: "100%",
+  },
+  greeting: {
+    fontSize: 20,
+    fontWeight: "600",
+    color: "#FFFFFF",
+    textAlign: "center",
+  },
+
+  sectionTitleNew: {
+    fontSize: 32,
+    fontWeight: "bold",
+    color: "#FFFFFF",
+    textAlign: "left",
+    marginBottom: 20,
+    width: "100%",
+  },
+  sectionTitleSeus: {
+    fontSize: 32,
+    color: "#FFFFFF",
+    textAlign: "left",
+    width: "100%",
+  },
   // Estilos gerais do container e cabeçalhos
   container: {
     flex: 1,
-    backgroundColor: "#FFF8F8",
+    backgroundColor: "#D00000",
     padding: 16,
+  },
+  content: {
+    flex: 1,
+    backgroundColor: "#880000",
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+    borderRadius: 40,
+    marginHorizontal: 10,
   },
   mainTitle: {
     fontSize: 24,
     fontWeight: "bold",
     textAlign: "center",
-    color: "#333",
+    color: "#fff",
     marginTop: 10,
     marginBottom: 20,
   },
@@ -624,11 +721,11 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   financialLabel: {
-    fontSize: 15,
+    fontSize: 12,
     color: "#444",
   },
   financialValue: {
-    fontSize: 16,
+    fontSize: 12,
     fontWeight: "500",
     color: "#333",
   },
@@ -639,7 +736,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     borderRadius: 8,
     elevation: 3,
-    marginBottom: 20,
   },
   contractRow: {
     flexDirection: "row",
@@ -710,6 +806,23 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "bold",
     marginLeft: 8,
+  },
+  // Bottom Navigation Styles
+  bottomSection: {
+    bottom: 0,
+    width: "100%",
+  },
+
+  navigationContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    width: "100%",
+    paddingHorizontal: 80,
+  },
+  navButton: {
+    padding: 10,
+    marginTop: 20,
   },
 });
 

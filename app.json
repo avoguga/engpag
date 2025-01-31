@@ -12,6 +12,24 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
+    "fonts": [
+      {
+        "asset": "assets/fonts/Neulis/Neulis-Regular.otf",
+        "family": "Neulis-Regular"
+      },
+      {
+        "asset": "assets/fonts/Neulis/Neulis-Medium.otf",
+        "family": "Neulis-Medium"
+      },
+      {
+        "asset": "assets/fonts/Neulis/Neulis-Bold.otf",
+        "family": "Neulis-Bold"
+      },
+      {
+        "asset": "assets/fonts/Neulis/Neulis-SemiBold.otf",
+        "family": "Neulis-SemiBold"
+      }
+    ],
     "ios": {
       "supportsTablet": true
     },
@@ -41,7 +59,8 @@
           }
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true

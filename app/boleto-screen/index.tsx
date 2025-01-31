@@ -10,11 +10,14 @@ import {
   ScrollView,
   Clipboard,
   Modal,
+  Image,
 } from "react-native";
 import axios from "axios";
 import { UserContext } from "../contexts/UserContext";
 import { Ionicons } from "@expo/vector-icons";
-import { useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
+import NotificationIcon from "@/components/NotificationIcon";
+import Baixar from "./baixarboleto.svg";
 
 const BoletoScreen = () => {
   const { userData } = useContext(UserContext);
@@ -450,14 +453,24 @@ const BoletoScreen = () => {
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.contentContainer}>
-        <View style={styles.iconContainer}>
-          <View style={styles.circleIcon}>
-            <Ionicons name="home-outline" size={40} color="white" />
-          </View>
-          <Text style={styles.title}>
-            {enterpriseName || "Nome do Empreendimento"}
+        <View style={styles.headerName}>
+          <NotificationIcon />
+
+          <Text style={styles.greeting}>
+            Olá,{" "}
+            {userData?.name
+              ? userData.name
+                  .toLowerCase()
+                  .split(" ")
+                  .slice(0, 2)
+                  .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+                  .join(" ") || "Usuário"
+              : "Usuário"}
+            !
           </Text>
         </View>
+        <Text style={styles.sectionTitleSeus}>2ª Via</Text>
+        <Text style={styles.sectionTitle}>de Boletos</Text>
 
         {loading ? (
           <ActivityIndicator
@@ -507,30 +520,6 @@ const BoletoScreen = () => {
                   </View>
                 </View>
 
-                {hasOverdueInstallment ? (
-                  <View style={styles.warningContainer}>
-                    <Text style={styles.warningText}>
-                      Este boleto está vencido há mais de 30 dias. Por favor,
-                      entre em contato com o suporte via WhatsApp para liberar o
-                      pagamento e gerar uma nova via.
-                    </Text>
-                  </View>
-                ) : installmentDetails.status === "Vencido" ? (
-                  <View style={styles.warningContainer}>
-                    <Text style={styles.warningText}>
-                      Este boleto está vencido. Você pode gerar uma segunda via
-                      ou entrar em contato com o suporte para mais informações.
-                    </Text>
-                  </View>
-                ) : (
-                  <View style={styles.warningContainer}>
-                    <Text style={styles.warningText}>
-                      Após 30 dias de vencimento, será necessário falar com o
-                      suporte para solicitar uma nova via do boleto.
-                    </Text>
-                  </View>
-                )}
-
                 <View style={styles.buttonContainer}>
                   {hasOverdueInstallment ? (
                     <TouchableOpacity
@@ -549,17 +538,20 @@ const BoletoScreen = () => {
                         style={styles.actionButton}
                         onPress={requestBoletoLink}
                       >
-                        <Ionicons
+                        {/* <Ionicons
                           name="download-outline"
                           size={20}
                           color="white"
                         />
                         <Text style={styles.actionButtonText}>
                           {" "}
-                          Gerar Link da Segunda Via
-                        </Text>
+                          Baixar Boleto
+                        </Text> */}
+
+                        <Baixar width={200} />
                       </TouchableOpacity>
-                      <TouchableOpacity
+
+                      {/* <TouchableOpacity
                         style={styles.actionButton}
                         onPress={requestBoletoEmail}
                       >
@@ -568,10 +560,49 @@ const BoletoScreen = () => {
                           {" "}
                           Enviar para E-mail
                         </Text>
-                      </TouchableOpacity>
+                      </TouchableOpacity> */}
                     </>
                   )}
                 </View>
+
+                {hasOverdueInstallment ? (
+                  <View style={styles.warningContainer}>
+                    <Image
+                      source={require("./warning.png")}
+                      style={styles.warningLogo}
+                      resizeMode="contain"
+                    />
+                    <Text style={styles.warningText}>
+                      Este boleto está vencido há mais de 30 dias. Por favor,
+                      entre em contato com o suporte via WhatsApp para liberar o
+                      pagamento e gerar uma nova via.
+                    </Text>
+                  </View>
+                ) : installmentDetails.status === "Vencido" ? (
+                  <View style={styles.warningContainer}>
+                    <Image
+                      source={require("./warning.png")}
+                      style={styles.warningLogo}
+                      resizeMode="contain"
+                    />
+                    <Text style={styles.warningText}>
+                      Este boleto está vencido. Você pode gerar uma segunda via
+                      ou entrar em contato com o suporte para mais informações.
+                    </Text>
+                  </View>
+                ) : (
+                  <View style={styles.warningContainer}>
+                    <Image
+                      source={require("./warning.png")}
+                      style={styles.warningLogo}
+                      resizeMode="contain"
+                    />
+                    <Text style={styles.warningText}>
+                      Após 30 dias de vencimento, será necessário falar com o
+                      suporte para solicitar uma nova via do boleto.
+                    </Text>
+                  </View>
+                )}
               </>
             ) : (
               <View style={styles.noBoletoContainer}>
@@ -618,6 +649,7 @@ const BoletoScreen = () => {
                   <Text style={styles.copyButtonText}>Copiar</Text>
                 </TouchableOpacity>
               </View>
+
               <TouchableOpacity
                 style={styles.boletoDownloadButton}
                 onPress={() => Linking.openURL(boletoLink)}
@@ -631,6 +663,7 @@ const BoletoScreen = () => {
                   Baixar Boleto
                 </Text>
               </TouchableOpacity>
+
               <TouchableOpacity
                 style={styles.closeModalButton}
                 onPress={() => setIsModalVisible(false)}
@@ -678,12 +711,67 @@ const BoletoScreen = () => {
             </View>
           </View>
         </Modal>
+        {/* Bottom Navigation Section */}
+        <View style={styles.bottomSection}>
+          <View style={styles.navigationContainer}>
+            <TouchableOpacity
+              style={styles.navButton}
+              onPress={() => router.back()}
+            >
+              <Image
+                source={require("../seta.png")}
+                style={styles.logoBottom}
+                resizeMode="contain"
+              />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.navButton}
+              onPress={() => router.navigate("/initial-page")}
+            >
+              <Image
+                source={require("../home.png")}
+                style={styles.logoBottom}
+                resizeMode="contain"
+              />
+            </TouchableOpacity>
+          </View>
+        </View>
       </ScrollView>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
+  headerName: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 20,
+    marginBottom: 20,
+    width: "100%",
+  },
+  greeting: {
+    fontSize: 20,
+    fontWeight: "600",
+    color: "#FFFFFF",
+    textAlign: "center",
+  },
+
+  sectionTitle: {
+    fontSize: 32,
+    fontWeight: "bold",
+    color: "#FFFFFF",
+    textAlign: "left",
+    marginBottom: 20,
+    width: "100%",
+  },
+  sectionTitleSeus: {
+    fontSize: 32,
+    color: "#FFFFFF",
+    textAlign: "left",
+    width: "100%",
+  },
   availabilityText: {
     marginTop: 10,
     fontSize: 14,
@@ -692,15 +780,16 @@ const styles = StyleSheet.create({
     fontStyle: "italic",
   },
   warningContainer: {
-    backgroundColor: "#FFF3CD",
-    padding: 10,
+    padding: 30,
     borderRadius: 5,
-    marginTop: 15,
+    flexDirection: "row",
+    alignItems: "center",
+    height: 150,
   },
   warningText: {
-    color: "#856404",
+    color: "#fff",
     fontSize: 14,
-    textAlign: "center",
+    textAlign: "justify",
   },
   contactSupportButton: {
     backgroundColor: "#25D366",
@@ -722,13 +811,17 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    backgroundColor: "#FAF6F6",
+    backgroundColor: "#D00000",
   },
   contentContainer: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 40,
     paddingBottom: 20,
     alignItems: "center",
+    backgroundColor: "#880000",
+    borderRadius: 40,
+    marginHorizontal: 30,
   },
+
   iconContainer: {
     justifyContent: "center",
     alignItems: "center",
@@ -787,15 +880,15 @@ const styles = StyleSheet.create({
     width: "100%",
   },
   actionButton: {
-    backgroundColor: "#5B5B5B",
-    paddingVertical: 15,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    marginBottom: 15,
-    flexDirection: "row",
-    alignItems: "center",
-    width: "100%",
-    elevation: 2,
+    // backgroundColor: "#5B5B5B",
+    // paddingVertical: 15,
+    // paddingHorizontal: 20,
+    // borderRadius: 8,
+    // marginBottom: 15,
+    // flexDirection: "row",
+    // alignItems: "center",
+    // width: "100%",
+    // elevation: 2,
   },
   actionButtonText: {
     color: "#fff",
@@ -935,6 +1028,40 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "bold",
     textAlign: "center",
+  },
+  // Bottom Navigation Styles
+  bottomSection: {
+    bottom: 0,
+    width: "100%",
+    height: 150,
+  },
+
+  navigationContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 60,
+    marginTop: 20,
+  },
+  navButton: {
+    padding: 10,
+    marginTop: 20,
+  },
+  logoContainer: {
+    width: "100%",
+    height: 40,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  bottomLogo: {
+    width: 400,
+  },
+  warningLogo: {
+    width: 90,
+    marginLeft: -20,
+  },
+  logoBottom: {
+    width: 50,
   },
 });
 

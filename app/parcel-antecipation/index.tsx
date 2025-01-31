@@ -12,13 +12,15 @@ import {
   ScrollView,
   TextInput,
   Platform,
+  Image,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Picker } from "@react-native-picker/picker";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import axios from "axios";
 import { UserContext } from "../contexts/UserContext";
-import { useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
+import NotificationIcon from "@/components/NotificationIcon";
 
 const excludedConditionTypes = [
   "Cartão de crédito",
@@ -26,7 +28,7 @@ const excludedConditionTypes = [
   "Sinal",
   "Financiamento",
   "Promissória",
-  "Valor do terreno"
+  "Valor do terreno",
 ];
 
 const filterValidInstallments = (installments) => {
@@ -337,7 +339,7 @@ const ParcelAntecipation = () => {
       <Text style={styles.cardSubtitle}>
         Vencimento: {item.formattedDueDate}
       </Text>
-    <Text style={styles.cardSubtitle}>
+      <Text style={styles.cardSubtitle}>
         Condição de pagamento: {formatConditionType(item.conditionType)}
       </Text>
       <Text style={styles.cardValue}>Valor: {item.value}</Text>
@@ -578,370 +580,412 @@ const ParcelAntecipation = () => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>
-        {enterpriseName || "Nome do Empreendimento"}
-      </Text>
-      <Text style={styles.selectedCountText}>
-        {selectedInstallments.length} parcela(s) selecionada(s)
-      </Text>
+      <View style={styles.content}>
+        <View style={styles.headerName}>
+          <NotificationIcon />
 
-      {hasOverdueInstallments && (
-        <Text style={styles.warningText}>
-          Não é possível solicitar antecipação com parcelas em atraso.
+          <Text style={styles.greeting}>
+            Olá,{" "}
+            {userData?.name
+              ? userData.name
+                  .toLowerCase()
+                  .split(" ")
+                  .slice(0, 2)
+                  .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+                  .join(" ") || "Usuário"
+              : "Usuário"}
+            !
+          </Text>
+        </View>
+        <Text style={styles.sectionTitleSeus}>Antecipação</Text>
+        <Text style={styles.sectionTitle}>de Parcelas</Text>
+        <Text style={styles.selectedCountText}>
+          {selectedInstallments.length} parcela(s) selecionada(s)
         </Text>
-      )}
 
-      {/* Filtro por parcela */}
-      <View style={styles.pickerContainer}>
-        <Picker
-          selectedValue={selectedParcel}
-          style={styles.picker}
-          onValueChange={(itemValue) => setSelectedParcel(itemValue)}
-        >
-          {parcelNumbers.map((parcelNumber) => (
-            <Picker.Item
-              key={parcelNumber}
-              label={
-                parcelNumber === "Selecione a parcela"
-                  ? parcelNumber
-                  : `Parcela ${parcelNumber}`
-              }
-              value={parcelNumber}
-            />
-          ))}
-        </Picker>
-      </View>
-
-      {/* Filtro por intervalo de datas */}
-      <View style={styles.dateFilterContainer}>
-        {renderDateInput(
-          "start",
-          startDate,
-          setStartDate,
-          startDateInput,
-          setStartDateInput,
-          startDateInputRef
+        {hasOverdueInstallments && (
+          <Text style={styles.warningText}>
+            Não é possível solicitar antecipação com parcelas em atraso.
+          </Text>
         )}
-        {renderDateInput(
-          "end",
-          endDate,
-          setEndDate,
-          endDateInput,
-          setEndDateInput,
-          endDateInputRef
-        )}
-      </View>
 
-      {/* Botão de Resetar Filtros */}
-      <TouchableOpacity style={styles.resetButton} onPress={resetFilters}>
-        <Text style={styles.resetButtonText}>Limpar filtros</Text>
-      </TouchableOpacity>
-
-      {selectedInstallments.length > 0 && (
-        <TouchableOpacity
-          style={[
-            styles.resetButton,
-            { marginBottom: 16, backgroundColor: "#6c757d" },
-          ]}
-          onPress={unselectAllParcels}
-        >
-          <Text style={styles.resetButtonText}>Desmarcar parcelas</Text>
-        </TouchableOpacity>
-      )}
-
-      {/* Adicionar instrução para o usuário */}
-      {selectedInstallments.length === 0 ? (
-        <Text style={styles.instructionText}>
-          Toque em uma parcela para selecioná-la.
-        </Text>
-      ) : null}
-
-      {/* DateTimePickers para filtros - qualquer mês a partir do atual */}
-      {Platform.OS !== "web" && showStartDatePicker && (
-        <DateTimePicker
-          value={startDate || new Date()}
-          mode="date"
-          display="default"
-          onChange={(event, selectedDate) => {
-            setShowStartDatePicker(false);
-            if (selectedDate) {
-              const today = new Date();
-              today.setHours(0, 0, 0, 0);
-              selectedDate.setHours(0, 0, 0, 0);
-
-              if (selectedDate >= today) {
-                setStartDate(selectedDate);
-                setStartDateInput(selectedDate.toLocaleDateString("pt-BR"));
-                // Se a data final for anterior à nova data inicial, limpa a data final
-                if (endDate && selectedDate > endDate) {
-                  setEndDate(null);
-                  setEndDateInput("");
-                }
-              } else {
-                Alert.alert(
-                  "Erro",
-                  "A data inicial não pode ser anterior a hoje"
-                );
-              }
-            }
-          }}
-          minimumDate={new Date()} // Hoje
-        />
-      )}
-
-      {Platform.OS !== "web" && showEndDatePicker && (
-        <DateTimePicker
-          value={endDate || startDate || new Date()}
-          mode="date"
-          display="default"
-          onChange={(event, selectedDate) => {
-            setShowEndDatePicker(false);
-            if (selectedDate) {
-              selectedDate.setHours(0, 0, 0, 0);
-              const minDate = startDate || new Date();
-              minDate.setHours(0, 0, 0, 0);
-
-              if (selectedDate >= minDate) {
-                setEndDate(selectedDate);
-                setEndDateInput(selectedDate.toLocaleDateString("pt-BR"));
-              } else {
-                Alert.alert(
-                  "Erro",
-                  "A data final deve ser igual ou posterior à data inicial"
-                );
-              }
-            }
-          }}
-          minimumDate={startDate || new Date()} // Data inicial ou hoje
-        />
-      )}
-
-      {/* DateTimePicker para nova data de vencimento no modal */}
-      {Platform.OS !== "web" && showNewDueDatePicker && (
-        <DateTimePicker
-          value={newDueDate || new Date()}
-          mode="date"
-          display="default"
-          onChange={(event, selectedDate) => {
-            setShowNewDueDatePicker(false);
-            if (selectedDate) {
-              const today = new Date();
-              // Zera as horas para comparação adequada
-              today.setHours(0, 0, 0, 0);
-              selectedDate.setHours(0, 0, 0, 0);
-
-              if (
-                selectedDate.getMonth() === today.getMonth() &&
-                selectedDate.getFullYear() === today.getFullYear() &&
-                selectedDate >= today
-              ) {
-                setNewDueDate(selectedDate);
-                setNewDueDateInput(selectedDate.toLocaleDateString("pt-BR"));
-              } else {
-                Alert.alert(
-                  "Erro",
-                  "A data de antecipação deve estar dentro do mês atual e não pode ser anterior a hoje."
-                );
-              }
-            }
-          }}
-          minimumDate={new Date()} // Hoje
-          maximumDate={
-            // Último dia do mês atual
-            new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0)
-          }
-        />
-      )}
-
-      {/* Date Picker para Web no Modal */}
-      {Platform.OS === "web" && showNewDueDatePicker && (
-        <View style={styles.modalWebDatePicker}>
-          <Ionicons name="calendar-outline" size={20} color="#E1272C" />
-          <TouchableOpacity
-            onPress={() => openWebDatePicker(newDueDateInputRef)}
+        {/* Filtro por parcela */}
+        <View style={styles.pickerContainer}>
+          <Picker
+            selectedValue={selectedParcel}
+            style={styles.picker}
+            onValueChange={(itemValue) => setSelectedParcel(itemValue)}
           >
-            <Ionicons name="calendar-outline" size={20} color="#E1272C" />
+            {parcelNumbers.map((parcelNumber) => (
+              <Picker.Item
+                key={parcelNumber}
+                label={
+                  parcelNumber === "Selecione a parcela"
+                    ? parcelNumber
+                    : `Parcela ${parcelNumber}`
+                }
+                value={parcelNumber}
+              />
+            ))}
+          </Picker>
+        </View>
+
+        {/* Filtro por intervalo de datas */}
+        <View style={styles.dateFilterContainer}>
+          {renderDateInput(
+            "start",
+            startDate,
+            setStartDate,
+            startDateInput,
+            setStartDateInput,
+            startDateInputRef
+          )}
+          {renderDateInput(
+            "end",
+            endDate,
+            setEndDate,
+            endDateInput,
+            setEndDateInput,
+            endDateInputRef
+          )}
+        </View>
+
+        {/* Botão de Resetar Filtros */}
+        <TouchableOpacity style={styles.resetButton} onPress={resetFilters}>
+          <Text style={styles.resetButtonText}>Limpar filtros</Text>
+        </TouchableOpacity>
+
+        {selectedInstallments.length > 0 && (
+          <TouchableOpacity
+            style={[
+              styles.resetButton,
+              { marginBottom: 16, backgroundColor: "#6c757d" },
+            ]}
+            onPress={unselectAllParcels}
+          >
+            <Text style={styles.resetButtonText}>Desmarcar parcelas</Text>
           </TouchableOpacity>
-          {/* Input type="date" oculto */}
-          <input
-            type="date"
-            style={styles.hiddenDateInput}
-            ref={newDueDateInputRef}
-            onChange={(e) =>
-              handleWebDateChange(
-                e.target.value ? new Date(e.target.value) : null,
-                setNewDueDate,
-                () => {}
-              )
+        )}
+
+        {/* Adicionar instrução para o usuário */}
+        {selectedInstallments.length === 0 ? (
+          <Text style={styles.instructionText}>
+            Toque em uma parcela para selecioná-la.
+          </Text>
+        ) : null}
+
+        {/* DateTimePickers para filtros - qualquer mês a partir do atual */}
+        {Platform.OS !== "web" && showStartDatePicker && (
+          <DateTimePicker
+            value={startDate || new Date()}
+            mode="date"
+            display="default"
+            onChange={(event, selectedDate) => {
+              setShowStartDatePicker(false);
+              if (selectedDate) {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                selectedDate.setHours(0, 0, 0, 0);
+
+                if (selectedDate >= today) {
+                  setStartDate(selectedDate);
+                  setStartDateInput(selectedDate.toLocaleDateString("pt-BR"));
+                  // Se a data final for anterior à nova data inicial, limpa a data final
+                  if (endDate && selectedDate > endDate) {
+                    setEndDate(null);
+                    setEndDateInput("");
+                  }
+                } else {
+                  Alert.alert(
+                    "Erro",
+                    "A data inicial não pode ser anterior a hoje"
+                  );
+                }
+              }
+            }}
+            minimumDate={new Date()} // Hoje
+          />
+        )}
+
+        {Platform.OS !== "web" && showEndDatePicker && (
+          <DateTimePicker
+            value={endDate || startDate || new Date()}
+            mode="date"
+            display="default"
+            onChange={(event, selectedDate) => {
+              setShowEndDatePicker(false);
+              if (selectedDate) {
+                selectedDate.setHours(0, 0, 0, 0);
+                const minDate = startDate || new Date();
+                minDate.setHours(0, 0, 0, 0);
+
+                if (selectedDate >= minDate) {
+                  setEndDate(selectedDate);
+                  setEndDateInput(selectedDate.toLocaleDateString("pt-BR"));
+                } else {
+                  Alert.alert(
+                    "Erro",
+                    "A data final deve ser igual ou posterior à data inicial"
+                  );
+                }
+              }
+            }}
+            minimumDate={startDate || new Date()} // Data inicial ou hoje
+          />
+        )}
+
+        {/* DateTimePicker para nova data de vencimento no modal */}
+        {Platform.OS !== "web" && showNewDueDatePicker && (
+          <DateTimePicker
+            value={newDueDate || new Date()}
+            mode="date"
+            display="default"
+            onChange={(event, selectedDate) => {
+              setShowNewDueDatePicker(false);
+              if (selectedDate) {
+                const today = new Date();
+                // Zera as horas para comparação adequada
+                today.setHours(0, 0, 0, 0);
+                selectedDate.setHours(0, 0, 0, 0);
+
+                if (
+                  selectedDate.getMonth() === today.getMonth() &&
+                  selectedDate.getFullYear() === today.getFullYear() &&
+                  selectedDate >= today
+                ) {
+                  setNewDueDate(selectedDate);
+                  setNewDueDateInput(selectedDate.toLocaleDateString("pt-BR"));
+                } else {
+                  Alert.alert(
+                    "Erro",
+                    "A data de antecipação deve estar dentro do mês atual e não pode ser anterior a hoje."
+                  );
+                }
+              }
+            }}
+            minimumDate={new Date()} // Hoje
+            maximumDate={
+              // Último dia do mês atual
+              new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0)
             }
           />
-        </View>
-      )}
+        )}
 
-      {loading ? (
-        <ActivityIndicator size="large" color="#007bff" />
-      ) : (
-        <FlatList
-          data={filteredData}
-          keyExtractor={(item) => item.id}
-          renderItem={renderItem}
-          style={styles.list}
-          contentContainerStyle={{ paddingBottom: 100 }}
-          ListEmptyComponent={
-            <Text style={styles.noDataText}>Nenhuma parcela encontrada.</Text>
-          }
-        />
-      )}
-
-      <TouchableOpacity
-        style={[
-          styles.floatingButton,
-          hasOverdueInstallments && styles.disabledButton,
-        ]}
-        onPress={() => {
-          if (hasOverdueInstallments) {
-            if (Platform.OS === "web") {
-              alert(
-                "Não é possível solicitar antecipação com parcelas em atraso."
-              );
-            } else {
-              Alert.alert(
-                "Atenção",
-                "Não é possível solicitar antecipação com parcelas em atraso."
-              );
-            }
-            return;
-          }
-
-          if (selectedInstallments.length === 0) {
-            if (Platform.OS === "web") {
-              alert(
-                "Por favor, clique em uma parcela para selecioná-la antes de continuar."
-              );
-            } else {
-              Alert.alert(
-                "Atenção",
-                "Por favor, clique em uma parcela para selecioná-la antes de continuar."
-              );
-            }
-            return;
-          }
-          setConfirmModalVisible(true);
-        }}
-      >
-        <Ionicons name="play-forward-outline" size={24} color="white" />
-      </TouchableOpacity>
-
-      {confirmModalVisible && (
-        <Modal
-          animationType="slide"
-          transparent={true}
-          visible={confirmModalVisible}
-          onRequestClose={() => setConfirmModalVisible(false)}
-        >
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContainer}>
-              <Text style={styles.modalTitle}>Confirmação de Parcelas</Text>
-              <ScrollView style={{ maxHeight: 400, width: "100%" }}>
-                {selectedInstallments.map((installment, index) => (
-                  <View key={index} style={styles.modalItem}>
-                    <Text style={styles.modalLabel}>
-                      Parcela {installment.number} - Vencimento{" "}
-                      {installment.formattedDueDate} - Valor {installment.value}
-                    </Text>
-                  </View>
-                ))}
-              </ScrollView>
-              <Text style={styles.modalTotal}>
-                Total:{" "}
-                {selectedInstallments
-                  .reduce(
-                    (sum, installment) =>
-                      sum + parseFloat(installment.currentBalance),
-                    0
-                  )
-                  .toLocaleString("pt-BR", {
-                    style: "currency",
-                    currency: "BRL",
-                  })}
-              </Text>
-
-              <Text style={styles.indiqueCond}>
-                Informe a data para antecipação do pagamento
-              </Text>
-
-              {Platform.OS === "web" ? (
-                <View style={styles.dateInputModalContainer}>
-                  <Text style={styles.dateInstructionText}>
-                    A data de antecipação deve estar dentro do mês atual!
-                  </Text>
-                  <View style={styles.modalDateInputWrapper}>
-                    <TextInput
-                      style={[
-                        styles.dateInputModal,
-                        newDueDateInput.length === 10
-                          ? styles.validInput
-                          : styles.invalidInput,
-                      ]}
-                      placeholder="DD/MM/AAAA"
-                      value={newDueDateInput}
-                      onChangeText={handleModalDateInputWithMask}
-                      keyboardType="numeric"
-                      maxLength={10}
-                    />
-                  </View>
-                </View>
-              ) : (
-                <View style={styles.dateInputModalContainer}>
-                  <View style={styles.modalDateInputWrapper}>
-                    <TextInput
-                      style={[
-                        styles.dateInputModal,
-                        newDueDateInput.length === 10
-                          ? styles.validInput
-                          : styles.invalidInput,
-                      ]}
-                      placeholder="DD/MM/AAAA"
-                      value={newDueDateInput}
-                      onChangeText={handleModalDateInputWithMask}
-                      keyboardType="numeric"
-                      maxLength={10}
-                    />
-                    <TouchableOpacity
-                      style={styles.modalCalendarButton}
-                      onPress={() => setShowNewDueDatePicker(true)}
-                    >
-                      <Ionicons
-                        name="calendar-outline"
-                        size={24}
-                        color="#E1272C"
-                      />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              )}
-
-
-              <TouchableOpacity
-                style={styles.modalButton}
-                onPress={handleSendWhatsAppMessage}
-              >
-                <Text style={styles.modalButtonText}>Confirmar e Enviar</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.modalCloseButton}
-                onPress={() => {
-                  setConfirmModalVisible(false);
-                  setNewDueDateInput(""); // Reset input when closing modal
-                  setNewDueDate(null);
-                }}
-              >
-                <Text style={styles.modalCloseButtonText}>Cancelar</Text>
-              </TouchableOpacity>
-            </View>
+        {/* Date Picker para Web no Modal */}
+        {Platform.OS === "web" && showNewDueDatePicker && (
+          <View style={styles.modalWebDatePicker}>
+            <Ionicons name="calendar-outline" size={20} color="#E1272C" />
+            <TouchableOpacity
+              onPress={() => openWebDatePicker(newDueDateInputRef)}
+            >
+              <Ionicons name="calendar-outline" size={20} color="#E1272C" />
+            </TouchableOpacity>
+            {/* Input type="date" oculto */}
+            <input
+              type="date"
+              style={styles.hiddenDateInput}
+              ref={newDueDateInputRef}
+              onChange={(e) =>
+                handleWebDateChange(
+                  e.target.value ? new Date(e.target.value) : null,
+                  setNewDueDate,
+                  () => {}
+                )
+              }
+            />
           </View>
-        </Modal>
-      )}
+        )}
+
+        {loading ? (
+          <ActivityIndicator size="large" color="#007bff" />
+        ) : (
+          <FlatList
+            data={filteredData}
+            keyExtractor={(item) => item.id}
+            renderItem={renderItem}
+            style={styles.list}
+            contentContainerStyle={{ paddingBottom: 100 }}
+            ListEmptyComponent={
+              <Text style={styles.noDataText}>Nenhuma parcela encontrada.</Text>
+            }
+          />
+        )}
+
+        {confirmModalVisible && (
+          <Modal
+            animationType="slide"
+            transparent={true}
+            visible={confirmModalVisible}
+            onRequestClose={() => setConfirmModalVisible(false)}
+          >
+            <View style={styles.modalOverlay}>
+              <View style={styles.modalContainer}>
+                <Text style={styles.modalTitle}>Confirmação de Parcelas</Text>
+                <ScrollView style={{ maxHeight: 400, width: "100%" }}>
+                  {selectedInstallments.map((installment, index) => (
+                    <View key={index} style={styles.modalItem}>
+                      <Text style={styles.modalLabel}>
+                        Parcela {installment.number} - Vencimento{" "}
+                        {installment.formattedDueDate} - Valor{" "}
+                        {installment.value}
+                      </Text>
+                    </View>
+                  ))}
+                </ScrollView>
+                <Text style={styles.modalTotal}>
+                  Total:{" "}
+                  {selectedInstallments
+                    .reduce(
+                      (sum, installment) =>
+                        sum + parseFloat(installment.currentBalance),
+                      0
+                    )
+                    .toLocaleString("pt-BR", {
+                      style: "currency",
+                      currency: "BRL",
+                    })}
+                </Text>
+
+                <Text style={styles.indiqueCond}>
+                  Informe a data para antecipação do pagamento
+                </Text>
+
+                {Platform.OS === "web" ? (
+                  <View style={styles.dateInputModalContainer}>
+                    <Text style={styles.dateInstructionText}>
+                      A data de antecipação deve estar dentro do mês atual!
+                    </Text>
+                    <View style={styles.modalDateInputWrapper}>
+                      <TextInput
+                        style={[
+                          styles.dateInputModal,
+                          newDueDateInput.length === 10
+                            ? styles.validInput
+                            : styles.invalidInput,
+                        ]}
+                        placeholder="DD/MM/AAAA"
+                        value={newDueDateInput}
+                        onChangeText={handleModalDateInputWithMask}
+                        keyboardType="numeric"
+                        maxLength={10}
+                      />
+                    </View>
+                  </View>
+                ) : (
+                  <View style={styles.dateInputModalContainer}>
+                    <View style={styles.modalDateInputWrapper}>
+                      <TextInput
+                        style={[
+                          styles.dateInputModal,
+                          newDueDateInput.length === 10
+                            ? styles.validInput
+                            : styles.invalidInput,
+                        ]}
+                        placeholder="DD/MM/AAAA"
+                        value={newDueDateInput}
+                        onChangeText={handleModalDateInputWithMask}
+                        keyboardType="numeric"
+                        maxLength={10}
+                      />
+                      <TouchableOpacity
+                        style={styles.modalCalendarButton}
+                        onPress={() => setShowNewDueDatePicker(true)}
+                      >
+                        <Ionicons
+                          name="calendar-outline"
+                          size={24}
+                          color="#E1272C"
+                        />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                )}
+
+                <TouchableOpacity
+                  style={styles.modalButton}
+                  onPress={handleSendWhatsAppMessage}
+                >
+                  <Text style={styles.modalButtonText}>Confirmar e Enviar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.modalCloseButton}
+                  onPress={() => {
+                    setConfirmModalVisible(false);
+                    setNewDueDateInput(""); // Reset input when closing modal
+                    setNewDueDate(null);
+                  }}
+                >
+                  <Text style={styles.modalCloseButtonText}>Cancelar</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </Modal>
+        )}
+        {/* Bottom Navigation Section */}
+        <View style={styles.bottomSection}>
+          <View style={styles.navigationContainer}>
+            <TouchableOpacity
+              style={styles.navButton}
+              onPress={() => router.back()}
+            >
+              <Image
+                source={require("../seta.png")}
+                style={styles.logoBottom}
+                resizeMode="contain"
+              />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.navButton}
+              onPress={() => router.navigate("/initial-page")}
+            >
+              <Image
+                source={require("../home.png")}
+                style={styles.logoBottom}
+                resizeMode="contain"
+              />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.floatingButton,
+                hasOverdueInstallments && styles.disabledButton,
+              ]}
+              onPress={() => {
+                if (hasOverdueInstallments) {
+                  if (Platform.OS === "web") {
+                    alert(
+                      "Não é possível solicitar antecipação com parcelas em atraso."
+                    );
+                  } else {
+                    Alert.alert(
+                      "Atenção",
+                      "Não é possível solicitar antecipação com parcelas em atraso."
+                    );
+                  }
+                  return;
+                }
+
+                if (selectedInstallments.length === 0) {
+                  if (Platform.OS === "web") {
+                    alert(
+                      "Por favor, clique em uma parcela para selecioná-la antes de continuar."
+                    );
+                  } else {
+                    Alert.alert(
+                      "Atenção",
+                      "Por favor, clique em uma parcela para selecioná-la antes de continuar."
+                    );
+                  }
+                  return;
+                }
+                setConfirmModalVisible(true);
+              }}
+            >
+              <Ionicons name="play-forward-outline" size={24} color="white" />
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
     </View>
   );
 };
@@ -949,8 +993,42 @@ const ParcelAntecipation = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FAF6F6",
+    backgroundColor: "#D00000",
     paddingTop: Platform.OS === "web" ? 20 : 0, // Ajuste para web
+  },
+  content: {
+    paddingHorizontal: 30,
+    paddingBottom: 200,
+    backgroundColor: "#880000",
+    borderRadius: 40,
+    marginHorizontal: 20,
+    height: "100%",
+  },
+  headerName: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 20,
+    marginBottom: 20,
+  },
+  greeting: {
+    fontSize: 20,
+    fontWeight: "600",
+    color: "#FFFFFF",
+    textAlign: "center",
+  },
+
+  sectionTitle: {
+    fontSize: 32,
+    fontWeight: "bold",
+    color: "#FFFFFF",
+    textAlign: "left",
+    marginBottom: 20,
+  },
+  sectionTitleSeus: {
+    fontSize: 32,
+    color: "#FFFFFF",
+    textAlign: "left",
   },
   dateInputModalContainer: {
     width: "100%",
@@ -998,12 +1076,12 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     marginBottom: 8,
     textAlign: "center",
-    color: "#333",
+    color: "#fff",
   },
   pickerContainer: {
     borderWidth: 1,
     borderColor: "#888",
-    borderRadius: 8,
+    borderRadius: 20,
     backgroundColor: "#fff",
     marginBottom: 16,
     marginHorizontal: 16,
@@ -1036,14 +1114,17 @@ const styles = StyleSheet.create({
   },
   dateInput: {
     flex: 1,
-    height: 50,
+    height: 45,
     width: 30,
     borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 8,
+    borderColor: "#fff",
+    borderRadius: 20,
     paddingHorizontal: 8,
     fontSize: 14,
     backgroundColor: "#fff",
+    borderRightColor: "#fff",
+    borderTopRightRadius: 0,
+    borderBottomRightRadius: 0,
   },
   dateInputModal: {
     flex: 1,
@@ -1059,16 +1140,21 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
   },
   validInput: {
-    borderColor: "#28a745",
+    // borderColor: "#28a745",
   },
   invalidInput: {
-    borderColor: "#dc3545",
+    // borderColor: "#dc3545",
   },
   calendarButton: {
-    marginLeft: 8,
     padding: 10,
+    height: 45,
     borderRadius: 8,
-    backgroundColor: "#F0F0F0",
+    borderLeftColor: "#fff",
+    backgroundColor: "#fff",
+    borderTopLeftRadius: 0,
+    borderBottomLeftRadius: 0,
+    borderTopRightRadius: 20,
+    borderBottomRightRadius: 20,
   },
   resetButton: {
     backgroundColor: "#E1272C",
@@ -1089,7 +1175,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   list: {
-    flex: 1,
     paddingHorizontal: 16,
   },
   card: {
@@ -1107,7 +1192,7 @@ const styles = StyleSheet.create({
   },
   instructionText: {
     fontSize: 16,
-    color: "#333",
+    color: "#fff",
     textAlign: "center",
     marginBottom: 8,
   },
@@ -1149,6 +1234,9 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#333",
   },
+  logoBottom: {
+    width: 50,
+  },
   cardSubtitle: {
     fontSize: 14,
     color: "#777",
@@ -1169,16 +1257,12 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   floatingButton: {
-    backgroundColor: "#E1272C",
+    backgroundColor: "#fff",
     borderRadius: 50,
-    width: 60,
-    height: 60,
+    width: 50,
+    height: 50,
     justifyContent: "center",
     alignItems: "center",
-    position: "absolute",
-    bottom: 30,
-    right: 20,
-    elevation: 5,
   },
   modalOverlay: {
     flex: 1,
@@ -1302,6 +1386,23 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     textAlign: "center",
   },
+  // Bottom Navigation Styles
+  bottomSection: {
+    bottom: 0,
+    width: "100%",
+    marginBottom: -150,
+    paddingTop: 20,
+  },
+
+  navigationContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "#880000",
+    width: "100%",
+    paddingHorizontal: 40,
+  },
+  navButton: {},
 });
 
 export default ParcelAntecipation;

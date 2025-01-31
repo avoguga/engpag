@@ -10,12 +10,31 @@ import {
 } from "react-native"; // Adicionei StatusBar
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import NotificationIcon from "../components/NotificationIcon"; 
+import NotificationIcon from "../components/NotificationIcon";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import * as Font from 'expo-font';
 
 export default function RootLayout() {
   const router = useRouter();
+  const [fontsLoaded, setFontsLoaded] = useState(false);
+
+  useEffect(() => {
+    const loadFonts = async () => {
+      await Font.loadAsync({
+        'Neulis-Regular': require('../assets/fonts/Neulis/Neulis-Regular.ttf'),
+        'Neulis-Bold': require('../assets/fonts/Neulis/Neulis-Bold.otf'),
+        'Neulis-Medium': require('../assets/fonts/Neulis/Neulis-Medium.otf'),
+      });
+      setFontsLoaded(true);
+    };
+    loadFonts();
+  }, []);
+
+  if (!fontsLoaded) {
+    console.log('painho')
+    return null; // ou algum indicador de carregamento, como um spinner
+  }
 
   return (
     <UserProvider>
@@ -42,15 +61,7 @@ export default function RootLayout() {
             header: () => (
               <View style={styles.topBarWrapper}>
                 <View style={styles.topBar}>
-                  <TouchableOpacity onPress={() => router.back()}>
-                    <Ionicons
-                      name="arrow-back-outline"
-                      size={28}
-                      color="white"
-                    />
-                  </TouchableOpacity>
-                  <Text style={styles.topBarTitle}>2ª Via do boleto</Text>
-                  <NotificationIcon />
+                 
                 </View>
               </View>
             ),
@@ -61,21 +72,7 @@ export default function RootLayout() {
         <Stack.Screen
           name="debit-options/index"
           options={{
-            header: () => (
-              <View style={styles.topBarWrapper}>
-                <View style={styles.topBar}>
-                  <TouchableOpacity onPress={() => router.back()}>
-                    <Ionicons
-                      name="arrow-back-outline"
-                      size={28}
-                      color="white"
-                    />
-                  </TouchableOpacity>
-                  <Text style={styles.topBarTitle}>Saldo devedor</Text>
-                  <NotificationIcon />
-                </View>
-              </View>
-            ),
+            header: () => null,
           }}
         />
 
@@ -86,15 +83,6 @@ export default function RootLayout() {
             header: () => (
               <View style={styles.topBarWrapper}>
                 <View style={styles.topBar}>
-                  <TouchableOpacity onPress={() => router.back()}>
-                    <Ionicons
-                      name="arrow-back-outline"
-                      size={28}
-                      color="white"
-                    />
-                  </TouchableOpacity>
-                  <Text style={styles.topBarTitle}>Saldo devedor</Text>
-                  <NotificationIcon />
                 </View>
               </View>
             ),
@@ -105,81 +93,11 @@ export default function RootLayout() {
         <Stack.Screen
           name="initial-page/index"
           options={{
-            header: () => {
-              // Define state and functions inside this header function
-              const [modalVisible, setModalVisible] = useState(false);
-
-              const handleLogoutPress = () => {
-                setModalVisible(true);
-              };
-
-              const confirmLogout = async () => {
-                try {
-                  await AsyncStorage.removeItem("userData");
-                  setModalVisible(false);
-                  router.replace("/(home)"); // Navigate back to the login screen
-                } catch (e) {
-                  console.error("Failed to logout", e);
-                }
-              };
-
-              const cancelLogout = () => {
-                setModalVisible(false);
-              };
-
-              return (
-                <View>
-                  <View style={styles.topBarWrapper}>
-                    <View style={styles.topBar}>
-                      <TouchableOpacity onPress={handleLogoutPress}>
-                        <Ionicons
-                          name="log-out-outline"
-                          size={28}
-                          color="white"
-                        />
-                      </TouchableOpacity>
-                      <Text style={styles.topBarTitle}>Início</Text>
-                      <NotificationIcon />
-                    </View>
-                  </View>
-
-                  {/* Modal for logout confirmation */}
-                  {modalVisible && (
-                    <Modal
-                      animationType="fade"
-                      transparent={true}
-                      visible={modalVisible}
-                      onRequestClose={cancelLogout}
-                    >
-                      <View style={styles.modalOverlay}>
-                        <View style={styles.modalContainer}>
-                          <Text style={styles.modalTitle}>
-                            Confirmação de logout
-                          </Text>
-                          <Text style={styles.modalText}>
-                            Tem certeza que deseja sair?
-                          </Text>
-                          <View style={styles.modalButtonsContainer}>
-                            <TouchableOpacity
-                              style={styles.modalButton}
-                              onPress={confirmLogout}
-                            >
-                              <Text style={styles.modalButtonText}>Sim</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                              style={[styles.modalButton, styles.cancelButton]}
-                              onPress={cancelLogout}
-                            >
-                              <Text style={styles.modalButtonText}>Não</Text>
-                            </TouchableOpacity>
-                          </View>
-                        </View>
-                      </View>
-                    </Modal>
-                  )}
-                </View>
-              );
-            },
+            header: () => (
+              <View style={styles.topBarWrapper}>
+                <View style={styles.topBar}></View>
+              </View>
+            ),
           }}
         />
 
@@ -190,15 +108,7 @@ export default function RootLayout() {
             header: () => (
               <View style={styles.topBarWrapper}>
                 <View style={styles.topBar}>
-                  <TouchableOpacity onPress={() => router.back()}>
-                    <Ionicons
-                      name="arrow-back-outline"
-                      size={28}
-                      color="white"
-                    />
-                  </TouchableOpacity>
-                  <Text style={styles.topBarTitle}>Antecipação de parcela</Text>
-                  <NotificationIcon />
+                  
                 </View>
               </View>
             ),
@@ -212,15 +122,7 @@ export default function RootLayout() {
             header: () => (
               <View style={styles.topBarWrapper}>
                 <View style={styles.topBar}>
-                  <TouchableOpacity onPress={() => router.back()}>
-                    <Ionicons
-                      name="arrow-back-outline"
-                      size={28}
-                      color="white"
-                    />
-                  </TouchableOpacity>
-                  <Text style={styles.topBarTitle}>Pagamentos realizados</Text>
-                  <NotificationIcon />
+              
                 </View>
               </View>
             ),
@@ -255,19 +157,7 @@ export default function RootLayout() {
           options={{
             header: () => (
               <View style={styles.topBarWrapper}>
-                <View style={styles.topBar}>
-                  <TouchableOpacity onPress={() => router.back()}>
-                    <Ionicons
-                      name="arrow-back-outline"
-                      size={28}
-                      color="white"
-                    />
-                  </TouchableOpacity>
-                  <Text style={styles.topBarTitle}>
-                    Histórico de pagamentos
-                  </Text>
-                  <NotificationIcon />
-                </View>
+               
               </View>
             ),
           }}
@@ -280,13 +170,25 @@ export default function RootLayout() {
 const styles = StyleSheet.create({
   topBarWrapper: {
     paddingTop: StatusBar.currentHeight || 24,
-    backgroundColor: "#E1272C",
+    backgroundColor: "#D00000",
   },
   topBar: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: "#E1272C",
+    backgroundColor: "#D00000",
+    paddingVertical: 15,
+    paddingHorizontal: 15,
+  },
+  topBarWrapperWhite: {
+    paddingTop: StatusBar.currentHeight || 24,
+    backgroundColor: "#fff",
+  },
+  topBarWhite: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "#fff",
     paddingVertical: 15,
     paddingHorizontal: 15,
   },
@@ -294,6 +196,7 @@ const styles = StyleSheet.create({
     color: "white",
     fontSize: 18,
     fontWeight: "bold",
+    fontFamily: 'Neulis-Regular',
   },
   modalOverlay: {
     flex: 1,

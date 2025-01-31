@@ -11,11 +11,30 @@ import {
   Modal,
   ScrollView,
   Platform,
+  Image,
 } from "react-native";
 import axios from "axios";
 import { UserContext } from "../contexts/UserContext";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
-import { useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
+import Baixar from "./telasAPPversao2.psd.svg";
+import NotificationIcon from "@/components/NotificationIcon";
+
+const excludedConditionTypes = [
+  "Cartão de crédito",
+  "Cartão de débito",
+  "Sinal",
+  "Financiamento",
+  "Promissória",
+  "Valor do terreno",
+];
+
+const filterValidPayments = (payments: any) => {
+  return payments.filter(
+    (payment) => !excludedConditionTypes.includes(payment.conditionType.trim())
+  );
+};
+
 
 const formatDate = (dateString) => {
   if (!dateString) return "Data indisponível";
@@ -79,10 +98,10 @@ const PaymentHistory = () => {
         return;
       }
 
-      const allInstallments = [
-        ...(selectedResult.dueInstallments || []),
-        ...(selectedResult.payableInstallments || []),
-      ].map((installment) => ({
+      const dueInstallments = filterValidPayments(selectedResult.dueInstallments || []);
+      const payableInstallments = filterValidPayments(selectedResult.payableInstallments || []);
+
+      const allInstallments = [...dueInstallments, ...payableInstallments].map((installment) => ({
         ...installment,
         billReceivableId: selectedResult.billReceivableId,
         formattedDueDate: formatDate(installment.dueDate),
@@ -194,8 +213,10 @@ const PaymentHistory = () => {
             : null,
         };
       });
+      const validPayments = filterValidPayments(payments);
 
-      setCompletedPayments(payments);
+
+      setCompletedPayments(validPayments);
     } catch (error) {
       console.error("Erro ao buscar parcelas pagas:", error);
       Alert.alert("Erro", "Não foi possível obter as parcelas pagas.");
@@ -329,7 +350,9 @@ const PaymentHistory = () => {
           {formatConditionType(item.conditionType)}
         </Text>
         <Text style={styles.cardAmount}>
-          <Text style={ !item.paymentDate ? styles.label : styles.labell}>Valor: </Text>
+          <Text style={!item.paymentDate ? styles.label : styles.labell}>
+            Valor:{" "}
+          </Text>
           {item.paymentDate ? (
             <Text style={styles.cardPaidDate}>{getAmount(item)}</Text>
           ) : (
@@ -348,247 +371,340 @@ const PaymentHistory = () => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.enterpriseName}>{enterpriseName}</Text>
-      <Text style={styles.sectionTitle}>Extrato de pagamentos</Text>
-      <TouchableOpacity
-        style={styles.downloadButton}
-        onPress={handlePaymentHistoryNavigation}
-        disabled={loadingHistory}
-      >
-        <View style={styles.downloadButtonContent}>
-          <MaterialIcons name="download" size={20} color="#fff" />
-          <Text style={styles.downloadButtonText}>
-            {loadingHistory ? "Baixando..." : "Baixar histórico completo"}
+      <View style={styles.content}>
+        <View style={styles.headerName}>
+          <NotificationIcon />
+
+          <Text style={styles.greeting}>
+            Olá,{" "}
+            {userData?.name
+              ? userData.name
+                  .toLowerCase()
+                  .split(" ")
+                  .slice(0, 2)
+                  .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+                  .join(" ") || "Usuário"
+              : "Usuário"}
+            !
           </Text>
         </View>
-      </TouchableOpacity>
-      <View style={styles.filterContainer}>
-        <TouchableOpacity onPress={() => setFilter("VENCIDOS")}>
-          <Text
-            style={[
-              styles.filterText,
-              filter === "VENCIDOS" && styles.activeFilter,
-            ]}
-          >
-            Vencidos
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => setFilter("A VENCER")}>
-          <Text
-            style={[
-              styles.filterText,
-              filter === "A VENCER" && styles.activeFilter,
-            ]}
-          >
-            A vencer
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => setFilter("PAGOS")}>
-          <Text
-            style={[
-              styles.filterText,
-              filter === "PAGOS" && styles.activeFilter,
-            ]}
-          >
-            Pagos
-          </Text>
-        </TouchableOpacity>
-      </View>
-      {loading ? (
-        <ActivityIndicator
-          size="large"
-          color="#E1272C"
-          style={{ marginTop: 20 }}
-        />
-      ) : (
-        <FlatList
-          data={getFilteredInstallments()}
-          keyExtractor={(item, index) => `${item.installmentId}-${index}`}
-          renderItem={renderInstallmentItem}
-          contentContainerStyle={styles.scrollContainer}
-          ListEmptyComponent={
-            <Text style={styles.noInstallmentsText}>
-              Nenhum registro encontrado para a categoria "{filter}".
-            </Text>
-          }
-        />
-      )}
-
-      {selectedInstallment && (
-        <Modal
-          animationType="slide"
-          transparent={true}
-          visible={modalVisible}
-          onRequestClose={() => {
-            setModalVisible(false);
-            setSelectedInstallment(null);
-          }}
+        <Text style={styles.sectionTitleSeus}>Extrato</Text>
+        <Text style={styles.sectionTitle}>de pagamentos</Text>
+        <TouchableOpacity
+          style={styles.downloadButton}
+          onPress={handlePaymentHistoryNavigation}
+          disabled={loadingHistory}
         >
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContainer}>
-              <Text style={styles.modalTitle}>Detalhes da parcela</Text>
-              <ScrollView style={{ width: "100%" }}>
-                <View style={styles.modalItem}>
-                  <Text style={styles.modalLabel}>Número da parcela:</Text>
-                  <Text style={styles.modalValue}>
-                    {selectedInstallment.installmentNumber}
-                  </Text>
-                </View>
-                <View style={styles.modalItem}>
-                  <Text style={styles.modalLabel}>Data de vencimento:</Text>
-                  <Text style={styles.modalValue}>
-                    {selectedInstallment.formattedDueDate}
-                  </Text>
-                </View>
-                {selectedInstallment.formattedPaymentDate && (
+          <Baixar width={300} />
+        </TouchableOpacity>
+        <View style={styles.filterContainer}>
+          <TouchableOpacity
+            style={[
+              styles.buttonPago,
+              filter === "VENCIDOS" && styles.pagoAtivo,
+            ]}
+            onPress={() => setFilter("VENCIDOS")}
+          >
+            <Text
+              style={[
+                styles.filterText,
+                filter === "VENCIDOS" && styles.activeFilter,
+              ]}
+            >
+              Vencidos
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.buttonPago,
+              filter === "A VENCER" && styles.pagoAtivo,
+            ]}
+            onPress={() => setFilter("A VENCER")}
+          >
+            <Text
+              style={[
+                styles.filterText,
+                filter === "A VENCER" && styles.activeFilter,
+              ]}
+            >
+              A vencer
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.buttonPago, filter === "PAGOS" && styles.pagoAtivo]}
+            onPress={() => setFilter("PAGOS")}
+          >
+            <Text
+              style={[
+                styles.filterText,
+                filter === "PAGOS" && styles.activeFilter,
+              ]}
+            >
+              Pagos
+            </Text>
+          </TouchableOpacity>
+        </View>
+        {loading ? (
+          <ActivityIndicator
+            size="large"
+            color="#E1272C"
+            style={{ marginTop: 20 }}
+          />
+        ) : (
+          <FlatList
+            data={getFilteredInstallments()}
+            keyExtractor={(item, index) => `${item.installmentId}-${index}`}
+            renderItem={renderInstallmentItem}
+            contentContainerStyle={styles.scrollContainer}
+            ListEmptyComponent={
+              <Text style={styles.noInstallmentsText}>
+                Nenhum registro encontrado para a categoria "{filter}".
+              </Text>
+            }
+          />
+        )}
+
+        {selectedInstallment && (
+          <Modal
+            animationType="slide"
+            transparent={true}
+            visible={modalVisible}
+            onRequestClose={() => {
+              setModalVisible(false);
+              setSelectedInstallment(null);
+            }}
+          >
+            <View style={styles.modalOverlay}>
+              <View style={styles.modalContainer}>
+                <Text style={styles.modalTitle}>Detalhes da parcela</Text>
+                <ScrollView style={{ width: "100%" }}>
                   <View style={styles.modalItem}>
-                    <Text style={styles.modalLabel}>Data de pagamento:</Text>
+                    <Text style={styles.modalLabel}>Número da parcela:</Text>
                     <Text style={styles.modalValue}>
-                      {selectedInstallment.formattedPaymentDate}
+                      {selectedInstallment.installmentNumber}
                     </Text>
                   </View>
-                )}
-                {selectedInstallment.receipt && (
-                  <>
+                  <View style={styles.modalItem}>
+                    <Text style={styles.modalLabel}>Data de vencimento:</Text>
+                    <Text style={styles.modalValue}>
+                      {selectedInstallment.formattedDueDate}
+                    </Text>
+                  </View>
+                  {selectedInstallment.formattedPaymentDate && (
                     <View style={styles.modalItem}>
-                      <Text style={styles.modalLabel}>Valor do recibo:</Text>
+                      <Text style={styles.modalLabel}>Data de pagamento:</Text>
                       <Text style={styles.modalValue}>
-                        {parseFloat(
-                          selectedInstallment.receipt.receiptValue
-                        ).toLocaleString("pt-BR", {
-                          style: "currency",
-                          currency: "BRL",
-                        })}
+                        {selectedInstallment.formattedPaymentDate}
                       </Text>
                     </View>
-                  </>
-                )}
+                  )}
+                  {selectedInstallment.receipt && (
+                    <>
+                      <View style={styles.modalItem}>
+                        <Text style={styles.modalLabel}>Valor do recibo:</Text>
+                        <Text style={styles.modalValue}>
+                          {parseFloat(
+                            selectedInstallment.receipt.receiptValue
+                          ).toLocaleString("pt-BR", {
+                            style: "currency",
+                            currency: "BRL",
+                          })}
+                        </Text>
+                      </View>
+                    </>
+                  )}
 
-                <View style={styles.modalItem}>
-                  <Text style={styles.modalLabel}>Valor original:</Text>
-                  <Text style={styles.modalValue}>
-                    {selectedInstallment.originalValue
-                      ? parseFloat(
-                          selectedInstallment.originalValue
-                        ).toLocaleString("pt-BR", {
-                          style: "currency",
-                          currency: "BRL",
-                        })
-                      : "Valor indisponível"}
-                  </Text>
-                </View>
-                <View style={styles.modalItem}>
-                  <Text style={styles.modalLabel}>Valor corrigido:</Text>
-                  <Text style={styles.modalValue}>
-                    {selectedInstallment.adjustedValue
-                      ? parseFloat(
-                          selectedInstallment.adjustedValue
-                        ).toLocaleString("pt-BR", {
-                          style: "currency",
-                          currency: "BRL",
-                        })
-                      : "Valor indisponível"}
-                  </Text>
-                </View>
-                <View style={styles.modalItem}>
-                  <Text style={styles.modalLabel}>Juros e multa:</Text>
-                  <Text style={styles.modalValue}>
-                    {selectedInstallment.additionalValue
-                      ? parseFloat(
-                          selectedInstallment.additionalValue
-                        ).toLocaleString("pt-BR", {
-                          style: "currency",
-                          currency: "BRL",
-                        })
-                      : "R$ 0,00"}
-                  </Text>
-                </View>
-                <View style={styles.modalItem}>
-                  <Text style={styles.modalLabel}>Valor atualizado:</Text>
-                  <Text style={styles.modalValue}>
-                    {selectedInstallment.currentBalance
-                      ? selectedInstallment.currentBalance
-                      : parseFloat(
-                          selectedInstallment.receipt?.receiptNetValue
-                        ).toLocaleString("pt-BR", {
-                          style: "currency",
-                          currency: "BRL",
-                        }) ?? "Valor indisponível"}
-                  </Text>
-                </View>
-                {!selectedInstallment.paymentDate && (
                   <View style={styles.modalItem}>
-                    <Text style={styles.modalLabel}>Boleto gerado:</Text>
+                    <Text style={styles.modalLabel}>Valor original:</Text>
                     <Text style={styles.modalValue}>
-                      {selectedInstallment.generatedBoleto ? "Sim" : "Não"}
+                      {selectedInstallment.originalValue
+                        ? parseFloat(
+                            selectedInstallment.originalValue
+                          ).toLocaleString("pt-BR", {
+                            style: "currency",
+                            currency: "BRL",
+                          })
+                        : "Valor indisponível"}
                     </Text>
                   </View>
-                )}
-                <View style={styles.modalItem}>
-                  <Text style={styles.modalLabel}>Data base da correção:</Text>
-                  <Text style={styles.modalValue}>
-                    {selectedInstallment.baseDateOfCorrection
-                      ? formatDate(selectedInstallment.baseDateOfCorrection)
-                      : "Data indisponível"}
-                  </Text>
-                </View>
-                <View style={styles.modalItem}>
-                  <Text style={styles.modalLabel}>Tipo de condição:</Text>
-                  <Text style={styles.modalValue}>
-                    {formatConditionType(selectedInstallment.conditionType)}
-                  </Text>
-                </View>
-                <View style={styles.modalItem}>
-                  <Text style={styles.modalLabel}>Indexador utilizado:</Text>
-                  <Text style={styles.modalValue}>
-                    {selectedInstallment.indexerName}
-                  </Text>
-                </View>
-                <View style={styles.modalItem}>
-                  <Text style={styles.modalLabel}>
-                    Valor base do indexador:
-                  </Text>
-                  <Text style={styles.modalValue}>
-                    {selectedInstallment.indexerValueBaseDate
-                      ? selectedInstallment.indexerValueBaseDate.toFixed(8)
-                      : "Valor indisponível"}
-                  </Text>
-                </View>
-                <View style={styles.modalItem}>
-                  <Text style={styles.modalLabel}>
-                    Valor de cálculo do indexador:
-                  </Text>
-                  <Text style={styles.modalValue}>
-                    {selectedInstallment.indexerValueCalculationDate
-                      ? selectedInstallment.indexerValueCalculationDate.toFixed(
-                          8
-                        )
-                      : "Valor indisponível"}
-                  </Text>
-                </View>
-              </ScrollView>
-              <TouchableOpacity
-                style={styles.closeButton}
-                onPress={() => {
-                  setModalVisible(false);
-                  setSelectedInstallment(null);
-                }}
-              >
-                <Text style={styles.closeButtonText}>Fechar</Text>
-              </TouchableOpacity>
+                  <View style={styles.modalItem}>
+                    <Text style={styles.modalLabel}>Valor corrigido:</Text>
+                    <Text style={styles.modalValue}>
+                      {selectedInstallment.adjustedValue
+                        ? parseFloat(
+                            selectedInstallment.adjustedValue
+                          ).toLocaleString("pt-BR", {
+                            style: "currency",
+                            currency: "BRL",
+                          })
+                        : "Valor indisponível"}
+                    </Text>
+                  </View>
+                  <View style={styles.modalItem}>
+                    <Text style={styles.modalLabel}>Juros e multa:</Text>
+                    <Text style={styles.modalValue}>
+                      {selectedInstallment.additionalValue
+                        ? parseFloat(
+                            selectedInstallment.additionalValue
+                          ).toLocaleString("pt-BR", {
+                            style: "currency",
+                            currency: "BRL",
+                          })
+                        : "R$ 0,00"}
+                    </Text>
+                  </View>
+                  <View style={styles.modalItem}>
+                    <Text style={styles.modalLabel}>Valor atualizado:</Text>
+                    <Text style={styles.modalValue}>
+                      {selectedInstallment.currentBalance
+                        ? selectedInstallment.currentBalance
+                        : parseFloat(
+                            selectedInstallment.receipt?.receiptNetValue
+                          ).toLocaleString("pt-BR", {
+                            style: "currency",
+                            currency: "BRL",
+                          }) ?? "Valor indisponível"}
+                    </Text>
+                  </View>
+                  {!selectedInstallment.paymentDate && (
+                    <View style={styles.modalItem}>
+                      <Text style={styles.modalLabel}>Boleto gerado:</Text>
+                      <Text style={styles.modalValue}>
+                        {selectedInstallment.generatedBoleto ? "Sim" : "Não"}
+                      </Text>
+                    </View>
+                  )}
+                  <View style={styles.modalItem}>
+                    <Text style={styles.modalLabel}>
+                      Data base da correção:
+                    </Text>
+                    <Text style={styles.modalValue}>
+                      {selectedInstallment.baseDateOfCorrection
+                        ? formatDate(selectedInstallment.baseDateOfCorrection)
+                        : "Data indisponível"}
+                    </Text>
+                  </View>
+                  <View style={styles.modalItem}>
+                    <Text style={styles.modalLabel}>Tipo de condição:</Text>
+                    <Text style={styles.modalValue}>
+                      {formatConditionType(selectedInstallment.conditionType)}
+                    </Text>
+                  </View>
+                  <View style={styles.modalItem}>
+                    <Text style={styles.modalLabel}>Indexador utilizado:</Text>
+                    <Text style={styles.modalValue}>
+                      {selectedInstallment.indexerName}
+                    </Text>
+                  </View>
+                  <View style={styles.modalItem}>
+                    <Text style={styles.modalLabel}>
+                      Valor base do indexador:
+                    </Text>
+                    <Text style={styles.modalValue}>
+                      {selectedInstallment.indexerValueBaseDate
+                        ? selectedInstallment.indexerValueBaseDate.toFixed(8)
+                        : "Valor indisponível"}
+                    </Text>
+                  </View>
+                  <View style={styles.modalItem}>
+                    <Text style={styles.modalLabel}>
+                      Valor de cálculo do indexador:
+                    </Text>
+                    <Text style={styles.modalValue}>
+                      {selectedInstallment.indexerValueCalculationDate
+                        ? selectedInstallment.indexerValueCalculationDate.toFixed(
+                            8
+                          )
+                        : "Valor indisponível"}
+                    </Text>
+                  </View>
+                </ScrollView>
+                <TouchableOpacity
+                  style={styles.closeButton}
+                  onPress={() => {
+                    setModalVisible(false);
+                    setSelectedInstallment(null);
+                  }}
+                >
+                  <Text style={styles.closeButtonText}>Fechar</Text>
+                </TouchableOpacity>
+              </View>
             </View>
-          </View>
-        </Modal>
-      )}
+          </Modal>
+        )}
+      </View>
+      {/* Bottom Navigation Section */}
+      <View style={styles.bottomSection}>
+        <View style={styles.navigationContainer}>
+          <TouchableOpacity
+            style={styles.navButton}
+            onPress={() => router.back()}
+          >
+            <Image
+              source={require("../seta.png")}
+              style={styles.logoBottom}
+              resizeMode="contain"
+            />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.navButton}
+            onPress={() => router.navigate("/initial-page")}
+          >
+            <Image
+              source={require("../home.png")}
+              style={styles.logoBottom}
+              resizeMode="contain"
+            />
+          </TouchableOpacity>
+        </View>
+      </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
+  headerName: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 20,
+    marginBottom: 20,
+    width: "100%",
+  },
+  greeting: {
+    fontSize: 20,
+    fontWeight: "600",
+    color: "#FFFFFF",
+    textAlign: "center",
+  },
+
+  sectionTitle: {
+    fontSize: 32,
+    fontWeight: "bold",
+    color: "#FFFFFF",
+    textAlign: "left",
+    marginBottom: 20,
+    width: "100%",
+  },
+  sectionTitleSeus: {
+    fontSize: 32,
+    color: "#FFFFFF",
+    textAlign: "left",
+    width: "100%",
+  },
   container: {
     flex: 1,
-    backgroundColor: "#FAF6F6",
     padding: 16,
+    backgroundColor: "#D00000",
+  },
+  content: {
+    flex: 1,
+    paddingHorizontal: 20,
+    paddingBottom: 90,
+    backgroundColor: "#880000",
+    borderRadius: 40,
+    marginHorizontal: 5,
   },
   enterpriseName: {
     fontSize: 24,
@@ -598,12 +714,8 @@ const styles = StyleSheet.create({
     marginVertical: 10,
   },
   downloadButton: {
-    backgroundColor: "#E1272C",
-    paddingVertical: 10,
     borderRadius: 5,
-    marginVertical: 10,
     alignItems: "center",
-    width: "80%",
     alignSelf: "center",
   },
   downloadButtonContent: {
@@ -616,31 +728,34 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginLeft: 5,
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#333",
-    marginTop: 20,
-    marginBottom: 10,
-    textAlign: "center",
-  },
+
   filterContainer: {
     flexDirection: "row",
     justifyContent: "space-around",
     marginBottom: 10,
   },
+  buttonPago: {
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 20,
+    backgroundColor: "#FF0000",
+  },
+  pagoAtivo: {
+    backgroundColor: "#FFFFFF",
+  },
   filterText: {
     fontSize: 16,
     fontWeight: "bold",
-    color: "#888",
+    color: "#FFFFFF",
   },
   activeFilter: {
-    color: "#E1272C",
-    borderBottomWidth: 2,
-    borderBottomColor: "#E1272C",
+    color: "#FF0000",
   },
   scrollContainer: {
     paddingBottom: 16,
+  },
+  logoBottom: {
+    width: 50,
   },
   card: {
     backgroundColor: "#FFFFFF",
@@ -748,6 +863,26 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontWeight: "bold",
     fontSize: 16,
+  },
+  // Bottom Navigation Styles
+  bottomSection: {
+    position: "absolute",
+    bottom: 0,
+    width: "100%",
+    height: 140,
+    paddingTop: 10,
+  },
+
+  navigationContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    width: "100%",
+    paddingHorizontal: 120,
+  },
+  navButton: {
+    padding: 10,
+    marginTop: 20,
   },
 });
 
