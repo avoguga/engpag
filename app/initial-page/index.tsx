@@ -466,7 +466,7 @@ const InitialPage = () => {
                 ? userData.name
                     .toLowerCase()
                     .split(" ")
-                    .slice(0, 2)
+                    .slice(0, 1)
                     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
                     .join(" ") || "Usuário"
                 : "Usuário"}
@@ -634,13 +634,15 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#D00000",
+    padding: 10,
   },
   content: {
-    paddingHorizontal: 40,
+    paddingHorizontal: 20,
     marginBottom: 200,
     backgroundColor: "#880000",
     borderRadius: 40,
-    marginHorizontal: 20,
+    marginHorizontal: 5,
+    height: "95%",
   },
   headerName: {
     flexDirection: "row",
@@ -660,14 +662,14 @@ const styles = StyleSheet.create({
   },
 
   sectionTitle: {
-    fontSize: 32,
+    fontSize: 24,
     fontWeight: "bold",
     color: "#FFFFFF",
     textAlign: "left",
     marginBottom: 20,
   },
   sectionTitleSeus: {
-    fontSize: 32,
+    fontSize: 24,
     color: "#FFFFFF",
     textAlign: "left",
   },
@@ -767,18 +769,16 @@ const styles = StyleSheet.create({
   bottomSection: {
     bottom: 0,
     width: "100%",
-    height: 170,
   },
 
   navigationContainer: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
+    justifyContent: "center",
     width: "100%",
   },
   navButton: {
-    paddingLeft: 50,
-    paddingTop: 50,
+    paddingTop: 20,
   },
 
   modalOverlay: {

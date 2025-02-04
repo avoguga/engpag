@@ -16,7 +16,6 @@ import axios from "axios";
 import { UserContext } from "../contexts/UserContext";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
-import NotificationIcon from "@/components/NotificationIcon";
 import Baixar from "./baixarboleto.svg";
 
 const BoletoScreen = () => {
@@ -454,23 +453,20 @@ const BoletoScreen = () => {
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.contentContainer}>
         <View style={styles.headerName}>
-          <NotificationIcon />
-
           <Text style={styles.greeting}>
             Olá,{" "}
             {userData?.name
               ? userData.name
                   .toLowerCase()
                   .split(" ")
-                  .slice(0, 2)
+                  .slice(0, 1)
                   .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
                   .join(" ") || "Usuário"
               : "Usuário"}
             !
           </Text>
         </View>
-        <Text style={styles.sectionTitleSeus}>2ª Via</Text>
-        <Text style={styles.sectionTitle}>de Boletos</Text>
+        <Text style={styles.sectionTitle}>2ª Via de Boletos</Text>
 
         {loading ? (
           <ActivityIndicator
@@ -676,7 +672,8 @@ const BoletoScreen = () => {
 
         {/* Modal de suporte */}
         <Modal
-          visible={isSupportModalVisible}
+          visible={false}
+          // visible={isSupportModalVisible}
           animationType="slide"
           transparent={true}
           onRequestClose={() => setIsSupportModalVisible(false)}
@@ -745,7 +742,7 @@ const BoletoScreen = () => {
 const styles = StyleSheet.create({
   headerName: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    justifyContent: "center",
     alignItems: "center",
     marginTop: 20,
     marginBottom: 20,
@@ -759,15 +756,14 @@ const styles = StyleSheet.create({
   },
 
   sectionTitle: {
-    fontSize: 32,
+    fontSize: 24,
     fontWeight: "bold",
     color: "#FFFFFF",
     textAlign: "left",
     marginBottom: 20,
-    width: "100%",
   },
   sectionTitleSeus: {
-    fontSize: 32,
+    fontSize: 24,
     color: "#FFFFFF",
     textAlign: "left",
     width: "100%",
@@ -812,14 +808,17 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#D00000",
+    padding: 10,
   },
   contentContainer: {
-    paddingHorizontal: 40,
+    paddingHorizontal: 20,
     paddingBottom: 20,
     alignItems: "center",
     backgroundColor: "#880000",
     borderRadius: 40,
-    marginHorizontal: 30,
+    marginHorizontal: 5,
+    justifyContent: "center",
+    height: "90%",
   },
 
   iconContainer: {
@@ -1031,31 +1030,19 @@ const styles = StyleSheet.create({
   },
   // Bottom Navigation Styles
   bottomSection: {
-    bottom: 0,
     width: "100%",
-    height: 150,
   },
 
   navigationContainer: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    justifyContent: "center",
     alignItems: "center",
-    paddingHorizontal: 60,
-    marginTop: 20,
+    gap: 30,
   },
   navButton: {
     padding: 10,
-    marginTop: 20,
   },
-  logoContainer: {
-    width: "100%",
-    height: 40,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  bottomLogo: {
-    width: 400,
-  },
+
   warningLogo: {
     width: 90,
     marginLeft: -20,

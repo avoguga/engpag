@@ -12,7 +12,6 @@ import { Ionicons } from "@expo/vector-icons";
 import axios from "axios";
 import { UserContext } from "../contexts/UserContext";
 import { router, useLocalSearchParams } from "expo-router";
-import NotificationIcon from "@/components/NotificationIcon";
 
 // Definição dos tipos de condição a serem excluídos
 const excludedConditionTypes = [
@@ -312,23 +311,20 @@ const DebtBalanceScreen = () => {
       <View style={styles.content}>
         <ScrollView>
           <View style={styles.headerName}>
-            <NotificationIcon />
-
             <Text style={styles.greeting}>
               Olá,{" "}
               {userData?.name
                 ? userData.name
                     .toLowerCase()
                     .split(" ")
-                    .slice(0, 2)
+                    .slice(0, 1)
                     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
                     .join(" ") || "Usuário"
                 : "Usuário"}
               !
             </Text>
           </View>
-          <Text style={styles.sectionTitleSeus}>Saldo</Text>
-          <Text style={styles.sectionTitleNew}>Devedor</Text>
+          <Text style={styles.sectionTitleNew}>Saldo Devedor</Text>
 
           <Text style={styles.mainTitle}>
             {enterpriseName || "Nome do Empreendimento"}
@@ -530,7 +526,7 @@ const styles = StyleSheet.create({
   },
   headerName: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    justifyContent: "flex-end",
     alignItems: "center",
     marginTop: 20,
     marginBottom: 20,
@@ -543,16 +539,9 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
 
-  sectionTitleNew: {
-    fontSize: 32,
-    fontWeight: "bold",
-    color: "#FFFFFF",
-    textAlign: "left",
-    marginBottom: 20,
-    width: "100%",
-  },
+ 
   sectionTitleSeus: {
-    fontSize: 32,
+    fontSize: 24,
     color: "#FFFFFF",
     textAlign: "left",
     width: "100%",
@@ -561,7 +550,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#D00000",
-    padding: 16,
+    padding: 10,
   },
   content: {
     flex: 1,
@@ -569,15 +558,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 20,
     borderRadius: 40,
-    marginHorizontal: 10,
+    marginHorizontal: 5,
+    alignItems: "center",
+    justifyContent: "center",
   },
   mainTitle: {
-    fontSize: 24,
+    fontSize: 16,
     fontWeight: "bold",
     textAlign: "center",
     color: "#fff",
-    marginTop: 10,
     marginBottom: 20,
+  },
+  sectionTitleNew: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#FFFFFF",
+    textAlign: "center",
+    marginBottom: 20,
+    width: "100%",
   },
   sectionTitle: {
     fontSize: 20,

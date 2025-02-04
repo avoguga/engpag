@@ -34,8 +34,6 @@ const filterValidPayments = (payments: any) => {
   );
 };
 
-
-
 const formatConditionType = (text: string) => {
   return text.toLowerCase().replace(/^\w/, (c) => c.toUpperCase());
 };
@@ -180,7 +178,6 @@ const PaymentsCompleted = () => {
       });
 
       const validPayments = filterValidPayments(payments);
-
 
       setCompletedPayments(validPayments);
     } catch (error) {
@@ -397,26 +394,23 @@ const PaymentsCompleted = () => {
     <View style={styles.container}>
       <View style={styles.content}>
         <View style={styles.headerName}>
-          <NotificationIcon />
-
           <Text style={styles.greeting}>
             Olá,{" "}
             {userData?.name
               ? userData.name
                   .toLowerCase()
                   .split(" ")
-                  .slice(0, 2)
+                  .slice(0, 1)
                   .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
                   .join(" ") || "Usuário"
               : "Usuário"}
             !
           </Text>
         </View>
-        <Text style={styles.sectionTitleSeus}>Pagamentos</Text>
-        <Text style={styles.sectionTitle}>Realizados</Text>
-        <Text style={styles.title}>
+        <Text style={styles.sectionTitle}>Pagamentos Realizados</Text>
+        {/* <Text style={styles.title}>
           {enterpriseName || "Nome do Empreendimento"}
-        </Text>
+        </Text> */}
 
         {/* Filtro por parcela */}
         <View style={styles.pickerContainer}>
@@ -514,31 +508,31 @@ const PaymentsCompleted = () => {
             }
           />
         )}
-      </View>
-      {/* Bottom Navigation Section */}
-      <View style={styles.bottomSection}>
-        <View style={styles.navigationContainer}>
-          <TouchableOpacity
-            style={styles.navButton}
-            onPress={() => router.back()}
-          >
-            <Image
-              source={require("../seta.png")}
-              style={styles.logoBottom}
-              resizeMode="contain"
-            />
-          </TouchableOpacity>
+        {/* Bottom Navigation Section */}
+        <View style={styles.bottomSection}>
+          <View style={styles.navigationContainer}>
+            <TouchableOpacity
+              style={styles.navButton}
+              onPress={() => router.back()}
+            >
+              <Image
+                source={require("../seta.png")}
+                style={styles.logoBottom}
+                resizeMode="contain"
+              />
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.navButton}
-            onPress={() => router.navigate("/initial-page")}
-          >
-            <Image
-              source={require("../home.png")}
-              style={styles.logoBottom}
-              resizeMode="contain"
-            />
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.navButton}
+              onPress={() => router.navigate("/initial-page")}
+            >
+              <Image
+                source={require("../home.png")}
+                style={styles.logoBottom}
+                resizeMode="contain"
+              />
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
     </View>
@@ -548,7 +542,7 @@ const PaymentsCompleted = () => {
 const styles = StyleSheet.create({
   headerName: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    justifyContent: "center",
     alignItems: "center",
     marginTop: 20,
     marginBottom: 20,
@@ -562,37 +556,33 @@ const styles = StyleSheet.create({
   },
 
   sectionTitle: {
-    fontSize: 32,
+    fontSize: 24,
     fontWeight: "bold",
     color: "#FFFFFF",
     textAlign: "left",
     marginBottom: 20,
-    width: "100%",
   },
-  sectionTitleSeus: {
-    fontSize: 32,
-    color: "#FFFFFF",
-    textAlign: "left",
-    width: "100%",
-  },
+
   logoBottom: {
     width: 50,
   },
   container: {
     flex: 1,
-    padding: 16,
+    padding: 10,
     backgroundColor: "#D00000",
   },
   content: {
     flex: 1,
-    paddingHorizontal: 10,
-    paddingBottom: 20,
+    paddingHorizontal: 20,
     backgroundColor: "#880000",
     borderRadius: 40,
     marginHorizontal: 5,
+    height: "100%",
+    alignItems: "center",
+    justifyContent: "center",
   },
   title: {
-    fontSize: 22,
+    fontSize: 16,
     fontWeight: "700",
     textAlign: "center",
     marginVertical: 10,
@@ -620,13 +610,14 @@ const styles = StyleSheet.create({
   pickerContainer: {
     borderWidth: 1,
     borderColor: "#888",
-    borderRadius: 30,
+    borderRadius: 20,
     backgroundColor: "#fff",
     marginBottom: 16,
-    marginHorizontal: 16,
-    height: 50,
+    height: 30,
     justifyContent: "center",
     paddingHorizontal: 12,
+    marginHorizontal: 12,
+    width: "90%",
   },
   picker: {
     height: 50,
@@ -647,7 +638,7 @@ const styles = StyleSheet.create({
   },
   dateInput: {
     flex: 1,
-    height: 45,
+    height: 30,
     width: 30,
     borderWidth: 1,
     borderColor: "#fff",
@@ -658,19 +649,21 @@ const styles = StyleSheet.create({
     borderRightColor: "#fff",
     borderTopRightRadius: 0,
     borderBottomRightRadius: 0,
+    paddingLeft: 16,
   },
   validInput: {},
   invalidInput: {},
   calendarButton: {
-    padding: 10,
-    height: 45,
-    borderRadius: 8,
+    height: 30,
     borderLeftColor: "#fff",
     backgroundColor: "#fff",
     borderTopLeftRadius: 0,
     borderBottomLeftRadius: 0,
     borderTopRightRadius: 20,
     borderBottomRightRadius: 20,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingRight: 8,
   },
   resetButton: {
     backgroundColor: "#E1272C",
@@ -678,12 +671,13 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     alignItems: "center",
     marginBottom: 16,
-    marginHorizontal: 16,
+    marginHorizontal: 12,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
     elevation: 3,
+    width: "90%",
   },
   resetButtonText: {
     color: "#fff",
@@ -693,7 +687,7 @@ const styles = StyleSheet.create({
   list: {
     flex: 1,
     marginHorizontal: 16,
-    marginBottom: 120,
+    width: "90%",
   },
   card: {
     padding: 16,
@@ -749,21 +743,15 @@ const styles = StyleSheet.create({
   },
   // Bottom Navigation Styles
   bottomSection: {
-    position: "absolute",
-    bottom: 0,
-    width: "100%",
-    height: 140,
   },
 
   navigationContainer: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    justifyContent: "center",
     alignItems: "center",
-    width: "100%",
-    paddingHorizontal: 120,
+    gap: 30,
   },
   navButton: {
-    padding: 10,
     marginTop: 20,
   },
 });

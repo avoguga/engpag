@@ -184,8 +184,7 @@ const NotificationScreen = () => {
             !
           </Text>
         </View>
-         <Text style={styles.sectionTitleSeus}>Minhas</Text>
-                <Text style={styles.sectionTitle}>Notificações</Text>
+        <Text style={styles.sectionTitle}>Minhas notificações</Text>
         <ScrollView
           contentContainerStyle={styles.contentContainer}
           refreshControl={
@@ -287,17 +286,16 @@ const styles = StyleSheet.create({
   },
 
   sectionTitle: {
-    fontSize: 32,
+    fontSize: 24,
     fontWeight: "bold",
     color: "#FFFFFF",
     textAlign: "left",
     marginBottom: 20,
     width: "100%",
     paddingHorizontal: 20,
-
   },
   sectionTitleSeus: {
-    fontSize: 32,
+    fontSize: 24,
     color: "#FFFFFF",
     paddingHorizontal: 20,
     textAlign: "left",
@@ -308,14 +306,14 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    padding: 16,
+    padding: 10,
     backgroundColor: "#D00000",
   },
   content: {
     flex: 1,
     marginTop: 30,
 
-    paddingHorizontal: 10,
+    paddingHorizontal: 20,
     paddingBottom: 20,
     backgroundColor: "#880000",
     borderRadius: 40,
@@ -393,18 +391,15 @@ const styles = StyleSheet.create({
   },
   // Bottom Navigation Styles
   bottomSection: {
-    position: "absolute",
-    bottom: 0,
     width: "100%",
-    height: 140,
   },
 
   navigationContainer: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    justifyContent: "center",
     alignItems: "center",
     width: "100%",
-    paddingHorizontal: 70,
+    gap: 30,
   },
   navButton: {
     padding: 10,

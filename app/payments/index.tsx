@@ -35,7 +35,6 @@ const filterValidPayments = (payments: any) => {
   );
 };
 
-
 const formatDate = (dateString) => {
   if (!dateString) return "Data indisponível";
   const [year, month, day] = dateString.split("-");
@@ -98,21 +97,27 @@ const PaymentHistory = () => {
         return;
       }
 
-      const dueInstallments = filterValidPayments(selectedResult.dueInstallments || []);
-      const payableInstallments = filterValidPayments(selectedResult.payableInstallments || []);
+      const dueInstallments = filterValidPayments(
+        selectedResult.dueInstallments || []
+      );
+      const payableInstallments = filterValidPayments(
+        selectedResult.payableInstallments || []
+      );
 
-      const allInstallments = [...dueInstallments, ...payableInstallments].map((installment) => ({
-        ...installment,
-        billReceivableId: selectedResult.billReceivableId,
-        formattedDueDate: formatDate(installment.dueDate),
-        currentBalance: parseFloat(
-          installment.currentBalance || 0
-        ).toLocaleString("pt-BR", {
-          style: "currency",
-          currency: "BRL",
-        }),
-        conditionType: installment.conditionType,
-      }));
+      const allInstallments = [...dueInstallments, ...payableInstallments].map(
+        (installment) => ({
+          ...installment,
+          billReceivableId: selectedResult.billReceivableId,
+          formattedDueDate: formatDate(installment.dueDate),
+          currentBalance: parseFloat(
+            installment.currentBalance || 0
+          ).toLocaleString("pt-BR", {
+            style: "currency",
+            currency: "BRL",
+          }),
+          conditionType: installment.conditionType,
+        })
+      );
 
       setInstallments(allInstallments);
     } catch (error) {
@@ -214,7 +219,6 @@ const PaymentHistory = () => {
         };
       });
       const validPayments = filterValidPayments(payments);
-
 
       setCompletedPayments(validPayments);
     } catch (error) {
@@ -373,29 +377,26 @@ const PaymentHistory = () => {
     <View style={styles.container}>
       <View style={styles.content}>
         <View style={styles.headerName}>
-          <NotificationIcon />
-
           <Text style={styles.greeting}>
             Olá,{" "}
             {userData?.name
               ? userData.name
                   .toLowerCase()
                   .split(" ")
-                  .slice(0, 2)
+                  .slice(0, 1)
                   .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
                   .join(" ") || "Usuário"
               : "Usuário"}
             !
           </Text>
         </View>
-        <Text style={styles.sectionTitleSeus}>Extrato</Text>
-        <Text style={styles.sectionTitle}>de pagamentos</Text>
+        <Text style={styles.sectionTitle}>Extrato de pagamentos</Text>
         <TouchableOpacity
           style={styles.downloadButton}
           onPress={handlePaymentHistoryNavigation}
           disabled={loadingHistory}
         >
-          <Baixar width={300} />
+          <Baixar width={250} />
         </TouchableOpacity>
         <View style={styles.filterContainer}>
           <TouchableOpacity
@@ -456,6 +457,7 @@ const PaymentHistory = () => {
             keyExtractor={(item, index) => `${item.installmentId}-${index}`}
             renderItem={renderInstallmentItem}
             contentContainerStyle={styles.scrollContainer}
+            style={{ width: "100%" }}
             ListEmptyComponent={
               <Text style={styles.noInstallmentsText}>
                 Nenhum registro encontrado para a categoria "{filter}".
@@ -632,33 +634,33 @@ const PaymentHistory = () => {
             </View>
           </Modal>
         )}
-      </View>
-      {/* Bottom Navigation Section */}
-      <View style={styles.bottomSection}>
-        <View style={styles.navigationContainer}>
-          <TouchableOpacity
-            style={styles.navButton}
-            onPress={() => router.back()}
-          >
-            <Image
-              source={require("../seta.png")}
-              style={styles.logoBottom}
-              resizeMode="contain"
-            />
-          </TouchableOpacity>
+        <View style={styles.bottomSection}>
+          <View style={styles.navigationContainer}>
+            <TouchableOpacity
+              style={styles.navButton}
+              onPress={() => router.back()}
+            >
+              <Image
+                source={require("../seta.png")}
+                style={styles.logoBottom}
+                resizeMode="contain"
+              />
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.navButton}
-            onPress={() => router.navigate("/initial-page")}
-          >
-            <Image
-              source={require("../home.png")}
-              style={styles.logoBottom}
-              resizeMode="contain"
-            />
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.navButton}
+              onPress={() => router.navigate("/initial-page")}
+            >
+              <Image
+                source={require("../home.png")}
+                style={styles.logoBottom}
+                resizeMode="contain"
+              />
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
+      {/* Bottom Navigation Section */}
     </View>
   );
 };
@@ -666,7 +668,7 @@ const PaymentHistory = () => {
 const styles = StyleSheet.create({
   headerName: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    justifyContent: "flex-end",
     alignItems: "center",
     marginTop: 20,
     marginBottom: 20,
@@ -680,31 +682,32 @@ const styles = StyleSheet.create({
   },
 
   sectionTitle: {
-    fontSize: 32,
+    fontSize: 24,
     fontWeight: "bold",
     color: "#FFFFFF",
-    textAlign: "left",
+    textAlign: "center",
     marginBottom: 20,
     width: "100%",
   },
   sectionTitleSeus: {
-    fontSize: 32,
+    fontSize: 24,
     color: "#FFFFFF",
     textAlign: "left",
     width: "100%",
   },
   container: {
     flex: 1,
-    padding: 16,
+    padding: 10,
     backgroundColor: "#D00000",
   },
   content: {
     flex: 1,
     paddingHorizontal: 20,
-    paddingBottom: 90,
     backgroundColor: "#880000",
     borderRadius: 40,
     marginHorizontal: 5,
+    alignItems: "center",
+    justifyContent: "center",
   },
   enterpriseName: {
     fontSize: 24,
@@ -732,16 +735,21 @@ const styles = StyleSheet.create({
   filterContainer: {
     flexDirection: "row",
     justifyContent: "space-around",
-    marginBottom: 10,
+    marginBottom: 20,
+    gap: 20,
   },
   buttonPago: {
     paddingVertical: 5,
-    paddingHorizontal: 10,
+    paddingHorizontal: 20,
     borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "#FFFFFF",
     backgroundColor: "#FF0000",
   },
   pagoAtivo: {
     backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#FF0000",
   },
   filterText: {
     fontSize: 16,
@@ -866,23 +874,18 @@ const styles = StyleSheet.create({
   },
   // Bottom Navigation Styles
   bottomSection: {
-    position: "absolute",
-    bottom: 0,
     width: "100%",
-    height: 140,
-    paddingTop: 10,
   },
 
   navigationContainer: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    justifyContent: "center",
     alignItems: "center",
     width: "100%",
-    paddingHorizontal: 120,
+    gap: 30,
   },
   navButton: {
-    padding: 10,
-    marginTop: 20,
+    marginTop: 10,
   },
 });
 

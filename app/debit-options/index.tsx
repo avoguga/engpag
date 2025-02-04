@@ -8,11 +8,8 @@ import {
   Platform,
   Image,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { UserContext } from "../contexts/UserContext";
-import LogoENG from "../(home)/engenharq.svg";
-import LogoENGELOT from "../(home)/enegelot.svg";
 import Boleto from "./baixarboletoo.svg";
 import Historico from "./historico.svg";
 import Realizado from "./realizados.svg";
@@ -205,23 +202,14 @@ const DebitOptionsPage = () => {
         </View>
       </View>
 
-      {/* <View style={styles.iconContainer}>
-        <View style={styles.circleIcon}>
-          <Ionicons name="home-outline" size={40} color="white" />
-        </View>
-        <Text style={styles.title}>
-          {enterpriseName || "Nome do Empreendimento"}
-        </Text>
-      </View> */}
-
       <View style={styles.buttonContainer}>
         <TouchableOpacity
           onPress={handleBoletoNavigation}
           style={[styles.buttonLarge, isPaid && styles.disabledButton]}
           disabled={isPaid}
         >
-          <Boleto width={35} height={35} />
-          <Text style={[styles.buttonText, isPaid && styles.disabledText]}>
+          <Boleto width={30} height={30} />
+          <Text style={[styles.buttonTextLarge, isPaid && styles.disabledText]}>
             2ª VIA BOLETO
           </Text>
         </TouchableOpacity>
@@ -232,7 +220,7 @@ const DebitOptionsPage = () => {
             onPress={handleParcelAntecipationNavigation}
             disabled={isPaid}
           >
-            <Antecipar width={35} height={35} />
+            <Antecipar width={30} height={30} />
             <Text style={[styles.buttonText, isPaid && styles.disabledText]}>
               ANTECIPAR PARCELAS
             </Text>
@@ -243,7 +231,7 @@ const DebitOptionsPage = () => {
             onPress={handleDebtBalance}
             disabled={isPaid}
           >
-            <SaldoDevedor width={35} height={35} />
+            <SaldoDevedor width={30} height={30} />
             <Text style={[styles.buttonText, isPaid && styles.disabledText]}>
               SALDO DEVEDOR
             </Text>
@@ -255,7 +243,7 @@ const DebitOptionsPage = () => {
             style={styles.buttonSmall}
             onPress={handlePaymentsRealizedNavigation}
           >
-            <Realizado width={35} height={35} />
+            <Realizado width={30} height={30} />
             <Text style={styles.buttonText}>PAGAMENTOS REALIZADOS</Text>
           </TouchableOpacity>
 
@@ -263,24 +251,12 @@ const DebitOptionsPage = () => {
             style={styles.buttonSmall}
             onPress={handlePaymentsNavigation}
           >
-            <Historico width={35} height={35} />
+            <Historico width={30} height={30} />
             <Text style={styles.buttonText}>HISTÓRICO DE PAGAMENTOS</Text>
           </TouchableOpacity>
         </View>
       </View>
-      <View style={styles.bottomLogos}>
-        <LogoENG
-          width={150}
-          height={40}
-          style={{ transform: [{ translateY: 20 }] }} // Ajusta a posição vertical
-        />
 
-        <LogoENGELOT
-          width={100}
-          height={50}
-          style={{ transform: [{ translateY: 20 }] }}
-        />
-      </View>
       <View style={styles.bottomSection}>
         <View style={styles.navigationContainer}>
           <TouchableOpacity
@@ -383,12 +359,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     textAlign: "center",
-    gap: 10,
     flexDirection: "row",
   },
   buttonSmall: {
     backgroundColor: "#fff",
-    paddingVertical: 15,
+    paddingVertical: 20,
     paddingHorizontal: 10,
     borderRadius: 10,
     width: "48%",
@@ -401,13 +376,20 @@ const styles = StyleSheet.create({
     alignItems: "center",
     textAlign: "center",
     flexDirection: "row",
-    gap: 8,
   },
   buttonText: {
     color: "#000",
-    fontSize: 16,
+    fontSize: 12,
     fontWeight: "bold",
     textAlign: "center",
+    width: "65%"
+  },
+  buttonTextLarge: {
+    color: "#000",
+    fontSize: 12,
+    fontWeight: "bold",
+    textAlign: "center",
+    width: "50%"
   },
   disabledButton: {
     backgroundColor: "#c6c6c6", // Cor cinza para botão desabilitado

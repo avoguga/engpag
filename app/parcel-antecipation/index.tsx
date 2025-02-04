@@ -20,7 +20,6 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import axios from "axios";
 import { UserContext } from "../contexts/UserContext";
 import { router, useLocalSearchParams } from "expo-router";
-import NotificationIcon from "@/components/NotificationIcon";
 
 const excludedConditionTypes = [
   "Cartão de crédito",
@@ -306,7 +305,7 @@ const ParcelAntecipation = () => {
               }
             }}
           >
-            <Ionicons name="calendar-outline" size={24} color="#E1272C" />
+            <Ionicons name="calendar-outline" size={14} color="#E1272C" />
           </TouchableOpacity>
         </>
       )}
@@ -582,7 +581,6 @@ const ParcelAntecipation = () => {
     <View style={styles.container}>
       <View style={styles.content}>
         <View style={styles.headerName}>
-          <NotificationIcon />
 
           <Text style={styles.greeting}>
             Olá,{" "}
@@ -590,18 +588,15 @@ const ParcelAntecipation = () => {
               ? userData.name
                   .toLowerCase()
                   .split(" ")
-                  .slice(0, 2)
+                  .slice(0, 1)
                   .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
                   .join(" ") || "Usuário"
               : "Usuário"}
             !
           </Text>
         </View>
-        <Text style={styles.sectionTitleSeus}>Antecipação</Text>
-        <Text style={styles.sectionTitle}>de Parcelas</Text>
-        <Text style={styles.selectedCountText}>
-          {selectedInstallments.length} parcela(s) selecionada(s)
-        </Text>
+        <Text style={styles.sectionTitle}>Antecipação de Parcelas</Text>
+      
 
         {hasOverdueInstallments && (
           <Text style={styles.warningText}>
@@ -650,22 +645,24 @@ const ParcelAntecipation = () => {
           )}
         </View>
 
-        {/* Botão de Resetar Filtros */}
-        <TouchableOpacity style={styles.resetButton} onPress={resetFilters}>
-          <Text style={styles.resetButtonText}>Limpar filtros</Text>
-        </TouchableOpacity>
-
-        {selectedInstallments.length > 0 && (
-          <TouchableOpacity
-            style={[
-              styles.resetButton,
-              { marginBottom: 16, backgroundColor: "#6c757d" },
-            ]}
-            onPress={unselectAllParcels}
-          >
-            <Text style={styles.resetButtonText}>Desmarcar parcelas</Text>
+        <View style={styles.resetButtonContainer}>
+          {/* Botão de Resetar Filtros */}
+          <TouchableOpacity style={styles.resetButton} onPress={resetFilters}>
+            <Text style={styles.resetButtonText}>Limpar filtros</Text>
           </TouchableOpacity>
-        )}
+
+          {selectedInstallments.length > 0 && (
+            <TouchableOpacity
+              style={[
+                styles.resetButton,
+                { marginBottom: 16, backgroundColor: "#6c757d" },
+              ]}
+              onPress={unselectAllParcels}
+            >
+              <Text style={styles.resetButtonText}>Desmarcar parcelas</Text>
+            </TouchableOpacity>
+          )}
+        </View>
 
         {/* Adicionar instrução para o usuário */}
         {selectedInstallments.length === 0 ? (
@@ -995,18 +992,21 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#D00000",
     paddingTop: Platform.OS === "web" ? 20 : 0, // Ajuste para web
+    padding: 10,
   },
   content: {
-    paddingHorizontal: 30,
+    paddingHorizontal: 20,
     paddingBottom: 200,
     backgroundColor: "#880000",
     borderRadius: 40,
-    marginHorizontal: 20,
+    marginHorizontal: 5,
     height: "100%",
+    justifyContent: "center",
+    alignItems: "center",
   },
   headerName: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    justifyContent: "flex-end",
     alignItems: "center",
     marginTop: 20,
     marginBottom: 20,
@@ -1019,14 +1019,14 @@ const styles = StyleSheet.create({
   },
 
   sectionTitle: {
-    fontSize: 32,
+    fontSize: 24,
     fontWeight: "bold",
     color: "#FFFFFF",
     textAlign: "left",
     marginBottom: 20,
   },
   sectionTitleSeus: {
-    fontSize: 32,
+    fontSize: 24,
     color: "#FFFFFF",
     textAlign: "left",
   },
@@ -1071,27 +1071,19 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     fontSize: 16,
   },
-  selectedCountText: {
-    fontSize: 16,
-    fontWeight: "bold",
-    marginBottom: 8,
-    textAlign: "center",
-    color: "#fff",
-  },
+
   pickerContainer: {
     borderWidth: 1,
     borderColor: "#888",
     borderRadius: 20,
     backgroundColor: "#fff",
     marginBottom: 16,
-    marginHorizontal: 16,
-    height: 50,
+    height: 30,
     justifyContent: "center",
     paddingHorizontal: 12,
+    width: "100%",
   },
   picker: {
-    height: 50,
-    width: "100%",
     color: "#333",
     ...Platform.select({
       web: {
@@ -1102,19 +1094,19 @@ const styles = StyleSheet.create({
   },
   dateFilterContainer: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    marginHorizontal: 16,
     marginBottom: 16,
+    width: "100%",
+    justifyContent: "space-between",
+    gap: 16,
   },
   dateInputContainer: {
     flexDirection: "row",
     alignItems: "center",
     flex: 1,
-    marginRight: 8,
   },
   dateInput: {
     flex: 1,
-    height: 45,
+    height: 30,
     width: 30,
     borderWidth: 1,
     borderColor: "#fff",
@@ -1125,6 +1117,7 @@ const styles = StyleSheet.create({
     borderRightColor: "#fff",
     borderTopRightRadius: 0,
     borderBottomRightRadius: 0,
+    paddingLeft: 16,
   },
   dateInputModal: {
     flex: 1,
@@ -1146,33 +1139,39 @@ const styles = StyleSheet.create({
     // borderColor: "#dc3545",
   },
   calendarButton: {
-    padding: 10,
-    height: 45,
-    borderRadius: 8,
+    height: 30,
     borderLeftColor: "#fff",
     backgroundColor: "#fff",
     borderTopLeftRadius: 0,
     borderBottomLeftRadius: 0,
     borderTopRightRadius: 20,
     borderBottomRightRadius: 20,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingRight: 8,
+  },
+  resetButtonContainer: {
+    flexDirection: "row",
+    width: "100%",
+    justifyContent: "space-between",
   },
   resetButton: {
     backgroundColor: "#E1272C",
     borderRadius: 8,
     paddingVertical: 10,
     alignItems: "center",
-    marginHorizontal: 16,
     marginBottom: 16,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
     elevation: 3,
+    width: 150,
   },
   resetButtonText: {
     color: "#fff",
     fontWeight: "bold",
-    fontSize: 16,
+    fontSize: 12,
   },
   list: {
     paddingHorizontal: 16,
@@ -1182,8 +1181,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginBottom: 12,
     backgroundColor: "#fff",
-    borderWidth: 1,
-    borderColor: "#ddd",
+    borderWidth: 4,
+    borderColor: "#fff",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -1191,7 +1190,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   instructionText: {
-    fontSize: 16,
+    fontSize: 12,
     color: "#fff",
     textAlign: "center",
     marginBottom: 8,
@@ -1216,7 +1215,7 @@ const styles = StyleSheet.create({
   },
   selectedCard: {
     borderColor: "#E1272C",
-    borderWidth: 2,
+    borderWidth: 4,
   },
   cardHeader: {
     flexDirection: "row",
@@ -1257,12 +1256,13 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   floatingButton: {
-    backgroundColor: "#fff",
     borderRadius: 50,
     width: 50,
     height: 50,
     justifyContent: "center",
     alignItems: "center",
+    borderWidth: 3,
+    borderColor: "#fff",
   },
   modalOverlay: {
     flex: 1,
@@ -1390,7 +1390,7 @@ const styles = StyleSheet.create({
   bottomSection: {
     bottom: 0,
     width: "100%",
-    marginBottom: -150,
+    marginBottom: -170,
     paddingTop: 20,
   },
 
