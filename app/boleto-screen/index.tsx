@@ -451,7 +451,14 @@ const BoletoScreen = () => {
 
   return (
     <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.contentContainer}>
+      <ScrollView  style={{
+          paddingHorizontal: 20,
+          paddingBottom: 20,
+          backgroundColor: "#880000",
+          borderRadius: 40,
+          marginHorizontal: 5,
+          height: "100%",
+      }}>
         <View style={styles.headerName}>
           <Text style={styles.greeting}>
             Olá,{" "}
@@ -776,11 +783,11 @@ const styles = StyleSheet.create({
     fontStyle: "italic",
   },
   warningContainer: {
-    padding: 30,
     borderRadius: 5,
     flexDirection: "row",
     alignItems: "center",
-    height: 150,
+    height: 100,
+    width: "80%",
   },
   warningText: {
     color: "#fff",
@@ -1045,7 +1052,6 @@ const styles = StyleSheet.create({
 
   warningLogo: {
     width: 90,
-    marginLeft: -20,
   },
   logoBottom: {
     width: 50,
