@@ -257,11 +257,9 @@ const ParcelAntecipation = () => {
 
   const renderDateInput = (
     inputType,
-    date,
     setDate,
     dateInput,
     setDateInput,
-    inputRef
   ) => (
     <View style={styles.dateInputContainer}>
       {Platform.OS === "web" ? (
@@ -333,15 +331,12 @@ const ParcelAntecipation = () => {
           color={item.generatedBoleto ? "#28a745" : "#dc3545"}
         />
       </View>
-      <Text style={styles.cardTitle}>Parcela: {item.number}</Text>
+      <Text style={styles.cardTitle}>Parcela: {item.number}                  {item.value}</Text>
       <Text style={styles.cardSubtitle}>Título: {item.billReceivableId}</Text>
       <Text style={styles.cardSubtitle}>
         Vencimento: {item.formattedDueDate}
       </Text>
-      <Text style={styles.cardSubtitle}>
-        Condição de pagamento: {formatConditionType(item.conditionType)}
-      </Text>
-      <Text style={styles.cardValue}>Valor: {item.value}</Text>
+  
     </TouchableOpacity>
   );
 
@@ -595,7 +590,7 @@ const ParcelAntecipation = () => {
             !
           </Text>
         </View>
-        <Text style={styles.sectionTitle}>Antecipação de Parcelas</Text>
+        <Text style={styles.sectionTitle}>Antecipação de parcelas</Text>
       
 
         {hasOverdueInstallments && (

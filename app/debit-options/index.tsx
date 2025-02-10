@@ -202,6 +202,14 @@ const DebitOptionsPage = () => {
         </View>
       </View>
 
+      <Text style={{
+        textAlign: "center",
+        fontSize: 18,
+        fontWeight: "bold",
+        marginTop: 20,
+        color: "#fff",
+      }}>{enterpriseName}</Text>
+
       <View style={styles.buttonContainer}>
         <TouchableOpacity
           onPress={handleBoletoNavigation}

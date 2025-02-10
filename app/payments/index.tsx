@@ -775,7 +775,7 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   dueBorder: {
-    borderLeftColor: "#E1272C",
+    borderLeftColor: "#E1272C", // colocar cor de a vencer
     borderLeftWidth: 5,
   },
   paidBorder: {

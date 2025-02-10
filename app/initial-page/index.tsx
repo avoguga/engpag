@@ -474,7 +474,7 @@ const InitialPage = () => {
             </Text>
           </View>
           <Text style={styles.sectionTitleSeus}>Seus</Text>
-          <Text style={styles.sectionTitle}>Empreendimentos</Text>
+          <Text style={styles.sectionTitle}>Contratos</Text>
 
           {loading && <ActivityIndicator size="large" color="#E1272C" />}
           {error !== "" && <Text style={styles.errorText}>{error}</Text>}
@@ -508,7 +508,7 @@ const InitialPage = () => {
                   : null;
 
                 const hasUnpaidInstallments = allDueInstallments.length > 0;
-                const status = hasUnpaidInstallments ? "Em aberto" : "Quitado";
+                const status = hasUnpaidInstallments ? "Em andamento" : "Quitado";
 
                 return (
                   <TouchableOpacity
@@ -557,7 +557,7 @@ const InitialPage = () => {
                         </View>
                       ) : null}
                       <View style={styles.cardRow}>
-                        <Text style={styles.infoLabel}>Status:</Text>
+                        <Text style={styles.infoLabel}>Situação  do contrato:</Text>
                         <Text
                           style={
                             hasUnpaidInstallments

@@ -177,7 +177,7 @@ const NotificationScreen = () => {
               ? userData.name
                   .toLowerCase()
                   .split(" ")
-                  .slice(0, 2)
+                  .slice(0, 1)
                   .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
                   .join(" ") || "Usuário"
               : "Usuário"}
@@ -241,7 +241,7 @@ const NotificationScreen = () => {
                 resizeMode="contain"
               />
             </TouchableOpacity>
-            <TouchableOpacity
+            {/* <TouchableOpacity
               onPress={deleteAllNotifications}
               disabled={deleting}
             >
@@ -250,7 +250,7 @@ const NotificationScreen = () => {
               ) : (
                 <Ionicons name="trash-outline" size={50} color="white" />
               )}
-            </TouchableOpacity>
+            </TouchableOpacity> */}
             <TouchableOpacity
               style={styles.navButton}
               onPress={() => router.navigate("/initial-page")}
