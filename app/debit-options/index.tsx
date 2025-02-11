@@ -208,7 +208,8 @@ const DebitOptionsPage = () => {
         fontWeight: "bold",
         marginTop: 20,
         color: "#fff",
-      }}>{enterpriseName}</Text>
+        paddingHorizontal: 70,
+      }}>{enterpriseName + "  " + unityName}</Text>
 
       <View style={styles.buttonContainer}>
         <TouchableOpacity
@@ -342,7 +343,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   buttonContainer: {
-    marginTop: 50,
+    marginTop: 30,
     alignItems: "center",
     paddingHorizontal: 20,
   },

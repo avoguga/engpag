@@ -324,54 +324,57 @@ const PaymentHistory = () => {
     });
   };
 
-  const renderInstallmentItem = ({ item }) => (
-    <TouchableOpacity
-      style={[
-        styles.card,
-        item.paymentDate
-          ? styles.paidBorder
-          : new Date(item.dueDate) < new Date()
-          ? styles.overdueBorder
-          : styles.dueBorder,
-      ]}
-      onPress={() => {
-        setSelectedInstallment(item);
-        setModalVisible(true);
-      }}
-    >
-      <MaterialIcons
-        name="attach-money"
-        size={30}
-        color={item.paymentDate ? "#2E7D32" : "#E1272C"}
-      />
-      <View style={styles.cardContent}>
-        <Text style={styles.cardTitle}>
-          <Text style={styles.label}>Vencimento: </Text>
-          {item.formattedDueDate}
-        </Text>
-        <Text style={styles.cardConditionType}>
-          <Text style={styles.label}>Condição: </Text>
-          {formatConditionType(item.conditionType)}
-        </Text>
-        <Text style={styles.cardAmount}>
-          <Text style={!item.paymentDate ? styles.label : styles.labell}>
-            Valor:{" "}
+  const renderInstallmentItem = ({ item }) => {
+    const isPaid = !!item.paymentDate;
+    const dueDateObj = new Date(item.dueDate);
+    const isOverdue = !isPaid && dueDateObj < new Date();
+    const statusColor = isPaid ? "#2E7D32" : isOverdue ? "#E1272C" : "#FFA726";
+
+    return (
+      <TouchableOpacity
+        style={[
+          styles.card,
+          isPaid
+            ? styles.paidBorder
+            : isOverdue
+            ? styles.overdueBorder
+            : styles.dueBorder,
+        ]}
+        onPress={() => {
+          setSelectedInstallment(item);
+          setModalVisible(true);
+        }}
+      >
+        <MaterialIcons name="attach-money" size={30} color={statusColor} />
+        <View style={styles.cardContent}>
+          <Text style={[styles.cardTitle, { color: statusColor }]}>
+            <Text style={[styles.label, { color: statusColor }]}>Vencimento: </Text>
+            {item.formattedDueDate}
           </Text>
-          {item.paymentDate ? (
-            <Text style={styles.cardPaidDate}>{getAmount(item)}</Text>
-          ) : (
-            getAmount(item)
+          <Text style={[styles.cardConditionType, { color: statusColor }]}>
+            <Text style={[styles.label, { color: statusColor }]}>Condição: </Text>
+            {formatConditionType(item.conditionType)}
+          </Text>
+          <Text style={[styles.cardAmount, { color: statusColor }]}>
+            <Text style={[!item.paymentDate ? styles.label : styles.labell, { color: statusColor }]}>
+              Valor:{" "}
+            </Text>
+            {item.paymentDate ? (
+              <Text style={[styles.cardPaidDate, { color: statusColor }]}>{getAmount(item)}</Text>
+            ) : (
+              getAmount(item)
+            )}
+          </Text>
+          {item.paymentDate && (
+            <Text style={[styles.cardPaidDate, { color: statusColor }]}>
+              <Text style={[styles.label, { color: statusColor }]}>Pago em: </Text>
+              {item.formattedPaymentDate}
+            </Text>
           )}
-        </Text>
-        {item.paymentDate && (
-          <Text style={styles.cardPaidDate}>
-            <Text style={styles.label}>Pago em: </Text>
-            {item.formattedPaymentDate}
-          </Text>
-        )}
-      </View>
-    </TouchableOpacity>
-  );
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -396,7 +399,7 @@ const PaymentHistory = () => {
           onPress={handlePaymentHistoryNavigation}
           disabled={loadingHistory}
         >
-          <Baixar width={250} />
+          <Baixar width={250} height={100}/>
         </TouchableOpacity>
         <View style={styles.filterContainer}>
           <TouchableOpacity
@@ -660,7 +663,6 @@ const PaymentHistory = () => {
           </View>
         </View>
       </View>
-      {/* Bottom Navigation Section */}
     </View>
   );
 };
@@ -668,7 +670,7 @@ const PaymentHistory = () => {
 const styles = StyleSheet.create({
   headerName: {
     flexDirection: "row",
-    justifyContent: "flex-end",
+    justifyContent: "center",
     alignItems: "center",
     marginTop: 20,
     marginBottom: 20,
@@ -680,7 +682,6 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     textAlign: "center",
   },
-
   sectionTitle: {
     fontSize: 24,
     fontWeight: "bold",
@@ -731,7 +732,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginLeft: 5,
   },
-
   filterContainer: {
     flexDirection: "row",
     justifyContent: "space-around",
@@ -774,16 +774,19 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     elevation: 3,
   },
+  // A vencer (parcelas futuras) – cor laranja
   dueBorder: {
-    borderLeftColor: "#E1272C", // colocar cor de a vencer
+    borderLeftColor: "#FFA726",
     borderLeftWidth: 5,
   },
+  // Pagos – cor verde
   paidBorder: {
     borderLeftColor: "#2E7D32",
     borderLeftWidth: 5,
   },
+  // Vencidos – cor vermelha
   overdueBorder: {
-    borderLeftColor: "#FFA726",
+    borderLeftColor: "#E1272C",
     borderLeftWidth: 5,
   },
   cardContent: {
@@ -793,31 +796,24 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 16,
     fontWeight: "bold",
-    color: "#333",
   },
   cardConditionType: {
     fontSize: 14,
-    color: "#555",
-    marginTop: 5,
     fontStyle: "italic",
   },
   cardAmount: {
     fontSize: 16,
-    color: "#E1272C",
     marginTop: 5,
   },
   cardPaidDate: {
     fontSize: 14,
-    color: "#2E7D32",
     marginTop: 5,
   },
   label: {
     fontWeight: "600",
   },
-
   labell: {
     fontWeight: "600",
-    color: "#2E7D32",
   },
   noInstallmentsText: {
     textAlign: "center",
@@ -876,7 +872,6 @@ const styles = StyleSheet.create({
   bottomSection: {
     width: "100%",
   },
-
   navigationContainer: {
     flexDirection: "row",
     justifyContent: "center",

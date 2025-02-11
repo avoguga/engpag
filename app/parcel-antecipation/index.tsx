@@ -255,12 +255,7 @@ const ParcelAntecipation = () => {
     }
   };
 
-  const renderDateInput = (
-    inputType,
-    setDate,
-    dateInput,
-    setDateInput,
-  ) => (
+  const renderDateInput = (inputType, setDate, dateInput, setDateInput) => (
     <View style={styles.dateInputContainer}>
       {Platform.OS === "web" ? (
         <>
@@ -310,35 +305,64 @@ const ParcelAntecipation = () => {
     </View>
   );
 
-  const renderItem = ({ item }) => (
-    <TouchableOpacity
-      style={[
-        styles.card,
-        item.status === "vencido" ? styles.overdueCard : styles.pendingCard,
-        selectedInstallments.some(
-          (installment) => installment.id === item.id
-        ) && styles.selectedCard,
-      ]}
-      onPress={() => handleSelectInstallment(item)}
-    >
-      <View style={styles.cardHeader}>
-        <Text style={styles.cardNotice}>
-          {item.generatedBoleto ? "Boleto disponível" : "Apto para antecipação"}
+  const renderItem = ({ item }) => {
+    // Verifica se o item está selecionado
+    const isSelected = selectedInstallments.some(
+      (installment) => installment.id === item.id
+    );
+
+    return (
+      <TouchableOpacity
+        style={[
+          styles.card,
+          item.status === "vencido" ? styles.overdueCard : styles.pendingCard,
+          isSelected && styles.selectedCard,
+        ]}
+        onPress={() => handleSelectInstallment(item)}
+      >
+        <View style={styles.cardHeader}>
+          <Text style={styles.cardNotice}>
+            {item.generatedBoleto
+              ? "Boleto disponível"
+              : "Apto para antecipação"}
+          </Text>
+          {/* Se o item estiver selecionado, exibe o ícone verde; caso contrário, utiliza a condição original */}
+          <Ionicons
+            name={
+              isSelected
+                ? "checkmark-circle"
+                : item.generatedBoleto
+                ? "checkmark-circle"
+                : "close-circle"
+            }
+            size={20}
+            color={
+              isSelected
+                ? "#28a745"
+                : item.generatedBoleto
+                ? "#28a745"
+                : "#dc3545"
+            }
+          />
+        </View>
+        <View style={{
+          flexDirection: "row",
+          justifyContent: "space-between",
+          alignItems: "center",
+          width: "100%",
+        }}>
+          <Text style={styles.cardTitle}>
+            Parcela: {item.number}
+          </Text>
+          <Text style={styles.cardTitle}>{item.value}</Text>
+        </View>
+        <Text style={styles.cardSubtitle}>Título: {item.billReceivableId}</Text>
+        <Text style={styles.cardSubtitle}>
+          Vencimento: {item.formattedDueDate}
         </Text>
-        <Ionicons
-          name={item.generatedBoleto ? "checkmark-circle" : "close-circle"}
-          size={20}
-          color={item.generatedBoleto ? "#28a745" : "#dc3545"}
-        />
-      </View>
-      <Text style={styles.cardTitle}>Parcela: {item.number}                  {item.value}</Text>
-      <Text style={styles.cardSubtitle}>Título: {item.billReceivableId}</Text>
-      <Text style={styles.cardSubtitle}>
-        Vencimento: {item.formattedDueDate}
-      </Text>
-  
-    </TouchableOpacity>
-  );
+      </TouchableOpacity>
+    );
+  };
 
   const handleSendWhatsAppMessage = async () => {
     if (!userData || !userData.id) {
@@ -576,7 +600,6 @@ const ParcelAntecipation = () => {
     <View style={styles.container}>
       <View style={styles.content}>
         <View style={styles.headerName}>
-
           <Text style={styles.greeting}>
             Olá,{" "}
             {userData?.name
@@ -591,7 +614,6 @@ const ParcelAntecipation = () => {
           </Text>
         </View>
         <Text style={styles.sectionTitle}>Antecipação de parcelas</Text>
-      
 
         {hasOverdueInstallments && (
           <Text style={styles.warningText}>
@@ -660,11 +682,11 @@ const ParcelAntecipation = () => {
         </View>
 
         {/* Adicionar instrução para o usuário */}
-        {selectedInstallments.length === 0 ? (
-          <Text style={styles.instructionText}>
-            Toque em uma parcela para selecioná-la.
-          </Text>
-        ) : null}
+        <Text style={styles.instructionText}>
+          {selectedInstallments.length === 0
+            ? "Toque em uma parcela para selecioná-la."
+            : `${selectedInstallments.length} parcela(s) selecionada(s).`}
+        </Text>
 
         {/* DateTimePickers para filtros - qualquer mês a partir do atual */}
         {Platform.OS !== "web" && showStartDatePicker && (
@@ -796,7 +818,7 @@ const ParcelAntecipation = () => {
             keyExtractor={(item) => item.id}
             renderItem={renderItem}
             style={styles.list}
-            contentContainerStyle={{ paddingBottom: 100 }}
+            contentContainerStyle={{ paddingBottom: 100, width: "100%" }}
             ListEmptyComponent={
               <Text style={styles.noDataText}>Nenhuma parcela encontrada.</Text>
             }
@@ -1170,6 +1192,7 @@ const styles = StyleSheet.create({
   },
   list: {
     paddingHorizontal: 16,
+    width: "100%",
   },
   card: {
     padding: 16,

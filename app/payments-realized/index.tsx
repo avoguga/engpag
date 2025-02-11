@@ -407,7 +407,7 @@ const PaymentsCompleted = () => {
             !
           </Text>
         </View>
-        <Text style={styles.sectionTitle}>Pagamentos Realizados</Text>
+        <Text style={styles.sectionTitle}>Pagamentos realizados</Text>
         {/* <Text style={styles.title}>
           {enterpriseName || "Nome do Empreendimento"}
         </Text> */}
