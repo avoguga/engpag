@@ -399,7 +399,10 @@ const PaymentHistory = () => {
           onPress={handlePaymentHistoryNavigation}
           disabled={loadingHistory}
         >
-          <Baixar width={250} height={100}/>
+          <Image source={require("./BUTTO.png")} style={{
+            width: 300,
+            height: 100,
+          }} />
         </TouchableOpacity>
         <View style={styles.filterContainer}>
           <TouchableOpacity
@@ -687,7 +690,6 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#FFFFFF",
     textAlign: "center",
-    marginBottom: 20,
     width: "100%",
   },
   sectionTitleSeus: {

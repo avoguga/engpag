@@ -575,7 +575,14 @@ const BoletoScreen = () => {
                           style={styles.actionButton}
                           onPress={requestBoletoLink}
                         >
-                          <Baixar width={200} height={100} />
+                          <Image
+                            style={{
+                              width: 300,
+                              height: 80,
+                              resizeMode: "contain",
+                            }}
+                            source={require("./baixa.png")}
+                          />
                         </TouchableOpacity>
                         {/* Se necessário, descomente para envio por e-mail
                       <TouchableOpacity
