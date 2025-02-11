@@ -204,11 +204,11 @@ const DebitOptionsPage = () => {
 
       <Text style={{
         textAlign: "center",
-        fontSize: 18,
+        fontSize: 16,
         fontWeight: "bold",
         marginTop: 20,
         color: "#fff",
-        paddingHorizontal: 70,
+        paddingHorizontal: 90,
       }}>{enterpriseName + "  " + unityName}</Text>
 
       <View style={styles.buttonContainer}>
@@ -343,7 +343,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   buttonContainer: {
-    marginTop: 30,
+    marginTop: 15,
     alignItems: "center",
     paddingHorizontal: 20,
   },
@@ -372,7 +372,7 @@ const styles = StyleSheet.create({
   },
   buttonSmall: {
     backgroundColor: "#fff",
-    paddingVertical: 20,
+    paddingVertical: 15,
     paddingHorizontal: 10,
     borderRadius: 10,
     width: "48%",

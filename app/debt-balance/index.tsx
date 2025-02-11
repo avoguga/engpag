@@ -308,7 +308,7 @@ const DebtBalanceScreen = () => {
   return (
     <View style={styles.container}>
       <View style={styles.content}>
-        <ScrollView>
+        <ScrollView style={{ width: "100%" }}>
           <View style={styles.headerName}>
             <Text style={styles.greeting}>
               Olá,{" "}

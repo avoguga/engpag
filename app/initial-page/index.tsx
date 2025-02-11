@@ -456,7 +456,7 @@ const InitialPage = () => {
   return (
     <View style={styles.container}>
       <View style={styles.content}>
-        <ScrollView>
+        <ScrollView style={{}}>
           <View style={styles.headerName}>
             <NotificationIcon />
 
@@ -473,8 +473,7 @@ const InitialPage = () => {
               !
             </Text>
           </View>
-          <Text style={styles.sectionTitleSeus}>Seus</Text>
-          <Text style={styles.sectionTitle}>Contratos</Text>
+          <Text style={styles.sectionTitleSeus}>Seus contratos</Text>
 
           {loading && <ActivityIndicator size="large" color="#E1272C" />}
           {error !== "" && <Text style={styles.errorText}>{error}</Text>}
@@ -508,7 +507,9 @@ const InitialPage = () => {
                   : null;
 
                 const hasUnpaidInstallments = allDueInstallments.length > 0;
-                const status = hasUnpaidInstallments ? "Em andamento" : "Quitado";
+                const status = hasUnpaidInstallments
+                  ? "Em andamento"
+                  : "Quitado";
 
                 return (
                   <TouchableOpacity
@@ -557,7 +558,9 @@ const InitialPage = () => {
                         </View>
                       ) : null}
                       <View style={styles.cardRow}>
-                        <Text style={styles.infoLabel}>Situação  do contrato:</Text>
+                        <Text style={styles.infoLabel}>
+                          Situação do contrato:
+                        </Text>
                         <Text
                           style={
                             hasUnpaidInstallments
@@ -661,17 +664,12 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
 
-  sectionTitle: {
+  sectionTitleSeus: {
     fontSize: 24,
     fontWeight: "bold",
     color: "#FFFFFF",
     textAlign: "left",
     marginBottom: 20,
-  },
-  sectionTitleSeus: {
-    fontSize: 24,
-    color: "#FFFFFF",
-    textAlign: "left",
   },
   card: {
     backgroundColor: "#FFFFFF",
