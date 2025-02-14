@@ -29,9 +29,18 @@ const excludedConditionTypes = [
 ];
 
 const filterValidPayments = (payments: any) => {
-  return payments.filter(
-    (payment) => !excludedConditionTypes.includes(payment.conditionType.trim())
-  );
+  return payments.filter((payment) => {
+    const conditionType = payment.conditionType ? payment.conditionType.trim() : "";
+    // Se for cartão de crédito, incluir somente se a parcela estiver paga
+    if (conditionType === "Cartão de crédito") {
+      return !!payment.paymentDate;
+    }
+    // Para os demais tipos excluídos, descartar a parcela
+    if (excludedConditionTypes.includes(conditionType)) {
+      return false;
+    }
+    return true;
+  });
 };
 
 const formatConditionType = (text: string) => {

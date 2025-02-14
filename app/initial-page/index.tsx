@@ -592,7 +592,7 @@ const InitialPage = () => {
               onPress={handleLogoutPress}
             >
               <Image
-                source={require("../seta.png")}
+                source={require("./porta.png")}
                 style={styles.logoBottom}
                 resizeMode="contain"
               />
@@ -656,6 +656,7 @@ const styles = StyleSheet.create({
   },
   logoBottom: {
     width: 50,
+    height: 50,
   },
   greeting: {
     fontSize: 20,
@@ -776,7 +777,7 @@ const styles = StyleSheet.create({
     width: "100%",
   },
   navButton: {
-    paddingTop: 20,
+    marginVertical: 30,
   },
 
   modalOverlay: {

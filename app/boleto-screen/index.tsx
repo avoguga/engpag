@@ -807,12 +807,14 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     height: 100,
-    width: "80%",
+    width: "90%",
   },
   warningText: {
     color: "#fff",
     fontSize: 14,
     textAlign: "justify",
+    flexShrink: 1,
+
   },
   contactSupportButton: {
     backgroundColor: "#25D366",
@@ -1037,6 +1039,9 @@ const styles = StyleSheet.create({
   },
   warningLogo: {
     width: 90,
+    height: 90,
+    flexShrink: 1,
+
   },
   logoBottom: {
     width: 50,
