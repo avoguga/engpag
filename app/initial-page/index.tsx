@@ -456,7 +456,7 @@ const InitialPage = () => {
   return (
     <View style={styles.container}>
       <View style={styles.content}>
-        <ScrollView style={{}}>
+        <ScrollView style={styles.scrollViewStyle}>
           <View style={styles.headerName}>
             <NotificationIcon />
 
@@ -638,6 +638,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#D00000",
     padding: 10,
+  },
+  scrollViewStyle: {
+    paddingHorizontal: 20,
   },
   content: {
     paddingHorizontal: 20,

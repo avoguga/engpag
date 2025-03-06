@@ -45,12 +45,23 @@ const BoletoScreen = () => {
     return `${day}/${month}/${year}`;
   };
 
+  const excludedConditionTypes = [
+    "Cartão de crédito",
+    "Cartão de débito",
+    "Sinal + cartão de crédito",
+    "Financiamento",
+    "Parcela de cartão de crédito",
+    "Promissória",
+    "Valor do terreno",
+    "PIX", // Inclua "PIX" se necessário
+  ];
+
   // Função para computar os campos (status e dias de atraso) e atualizar o boleto selecionado
   const processAndSetSelectedInstallment = (installment) => {
     const today = new Date();
     const dueDate = new Date(installment.dueDate);
     const daysOverdue = Math.floor((today - dueDate) / (1000 * 60 * 60 * 24));
-    let status = "Pendente";
+    let status = "Aguardando pagamento";
     let overdue = false;
     if (installment.paidDate) {
       status = "Pago";
@@ -64,6 +75,10 @@ const BoletoScreen = () => {
     installment.daysOverdue = daysOverdue;
     setHasOverdueInstallment(overdue);
     setSelectedInstallment(installment);
+  };
+
+  const formatConditionType = (text) => {
+    return text.toLowerCase().replace(/^\w/, (c) => c.toUpperCase());
   };
 
   const fetchAvailableInstallment = async () => {
@@ -108,7 +123,15 @@ const BoletoScreen = () => {
           ...(bill.payableInstallments || []),
         ];
 
-        installments.forEach((installment) => {
+        // Filter out excluded condition types
+        const validInstallments = installments.filter(
+          (installment) => 
+            !excludedConditionTypes.includes(
+              installment.conditionType ? installment.conditionType.trim() : ""
+            )
+        );
+
+        validInstallments.forEach((installment) => {
           if (installment.generatedBoleto) {
             generatedInstallments.push({
               ...installment,
@@ -477,6 +500,12 @@ const BoletoScreen = () => {
           </View>
           <Text style={styles.sectionTitle}>2ª Via de boletos</Text>
 
+              {/* Display "Selecione a parcela" text when there are multiple boletos */}
+              {availableInstallments.length > 1  && (
+            <Text style={styles.selectParcelText}>Selecione a parcela</Text>
+          )}
+
+
           {/* Exibe o Picker caso haja mais de um boleto disponível */}
           {availableInstallments.length > 1 && (
             <Picker
@@ -496,7 +525,7 @@ const BoletoScreen = () => {
               {availableInstallments.map((inst) => (
                 <Picker.Item
                   key={inst.installmentId}
-                  label={`Parcela ${
+                  label={`${formatConditionType(inst.conditionType)} ${
                     inst.installmentNumber
                   } - Venc: ${formatDate(inst.dueDate)}`}
                   value={inst.installmentId}
@@ -517,7 +546,9 @@ const BoletoScreen = () => {
                 <>
                   <View style={styles.infoContainer}>
                     <View style={styles.infoRow}>
-                      <Text style={styles.infoLabel}>Número da Parcela:</Text>
+                      <Text style={styles.infoLabel}>
+                        {formatConditionType(selectedInstallment.conditionType)}:
+                      </Text>
                       <Text style={styles.infoValue}>
                         {selectedInstallment.installmentNumber}
                       </Text>
@@ -584,18 +615,6 @@ const BoletoScreen = () => {
                             source={require("./baixa.png")}
                           />
                         </TouchableOpacity>
-                        {/* Se necessário, descomente para envio por e-mail
-                      <TouchableOpacity
-                        style={styles.actionButton}
-                        onPress={requestBoletoEmail}
-                      >
-                        <Ionicons name="mail" size={20} color="white" />
-                        <Text style={styles.actionButtonText}>
-                          {" "}
-                          Enviar para E-mail
-                        </Text>
-                      </TouchableOpacity>
-                      */}
                       </>
                     )}
                   </View>
@@ -788,6 +807,12 @@ const styles = StyleSheet.create({
     marginTop: 20,
     marginBottom: 20,
     width: "100%",
+  },
+  selectParcelText: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#FFFFFF",
+    marginBottom: 10, 
   },
   greeting: {
     fontSize: 20,
