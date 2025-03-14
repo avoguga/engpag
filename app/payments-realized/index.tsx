@@ -28,9 +28,11 @@ const excludedConditionTypes = [
   "Valor do terreno",
 ];
 
-const filterValidPayments = (payments: any) => {
+const filterValidPayments = (payments) => {
   return payments.filter((payment) => {
-    const conditionType = payment.conditionType ? payment.conditionType.trim() : "";
+    const conditionType = payment.conditionType
+      ? payment.conditionType.trim()
+      : "";
     // Se for cartão de crédito, incluir somente se a parcela estiver paga
     if (conditionType === "Cartão de crédito") {
       return !!payment.paymentDate;
@@ -43,7 +45,7 @@ const filterValidPayments = (payments: any) => {
   });
 };
 
-const formatConditionType = (text: string) => {
+const formatConditionType = (text) => {
   return text.toLowerCase().replace(/^\w/, (c) => c.toUpperCase());
 };
 
@@ -123,70 +125,105 @@ const PaymentsCompleted = () => {
         return;
       }
 
-      // Mapear as parcelas pagas para o formato desejado
-      const payments = paidInstallments.map((installment) => {
-        // Extrair e formatar a data de pagamento do recibo
-        let paymentDate = null;
-        let formattedPaymentDate = "Data indisponível";
-        let receiptNetValue = "Valor indisponível";
+      // Mapear as parcelas pagas com todos os recibos
+      let allPayments = [];
 
-        if (
-          installment.receipts &&
-          installment.receipts.length > 0 &&
-          installment.receipts[0].receiptDate
-        ) {
-          // Ajuste para data UTC no receiptDate
-          const receiptDate = installment.receipts[0].receiptDate;
-          const [year, month, day] = receiptDate.split("-");
-          paymentDate = new Date(Date.UTC(year, month - 1, day));
-          formattedPaymentDate = `${day}/${month}/${year}`;
-
-          // Extrair receiptNetValue
-          receiptNetValue = parseFloat(
-            installment.receipts[0].receiptNetValue
-          ).toLocaleString("pt-BR", {
-            style: "currency",
-            currency: "BRL",
-          });
-        }
-
-        // Ajuste para data UTC no dueDate
+      paidInstallments.forEach((installment) => {
+        // Informações comuns da parcela
         const dueDate = installment.dueDate;
         let formattedDueDate = "Data indisponível";
         if (dueDate) {
           const [dueYear, dueMonth, dueDay] = dueDate.split("-");
-          const dueDateUTC = new Date(Date.UTC(dueYear, dueMonth - 1, dueDay));
           formattedDueDate = `${dueDay}/${dueMonth}/${dueYear}`;
         }
 
-        return {
-          id: installment.installmentId.toString(),
-          number: installment.installmentNumber,
-          billReceivableId: selectedResult.billReceivableId,
-          dueDate: dueDate, // Mantém a data original se precisar usá-la
-          formattedDueDate: formattedDueDate, // Data formatada para exibição
-          paymentDate: paymentDate, // Data do pagamento
-          formattedPaymentDate: formattedPaymentDate, // Data do pagamento formatada
-          value: parseFloat(
-            installment.receipts[0].receiptNetValue
-          ).toLocaleString("pt-BR", {
-            style: "currency",
-            currency: "BRL",
-          }),
-          indexerName: installment.indexerName || "N/A",
-          conditionType: installment.conditionType || "N/A",
-          originalValue: parseFloat(installment.originalValue).toLocaleString(
-            "pt-BR",
-            {
+        // Se não tiver recibos, criamos um item com informações básicas
+        if (!installment.receipts || installment.receipts.length === 0) {
+          allPayments.push({
+            id: `${installment.installmentId}-no-receipt`,
+            number: installment.installmentNumber,
+            billReceivableId: selectedResult.billReceivableId,
+            dueDate: dueDate,
+            formattedDueDate: formattedDueDate,
+            paymentDate: null,
+            formattedPaymentDate: "Data indisponível",
+            value: parseFloat(installment.originalValue).toLocaleString(
+              "pt-BR",
+              {
+                style: "currency",
+                currency: "BRL",
+              }
+            ),
+            indexerName: installment.indexerName || "N/A",
+            conditionType: installment.conditionType || "N/A",
+            originalValue: parseFloat(installment.originalValue).toLocaleString(
+              "pt-BR",
+              {
+                style: "currency",
+                currency: "BRL",
+              }
+            ),
+            receiptNetValue: "Valor indisponível",
+            hasMultipleReceipts: false,
+            receipts: [],
+          });
+          return; // Skip to next iteration
+        }
+
+        // Processar cada recibo individualmente
+        installment.receipts.forEach((receipt, receiptIndex) => {
+          // Extrair e formatar a data de pagamento do recibo
+          let paymentDate = null;
+          let formattedPaymentDate = "Data indisponível";
+          let receiptNetValue = "Valor indisponível";
+
+          if (receipt.receiptDate) {
+            // Ajuste para data UTC no receiptDate
+            const receiptDate = receipt.receiptDate;
+            const [year, month, day] = receiptDate.split("-");
+            paymentDate = new Date(Date.UTC(year, month - 1, day));
+            formattedPaymentDate = `${day}/${month}/${year}`;
+
+            // Extrair receiptNetValue
+            receiptNetValue = parseFloat(
+              receipt.receiptNetValue
+            ).toLocaleString("pt-BR", {
               style: "currency",
               currency: "BRL",
-            }
-          ),
-          receiptNetValue: receiptNetValue,
-        };
+            });
+          }
+
+          allPayments.push({
+            id: `${installment.installmentId}-${receipt.receiptId}`,
+            number: installment.installmentNumber,
+            billReceivableId: selectedResult.billReceivableId,
+            dueDate: dueDate,
+            formattedDueDate: formattedDueDate,
+            paymentDate: paymentDate,
+            formattedPaymentDate: formattedPaymentDate,
+            value: parseFloat(receipt.receiptNetValue).toLocaleString("pt-BR", {
+              style: "currency",
+              currency: "BRL",
+            }),
+            indexerName: installment.indexerName || "N/A",
+            conditionType: installment.conditionType || "N/A",
+            originalValue: parseFloat(installment.originalValue).toLocaleString(
+              "pt-BR",
+              {
+                style: "currency",
+                currency: "BRL",
+              }
+            ),
+            receiptNetValue: receiptNetValue,
+            receiptId: receipt.receiptId,
+            hasMultipleReceipts: installment.receipts.length > 1,
+            totalReceipts: installment.receipts.length,
+            receiptIndex: receiptIndex + 1,
+          });
+        });
       });
 
-      const validPayments = filterValidPayments(payments);
+      const validPayments = filterValidPayments(allPayments);
 
       setCompletedPayments(validPayments);
     } catch (error) {
@@ -361,6 +398,15 @@ const PaymentsCompleted = () => {
       <Text style={styles.cardSubtitle}>
         Vencimento: {item.formattedDueDate}
       </Text>
+
+      {/* {item.hasMultipleReceipts && (
+        <View style={styles.receiptBadge}>
+          <Text style={styles.receiptBadgeText}>
+            Recibo {item.receiptIndex} de {item.totalReceipts}
+          </Text>
+        </View>
+      )} */}
+
       <Text style={styles.cardSubtitle}>
         Pagamento: {item.formattedPaymentDate}
       </Text>
@@ -563,7 +609,6 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     textAlign: "center",
   },
-
   sectionTitle: {
     fontSize: 24,
     fontWeight: "bold",
@@ -571,7 +616,6 @@ const styles = StyleSheet.create({
     textAlign: "left",
     marginBottom: 20,
   },
-
   logoBottom: {
     width: 50,
   },
@@ -751,9 +795,7 @@ const styles = StyleSheet.create({
     pointerEvents: "none",
   },
   // Bottom Navigation Styles
-  bottomSection: {
-  },
-
+  bottomSection: {},
   navigationContainer: {
     flexDirection: "row",
     justifyContent: "center",
@@ -762,6 +804,20 @@ const styles = StyleSheet.create({
   },
   navButton: {
     marginTop: 20,
+  },
+  // New receipt badge styles
+  receiptBadge: {
+    backgroundColor: "#f8d7da",
+    borderRadius: 12,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    marginTop: 8,
+    alignSelf: "flex-start",
+  },
+  receiptBadgeText: {
+    color: "#721c24",
+    fontSize: 12,
+    fontWeight: "bold",
   },
 });
 
