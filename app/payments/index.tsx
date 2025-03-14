@@ -27,7 +27,7 @@ const excludedConditionTypes = [
   "Valor do terreno",
 ];
 
-const filterValidPayments = (payments: any) => {
+const filterValidPayments = (payments) => {
   return payments.filter((payment) => {
     const conditionType = payment.conditionType ? payment.conditionType.trim() : "";
     // Se for cartão de crédito, incluir somente se a parcela estiver paga
@@ -179,55 +179,90 @@ const PaymentHistory = () => {
         return;
       }
 
-      const payments = paidInstallments.map((installment) => {
-        const receipt = installment.receipts && installment.receipts[0];
-        const paymentDate = receipt
-          ? formatDate(receipt.receiptDate)
-          : "Data indisponível";
+      // Processar todas as parcelas pagas com todos os recibos
+      let allPayments = [];
+      
+      paidInstallments.forEach((installment) => {
+        // Informações comuns da parcela
         const dueDate = formatDate(installment.dueDate);
-
-        return {
-          id: installment.installmentId.toString(),
-          installmentId: installment.installmentId,
-          installmentNumber: installment.installmentNumber,
-          billReceivableId: selectedResult.billReceivableId,
-          dueDate: installment.dueDate,
-          formattedDueDate: dueDate,
-          paymentDate: receipt?.receiptDate,
-          formattedPaymentDate: paymentDate,
-          value: parseFloat(installment.adjustedValue || 0).toLocaleString(
-            "pt-BR",
-            {
+        
+        // Se não tiver recibos ou array vazio, criar uma entrada básica
+        if (!installment.receipts || installment.receipts.length === 0) {
+          allPayments.push({
+            id: `${installment.installmentId}-no-receipt`,
+            installmentId: installment.installmentId,
+            installmentNumber: installment.installmentNumber,
+            billReceivableId: selectedResult.billReceivableId,
+            dueDate: installment.dueDate,
+            formattedDueDate: dueDate,
+            paymentDate: null,
+            formattedPaymentDate: "Data indisponível",
+            value: parseFloat(installment.adjustedValue || 0).toLocaleString("pt-BR", {
               style: "currency",
               currency: "BRL",
-            }
-          ),
-          adjustedValue: installment.adjustedValue,
-          originalValue: installment.originalValue,
-          currentBalance: installment.currentBalance,
-          monetaryCorrectionValue: installment.monetaryCorrectionValue,
-          baseDateOfCorrection: installment.baseDateOfCorrection,
-          conditionType: installment.conditionType,
-          indexerCode: installment.indexerCode,
-          indexerName: installment.indexerName,
-          indexerValueBaseDate: installment.indexerValueBaseDate,
-          indexerValueCalculationDate: receipt?.indexerValueCalculationDate,
-          generatedBoleto: installment.generatedBoleto,
-          receipt: receipt
-            ? {
-                receiptId: receipt.receiptId,
-                receiptValue: receipt.receiptValue,
-                receiptNetValue: receipt.receiptNetValue,
-                monetaryCorrectionValue: receipt.monetaryCorrectionValue,
-                calculationDate: receipt.calculationDate,
-                indexerValueCalculationDate:
-                  receipt.indexerValueCalculationDate,
-              }
-            : null,
-        };
+            }),
+            adjustedValue: installment.adjustedValue,
+            originalValue: installment.originalValue,
+            currentBalance: installment.currentBalance,
+            monetaryCorrectionValue: installment.monetaryCorrectionValue,
+            baseDateOfCorrection: installment.baseDateOfCorrection,
+            conditionType: installment.conditionType,
+            indexerCode: installment.indexerCode,
+            indexerName: installment.indexerName,
+            indexerValueBaseDate: installment.indexerValueBaseDate,
+            indexerValueCalculationDate: null,
+            generatedBoleto: installment.generatedBoleto,
+            receipt: null,
+            hasMultipleReceipts: false,
+            receipts: []
+          });
+          return; // Skip to next iteration
+        }
+        
+        // Processar cada recibo da parcela
+        installment.receipts.forEach((receipt, index) => {
+          const paymentDate = receipt ? formatDate(receipt.receiptDate) : "Data indisponível";
+          
+          allPayments.push({
+            id: `${installment.installmentId}-${receipt.receiptId}`,
+            installmentId: installment.installmentId,
+            installmentNumber: installment.installmentNumber,
+            billReceivableId: selectedResult.billReceivableId,
+            dueDate: installment.dueDate,
+            formattedDueDate: dueDate,
+            paymentDate: receipt?.receiptDate,
+            formattedPaymentDate: paymentDate,
+            value: parseFloat(receipt.receiptNetValue || 0).toLocaleString("pt-BR", {
+              style: "currency",
+              currency: "BRL",
+            }),
+            adjustedValue: installment.adjustedValue,
+            originalValue: installment.originalValue,
+            currentBalance: installment.currentBalance,
+            monetaryCorrectionValue: installment.monetaryCorrectionValue,
+            baseDateOfCorrection: installment.baseDateOfCorrection,
+            conditionType: installment.conditionType,
+            indexerCode: installment.indexerCode,
+            indexerName: installment.indexerName,
+            indexerValueBaseDate: installment.indexerValueBaseDate,
+            indexerValueCalculationDate: receipt?.indexerValueCalculationDate,
+            generatedBoleto: installment.generatedBoleto,
+            receipt: {
+              receiptId: receipt.receiptId,
+              receiptValue: receipt.receiptValue,
+              receiptNetValue: receipt.receiptNetValue,
+              monetaryCorrectionValue: receipt.monetaryCorrectionValue,
+              calculationDate: receipt.calculationDate,
+              indexerValueCalculationDate: receipt.indexerValueCalculationDate,
+            },
+            hasMultipleReceipts: installment.receipts.length > 1,
+            totalReceipts: installment.receipts.length,
+            receiptIndex: index + 1
+          });
+        });
       });
-      const validPayments = filterValidPayments(payments);
-
+      
+      const validPayments = filterValidPayments(allPayments);
       setCompletedPayments(validPayments);
     } catch (error) {
       console.error("Erro ao buscar parcelas pagas:", error);
@@ -236,8 +271,6 @@ const PaymentHistory = () => {
       setLoading(false);
     }
   };
-
-  console.log("oi", selectedInstallment);
 
   const handlePaymentHistoryNavigation = async () => {
     if (!userData || !userData.id) {
@@ -355,6 +388,14 @@ const PaymentHistory = () => {
       >
         <MaterialIcons name="attach-money" size={30} color={statusColor} />
         <View style={styles.cardContent}>
+          {/* {item.hasMultipleReceipts && (
+            <View style={styles.receiptBadge}>
+              <Text style={styles.receiptBadgeText}>
+                Recibo {item.receiptIndex} de {item.totalReceipts}
+              </Text>
+            </View>
+          )}
+           */}
           <Text style={[styles.cardTitle, { color: statusColor }]}>
             <Text style={[styles.label, { color: statusColor }]}>Vencimento: </Text>
             {item.formattedDueDate}
@@ -368,7 +409,7 @@ const PaymentHistory = () => {
               Valor:{" "}
             </Text>
             {item.paymentDate ? (
-              <Text style={[styles.cardPaidDate, { color: statusColor }]}>{getAmount(item)}</Text>
+              <Text style={[styles.cardPaidDate, { color: statusColor }]}>{item.value}</Text>
             ) : (
               getAmount(item)
             )}
@@ -468,7 +509,7 @@ const PaymentHistory = () => {
         ) : (
           <FlatList
             data={getFilteredInstallments()}
-            keyExtractor={(item, index) => `${item.installmentId}-${index}`}
+            keyExtractor={(item, index) => `${item.id}-${index}`}
             renderItem={renderInstallmentItem}
             contentContainerStyle={styles.scrollContainer}
             style={{ width: "100%" }}
@@ -493,6 +534,13 @@ const PaymentHistory = () => {
             <View style={styles.modalOverlay}>
               <View style={styles.modalContainer}>
                 <Text style={styles.modalTitle}>Detalhes da parcela</Text>
+                {/* {selectedInstallment.hasMultipleReceipts && (
+                  <View style={styles.modalReceiptBadge}>
+                    <Text style={styles.modalReceiptBadgeText}>
+                      Recibo {selectedInstallment.receiptIndex} de {selectedInstallment.totalReceipts}
+                    </Text>
+                  </View>
+                )} */}
                 <ScrollView style={{ width: "100%" }}>
                   <View style={styles.modalItem}>
                     <Text style={styles.modalLabel}>Número da parcela:</Text>
@@ -892,6 +940,33 @@ const styles = StyleSheet.create({
   navButton: {
     marginTop: 10,
   },
+  // Receipt badge styles
+  receiptBadge: {
+    backgroundColor: "#f8d7da",
+    borderRadius: 12,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    marginBottom: 8,
+    alignSelf: "flex-start",
+  },
+  receiptBadgeText: {
+    color: "#721c24",
+    fontSize: 12,
+    fontWeight: "bold",
+  },
+  modalReceiptBadge: {
+    backgroundColor: "#f8d7da",
+    borderRadius: 12,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    marginBottom: 15,
+    alignSelf: "center",
+  },
+  modalReceiptBadgeText: {
+    color: "#721c24",
+    fontSize: 14,
+    fontWeight: "bold",
+  }
 });
 
 export default PaymentHistory;
