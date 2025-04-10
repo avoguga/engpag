@@ -87,7 +87,7 @@ const PaymentHistory = () => {
         : { cnpj: userData.cnpj, correctAnnualInstallment: "N" };
 
       const response = await axios.get(
-        "https://engpag.backend.gustavohenrique.dev/proxy/current-debit-balance",
+        "http://201.51.197.250:3000/proxy/current-debit-balance",
         {
           params: searchParam,
           headers: { Authorization: `Basic ${credentials}` },
@@ -153,7 +153,7 @@ const PaymentHistory = () => {
         : { cnpj: userData.cnpj, correctAnnualInstallment: "N" };
 
       const response = await axios.get(
-        "https://engpag.backend.gustavohenrique.dev/proxy/current-debit-balance",
+        "http://201.51.197.250:3000/proxy/current-debit-balance",
         {
           params: searchParam,
           headers: { Authorization: `Basic ${credentials}` },
@@ -286,7 +286,7 @@ const PaymentHistory = () => {
       const credentials = btoa(`${username}:${password}`);
 
       const response = await axios.get(
-        `https://engpag.backend.gustavohenrique.dev/proxy/current-debit-balance/pdf`,
+        `http://201.51.197.250:3000/proxy/current-debit-balance/pdf`,
         {
           params: {
             customerId: userData.id,

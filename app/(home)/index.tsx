@@ -170,7 +170,7 @@ const Index = () => {
         ? `cpf=${sanitizedInput}`
         : `cnpj=${sanitizedInput}`;
       const response = await axios.get(
-        `https://engpag.backend.gustavohenrique.dev/proxy/customers?${searchParam}&limit=100&offset=0`,
+        `http://201.51.197.250:3000/proxy/customers?${searchParam}&limit=100&offset=0`,
         {
           headers: {
             Authorization: `Basic ${credentials}`,
@@ -227,7 +227,7 @@ const Index = () => {
       }
 
       const response = await axios.get(
-        `https://engpag.backend.gustavohenrique.dev/proxy/customers?cpf=${sanitizedCpf}&limit=100&offset=0`,
+        `http://201.51.197.250:3000/proxy/customers?cpf=${sanitizedCpf}&limit=100&offset=0`,
         {
           headers: {
             Authorization: `Basic ${credentials}`,
@@ -240,7 +240,7 @@ const Index = () => {
         const cpfPassword = sanitizedCpf.slice(0, 6);
 
         await axios.post(
-          "https://engpag.backend.gustavohenrique.dev/send-password",
+          "http://201.51.197.250:3000/send-password",
           {
             email: user.email,
             userName: user.name,

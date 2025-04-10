@@ -101,7 +101,7 @@ const BoletoScreen = () => {
         ? { cpf: userData.cpf, correctAnnualInstallment: "N" }
         : { cnpj: userData.cnpj, correctAnnualInstallment: "N" };
       const response = await axios.get(
-        "https://engpag.backend.gustavohenrique.dev/proxy/current-debit-balance",
+        "http://201.51.197.250:3000/proxy/current-debit-balance",
         {
           params: searchParam,
           headers: { Authorization: `Basic ${credentials}` },
@@ -203,7 +203,7 @@ const BoletoScreen = () => {
       let companyId = null;
 
       const response = await axios.get(
-        `https://engpag.backend.gustavohenrique.dev/proxy/accounts-receivable/receivable-bills/${billReceivableId}`,
+        `http://201.51.197.250:3000/proxy/accounts-receivable/receivable-bills/${billReceivableId}`,
         {
           params: { customerId: userData.id },
           headers: { Authorization: `Basic ${credentials}` },
@@ -324,7 +324,7 @@ const BoletoScreen = () => {
       );
 
       const response = await axios.get(
-        "https://engpag.backend.gustavohenrique.dev/proxy/payment-slip-notification",
+        "http://201.51.197.250:3000/proxy/payment-slip-notification",
         {
           params: {
             billReceivableId: selectedInstallment.billReceivableId,
@@ -344,7 +344,7 @@ const BoletoScreen = () => {
         // Enviar requisição para agendar o lembrete do boleto
         try {
           await axios.post(
-            "https://engpag.backend.gustavohenrique.dev/schedule-boleto",
+            "http://201.51.197.250:3000/schedule-boleto",
             {
               email: userData.email,
               vencimento: selectedInstallment.dueDate,
@@ -403,7 +403,7 @@ const BoletoScreen = () => {
                 "engenharq-mozart:wfW2ra73xSbH5r4AbQne4WesFDb1NaWe"
               );
               const responseBoleto = await axios.get(
-                "https://engpag.backend.gustavohenrique.dev/proxy/payment-slip-notification",
+                "http://201.51.197.250:3000/proxy/payment-slip-notification",
                 {
                   params: {
                     billReceivableId: selectedInstallment.billReceivableId,
@@ -422,7 +422,7 @@ const BoletoScreen = () => {
                 const boletoUrl = responseBoleto.data.results[0].urlReport;
 
                 const responseEmail = await axios.post(
-                  "https://engpag.backend.gustavohenrique.dev/send-email",
+                  "http://201.51.197.250:3000/send-email",
                   {
                     email: userData.email,
                     boletoUrl: boletoUrl,
@@ -433,7 +433,7 @@ const BoletoScreen = () => {
                 // Enviar requisição para agendar o lembrete do boleto
                 try {
                   await axios.post(
-                    "https://engpag.backend.gustavohenrique.dev/schedule-boleto",
+                    "http://201.51.197.250:3000/schedule-boleto",
                     {
                       email: userData.email,
                       vencimento: selectedInstallment.dueDate,

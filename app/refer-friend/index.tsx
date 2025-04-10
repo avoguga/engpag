@@ -32,7 +32,7 @@ const ReferFriend = () => {
     try {
       // Enviar os dados da indicação para o backend
       await axios.post(
-        "https://engpag.backend.gustavohenrique.dev/referrals",
+        "http://201.51.197.250:3000/referrals",
         {
           referrerCpf: userData.cpf,
           friendName: name,

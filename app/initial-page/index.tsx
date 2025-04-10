@@ -263,7 +263,7 @@ const InitialPage = () => {
         : { cnpj: userData.cnpj };
 
       const response = await axios.get(
-        `https://engpag.backend.gustavohenrique.dev/proxy/current-debit-balance`,
+        `http://201.51.197.250:3000/proxy/current-debit-balance`,
         {
           params: { ...searchParam, correctAnnualInstallment: "N" },
           headers: { Authorization: `Basic ${credentials}` },
@@ -359,7 +359,7 @@ const InitialPage = () => {
   const markNotificationAsRead = async (notificationId) => {
     try {
       const response = await axios.put(
-        `https://engpag.backend.gustavohenrique.dev/notifications/${notificationId}`,
+        `http://201.51.197.250:3000/notifications/${notificationId}`,
         { read: true }
       );
 
@@ -387,7 +387,7 @@ const InitialPage = () => {
         installments.map(async (item) => {
           try {
             const response = await axios.get(
-              `https://engpag.backend.gustavohenrique.dev/proxy/accounts-receivable/receivable-bills/${item.billReceivableId}`,
+              `http://201.51.197.250:3000/proxy/accounts-receivable/receivable-bills/${item.billReceivableId}`,
               {
                 params: { customerId: userData.id },
                 headers: { Authorization: `Basic ${credentials}` },

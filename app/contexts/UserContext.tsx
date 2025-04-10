@@ -124,7 +124,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
         : { cnpj: userData.cnpj };
 
       const response = await axios.get(
-        "https://engpag.backend.gustavohenrique.dev/notifications",
+        "http://201.51.197.250:3000/notifications",
         {
           params: searchParam,
         }

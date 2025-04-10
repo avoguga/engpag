@@ -46,7 +46,7 @@ const NotificationScreen = () => {
         : { cnpj: userData.cnpj };
 
       const response = await axios.get(
-        `https://engpag.backend.gustavohenrique.dev/notifications`,
+        `http://201.51.197.250:3000/notifications`,
         { params: searchParam }
       );
 
@@ -76,7 +76,7 @@ const NotificationScreen = () => {
 
     try {
       await axios.put(
-        `https://engpag.backend.gustavohenrique.dev/notifications/${notification._id}`,
+        `http://201.51.197.250:3000/notifications/${notification._id}`,
         { read: true }
       );
 
@@ -110,7 +110,7 @@ const NotificationScreen = () => {
         : { cnpj: userData.cnpj };
 
       axios
-        .delete("https://engpag.backend.gustavohenrique.dev/notifications", {
+        .delete("http://201.51.197.250:3000/notifications", {
           params: deleteParam,
         })
         .then(() => {

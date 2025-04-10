@@ -88,7 +88,7 @@ const ParcelAntecipation = () => {
         : { cnpj: userData.cnpj, correctAnnualInstallment: "N" };
 
       const response = await axios.get(
-        "https://engpag.backend.gustavohenrique.dev/proxy/current-debit-balance",
+        "http://201.51.197.250:3000/proxy/current-debit-balance",
         {
           params: searchParam,
           headers: {
@@ -392,7 +392,7 @@ const ParcelAntecipation = () => {
       const billReceivableId = selectedInstallments[0].billReceivableId;
 
       const response = await axios.get(
-        `https://engpag.backend.gustavohenrique.dev/proxy/accounts-receivable/receivable-bills/${billReceivableId}`,
+        `http://201.51.197.250:3000/proxy/accounts-receivable/receivable-bills/${billReceivableId}`,
         {
           params: { customerId: customerId },
           headers: { Authorization: `Basic ${credentials}` },

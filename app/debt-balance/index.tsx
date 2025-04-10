@@ -65,7 +65,7 @@ const DebtBalanceScreen = () => {
 
       // Chamada à rota current-debit-balance
       const responseDebitBalance = await axios.get(
-        "https://engpag.backend.gustavohenrique.dev/proxy/current-debit-balance",
+        "http://201.51.197.250:3000/proxy/current-debit-balance",
         {
           params: searchParam,
           headers: {
@@ -189,7 +189,7 @@ const DebtBalanceScreen = () => {
 
         // Chamada à rota customer-financial-statements para obter descontos e financiamento
         const responseFinancialStatements = await axios.get(
-          "https://engpag.backend.gustavohenrique.dev/proxy/customer-financial-statements",
+          "http://201.51.197.250:3000/proxy/customer-financial-statements",
           {
             params: { customerId: userData.id },
             headers: {

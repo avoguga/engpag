@@ -94,7 +94,7 @@ const PaymentsCompleted = () => {
         : { cnpj: userData.cnpj, correctAnnualInstallment: "N" };
 
       const response = await axios.get(
-        "https://engpag.backend.gustavohenrique.dev/proxy/current-debit-balance",
+        "http://201.51.197.250:3000/proxy/current-debit-balance",
         {
           params: searchParam,
           headers: {
